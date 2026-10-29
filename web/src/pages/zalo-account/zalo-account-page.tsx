@@ -70,6 +70,29 @@ export function ZaloAccountPage() {
     if (ok) await run("switch", () => api.activateAccount(target.id));
   }
 
+  async function toggleReadOnly(target: AccountSummary) {
+    if (target.readOnly) {
+      const ok = await confirm({
+        title: `Mở gửi tin cho ${nickLabel(target)}?`,
+        message:
+          "Sau khi mở, Claude (qua MCP) và dashboard gửi được tin thay nick này. Chỉ mở với nick của chính bạn - nick mượn hay nick đang thử thì để Chỉ đọc.",
+        confirmLabel: "Mở gửi tin",
+        tone: "danger",
+      });
+      if (!ok) return;
+    }
+    setBusy("switch");
+    setError(null);
+    try {
+      setAccounts((await api.setAccountReadOnly(target.id, !target.readOnly)).accounts);
+      applySession(await api.session());
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   if (!session) return null;
   const qrPending = session.state === "qr_pending";
 
@@ -112,6 +135,7 @@ export function ZaloAccountPage() {
           timeZone={me.timeZone}
           onSwitch={switchTo}
           onAdd={addNick}
+          onToggleReadOnly={toggleReadOnly}
         />
       )}
 

@@ -31,11 +31,12 @@ export async function createDashboardHarness(opts: { passwordSet?: boolean; acco
     activeId: nicks.size > 0 ? [...nicks.keys()][0]! : null,
     cooldown: false,
     mobileSync: null as MobileSyncControl | null,
+    readOnly: new Set<string>(),
   };
   const status = (): SessionStatus => ({
     state: "stopped",
     account: state.activeId
-      ? { id: state.activeId, uid: null, displayName: null, avatarUrl: null, lastActiveAt: null, hasCredentials: true, active: true }
+      ? { id: state.activeId, uid: null, displayName: null, avatarUrl: null, lastActiveAt: null, hasCredentials: true, active: true, readOnly: state.readOnly.has(state.activeId) }
       : null,
     selfUid: null,
     displayName: null,
@@ -47,7 +48,13 @@ export async function createDashboardHarness(opts: { passwordSet?: boolean; acco
   });
   const accounts: AccountControl = {
     status,
-    accounts: () => [...nicks.keys()].map((id) => ({ ...status().account!, id, active: id === state.activeId })),
+    accounts: () => [...nicks.keys()].map((id) => ({ ...status().account!, id, active: id === state.activeId, readOnly: state.readOnly.has(id) })),
+    isReadOnly: (id) => state.readOnly.has(id),
+    setReadOnly: (id, readOnly) => {
+      if (!nicks.has(id)) throw new UnknownAccountError(`Không có nick ${id}`);
+      if (readOnly) state.readOnly.add(id);
+      else state.readOnly.delete(id);
+    },
     active: () => (state.activeId ? { account: { id: state.activeId }, ...nicks.get(state.activeId)! } : null),
     startQrLogin: () => {},
     startActive: async () => {

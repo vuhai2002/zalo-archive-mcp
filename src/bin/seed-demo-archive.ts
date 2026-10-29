@@ -139,7 +139,7 @@ const registry = loadOrImportAccountRegistry(dataDir);
 if (!registry.accounts.some((a) => a.id === "demo")) {
   writeAccountRegistry(dataDir, {
     activeAccountId: registry.activeAccountId ?? "demo",
-    accounts: [...registry.accounts, { id: "demo", uid: null, displayName: "Dữ liệu mẫu", avatarUrl: null, addedAt: new Date().toISOString(), lastActiveAt: null }],
+    accounts: [...registry.accounts, { id: "demo", uid: null, displayName: "Dữ liệu mẫu", avatarUrl: null, addedAt: new Date().toISOString(), lastActiveAt: null, readOnly: false }],
   });
 }
 console.log('Xem: chạy "pnpm start", mở dashboard, vào Tài khoản Zalo và chuyển sang nick "demo" (nếu chưa ở đó).');

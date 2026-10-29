@@ -21,7 +21,7 @@ function seededDb() {
 }
 
 async function connectClient(db = seededDb()) {
-  const server = createArchiveMcpServer({ db, env, mediaRoot: "/media", accountId: "test" });
+  const server = createArchiveMcpServer({ db, env, mediaRoot: "/media", accountId: "test", readOnly: false });
   const [clientT, serverT] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "0" });
   await Promise.all([server.connect(serverT), client.connect(clientT)]);

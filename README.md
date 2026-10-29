@@ -41,6 +41,11 @@ quay lại nick cũ thì nối tiếp. Tin đến trong lúc một nick không c
 chạy lại, nhưng chỉ khoảng 2 tuần gần nhất. Mỗi lần đăng nhập Zalo cách nhau tối thiểu 30 giây để
 không bị coi là máy.
 
+**Chỉ đọc:** nick mới thêm luôn bắt đầu ở chế độ **Chỉ đọc** - kho nghe + lưu tin bình thường nhưng
+không soạn, không gửi gì qua nick đó (MCP, dashboard và daemon đều chặn; khung chat không có ô soạn
+tin). Muốn gửi thì bấm **Mở gửi tin** ở danh sách nick và xác nhận. Nick mượn, nick đang thử: để
+Chỉ đọc.
+
 **Tự chạy khi mở máy (Windows):** `pnpm autostart install` đặt một file vào thư mục Startup của bạn,
 mỗi lần đăng nhập Windows daemon tự chạy ẩn (không cửa sổ), log ở `data/logs/daemon.log`. Xem trạng thái:
 `pnpm autostart status`. Dừng: `pnpm stop`. Gỡ tự chạy: `pnpm autostart uninstall`.

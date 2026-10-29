@@ -24,6 +24,8 @@ export type DaemonDeps = {
   log: Logger;
   /** Listener bỏ cuộc (phiên nhiều khả năng đã chết) - caller chuyển trạng thái, đòi đăng nhập lại */
   onGaveUp: () => void;
+  /** Nick ở chế độ Chỉ đọc: vòng gửi không gửi gì */
+  isReadOnly: () => boolean;
 };
 
 export type ArchiveHandle = {
@@ -132,6 +134,7 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
     env,
     log: log.child({ part: "sender" }),
     isListenerConnected: listener.isConnected,
+    isReadOnly: d.isReadOnly,
     sendText: async (threadId, type, text) => {
       const res = await api.sendMessage(text, threadId, toZaloType(type));
       return { msgId: res.message?.msgId !== undefined ? String(res.message.msgId) : null };

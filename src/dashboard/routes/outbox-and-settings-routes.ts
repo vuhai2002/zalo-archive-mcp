@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { enqueueSingle } from "../../outbox/enqueue-outbox-request.js";
+import { enqueueSingle, READ_ONLY_ERROR } from "../../outbox/enqueue-outbox-request.js";
 import { approveDraft, cancelOutboxItem, getOutboxItem, listOutbox, type OutboxStatus } from "../../storage/outbox-store.js";
 import { getKillSwitch, setKillSwitch } from "../../storage/send-control-store.js";
 import { getSendSettings, updateSendSettings, type SendSettings } from "../../storage/send-settings-store.js";
@@ -31,7 +31,7 @@ export function outboxAndSettingsRoutes(ctx: DashboardContext): Hono {
       return c.json({ error: "when phải là now, schedule hoặc draft" }, 400);
     }
     const r = enqueueSingle(
-      { db, env },
+      { db, env, readOnly: ctx.readOnly() },
       {
         threadId: body.threadId,
         text: body.text,
@@ -51,6 +51,7 @@ export function outboxAndSettingsRoutes(ctx: DashboardContext): Hono {
   });
 
   app.post("/outbox/:id/approve", (c) => {
+    if (ctx.readOnly()) return c.json({ error: READ_ONLY_ERROR }, 409);
     const id = Number(c.req.param("id"));
     if (!approveDraft(db, id)) return c.json({ error: "Chỉ duyệt được mục đang là nháp" }, 400);
     return c.json(toOutboxItemDto(db, itemOr404(id)!));

@@ -30,8 +30,8 @@ function setup(opts: { registry?: AccountRegistry } = {}) {
   const registry: AccountRegistry = opts.registry ?? {
     activeAccountId: "nick-phu",
     accounts: [
-      { id: "nick-phu", uid: "111", displayName: "Phụ", avatarUrl: null, addedAt: "x", lastActiveAt: null },
-      { id: "nick-chinh", uid: "222", displayName: "Chính", avatarUrl: null, addedAt: "x", lastActiveAt: null },
+      { id: "nick-phu", uid: "111", displayName: "Phụ", avatarUrl: null, addedAt: "x", lastActiveAt: null, readOnly: false },
+      { id: "nick-chinh", uid: "222", displayName: "Chính", avatarUrl: null, addedAt: "x", lastActiveAt: null, readOnly: false },
     ],
   };
   for (const a of registry.accounts) {
@@ -102,6 +102,11 @@ describe("ZaloAccountManager", () => {
     assert.equal(reg.accounts.find((a) => a.id === "333")?.displayName, "Nick mới");
     assert.equal(fs.existsSync(accountPaths(dataDir, "nick-phu").credentialsFile), true, "cookie nick cũ còn nguyên");
     assert.equal(m.status().account?.id, "333");
+    // Nick lạ mới quét QR mặc định CHỈ ĐỌC; nick có từ trước giữ nguyên
+    assert.deepEqual([m.isReadOnly("333"), m.isReadOnly("nick-phu"), m.isReadOnly("khong-co")], [true, false, true]);
+    assert.equal(m.status().account?.readOnly, true);
+    m.setReadOnly("333", false);
+    assert.equal(readAccountRegistry(dataDir)!.accounts.find((a) => a.id === "333")?.readOnly, false, "lưu xuống accounts.json");
   });
 
   it("quét QR đúng nick cũ đang không dùng: nối tiếp thư mục cũ, không tạo nick trùng", async () => {

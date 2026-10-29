@@ -15,6 +15,9 @@ export type AccountControl = {
   stopActive: () => void;
   logoutActive: () => void;
   switchTo: (id: string) => Promise<void>;
+  /** Nick ở chế độ Chỉ đọc; nick lạ coi như chỉ đọc */
+  isReadOnly: (id: string) => boolean;
+  setReadOnly: (id: string, readOnly: boolean) => void;
   /** Đồng bộ lịch sử từ điện thoại của nick đang chạy; null khi nick chưa chạy */
   mobileSync: () => MobileSyncControl | null;
 };
@@ -41,4 +44,6 @@ export type DashboardContext = {
   db: DatabaseSync;
   env: AppEnv;
   paths: AccountPaths;
+  /** Đọc lại mỗi lần hỏi: bật / tắt Chỉ đọc trên dashboard là ăn ngay */
+  readOnly: () => boolean;
 };

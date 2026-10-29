@@ -13,7 +13,7 @@ const dateField = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Ngày YYYY-M
  * Không có tool nào chạm kill switch hay cài đặt gửi - việc đó chỉ người dùng
  * làm trên dashboard.
  */
-export function createArchiveMcpServer(ctx: ReadToolContext): McpServer {
+export function createArchiveMcpServer(ctx: ReadToolContext & { readonly readOnly: boolean }): McpServer {
   const server = new McpServer({ name: "zalo-archive", version: "0.3.0" });
 
   server.registerTool(

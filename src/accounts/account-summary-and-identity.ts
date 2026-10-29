@@ -13,6 +13,7 @@ export function toAccountSummary(a: AccountRecord, dataDir: string, activeAccoun
     lastActiveAt: a.lastActiveAt,
     hasCredentials: fs.existsSync(accountPaths(dataDir, a.id).credentialsFile),
     active: a.id === activeAccountId,
+    readOnly: a.readOnly,
   };
 }
 

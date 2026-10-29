@@ -26,7 +26,7 @@ function setup(daemonRunning = true) {
     setMeta(db, "daemon_session_state", "running");
     setMeta(db, "listener_heartbeat_at", NOW.toISOString());
   }
-  return { db, ctx: { db, env, now: () => NOW, sleep: async () => {}, waitTimeoutMs: 50 } };
+  return { db, ctx: { db, env, readOnly: false, now: () => NOW, sleep: async () => {}, waitTimeoutMs: 50 } };
 }
 
 describe("send_message", () => {
@@ -103,5 +103,23 @@ describe("schedule_message, send_batch, draft_message", () => {
     const { db, ctx } = setup(false);
     assert.ok(draftMessageTool(ctx, { thread_id: "u-lan", text: "để tôi xem" }).ok);
     assert.equal(listOutbox(db, { limit: 1 })[0]!.status, "draft");
+  });
+});
+
+describe("nick Chỉ đọc", () => {
+  it("mọi tool gửi / soạn từ chối với lý do rõ, không xếp gì vào hàng đợi", async () => {
+    const { db, ctx } = setup();
+    const ro = { ...ctx, readOnly: true };
+    const results = [
+      await sendMessageTool(ro, { thread_id: "u-lan", text: "x" }),
+      scheduleMessageTool(ro, { thread_id: "u-lan", text: "x", send_date: "2026-10-28", send_time: "11:00" }),
+      sendBatchTool(ro, { items: [{ thread_id: "u-lan", text: "A" }, { thread_id: "u-binh", text: "B" }] }),
+      draftMessageTool(ro, { thread_id: "u-lan", text: "nháp" }),
+    ];
+    for (const r of results) {
+      assert.equal(r.ok, false);
+      assert.match(r.ok ? "" : r.error, /Chỉ đọc/);
+    }
+    assert.deepEqual(listOutbox(db, { limit: 10 }), []);
   });
 });

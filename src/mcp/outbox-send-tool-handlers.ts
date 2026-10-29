@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { AppEnv } from "../config/env-schema.js";
-import { enqueueBatch, enqueueSingle } from "../outbox/enqueue-outbox-request.js";
+import { enqueueBatch, enqueueSingle, READ_ONLY_ERROR } from "../outbox/enqueue-outbox-request.js";
 import { daemonSendReadiness } from "../storage/daemon-liveness.js";
 import { getKillSwitch } from "../storage/send-control-store.js";
 import { cancelOutboxItem, getOutboxItem, listOutbox, type OutboxStatus } from "../storage/outbox-store.js";
@@ -15,6 +15,8 @@ import { toolError, toolOk, type ToolResult } from "./tool-result.js";
 export type SendToolContext = {
   db: DatabaseSync;
   env: AppEnv;
+  /** Nick đang dùng ở chế độ Chỉ đọc (đọc lại mỗi lần gọi tool) */
+  readOnly: boolean;
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
   /** Chờ daemon gửi xong tối đa bao lâu */
@@ -27,7 +29,8 @@ const FINAL_STATUSES = new Set<OutboxStatus>(["sent", "failed", "cancelled", "re
 
 export async function sendMessageTool(ctx: SendToolContext, args: { thread_id: string; text: string }): Promise<ToolResult> {
   // Chốt DB của nick lúc gọi: người dùng đổi nick trong lúc chờ thì vẫn theo dõi đúng mục vừa xếp
-  ctx = { ...ctx, db: ctx.db };
+  ctx = { ...ctx, db: ctx.db, readOnly: ctx.readOnly };
+  if (ctx.readOnly) return toolError(READ_ONLY_ERROR);
   const now = (ctx.now ?? (() => new Date()))();
   const readiness = daemonSendReadiness(ctx.db, now.getTime());
   if (!readiness.ready) return toolError(`Chưa gửi được: ${readiness.reason}`);

@@ -51,6 +51,12 @@ MCP send_message / dashboard "Gửi ngay" / CLI  -> outbox (approved, mode singl
 draft_message / dashboard "Lưu nháp" -> outbox (draft) --(Duyệt trên dashboard)--> approved
 ```
 
+Nick **Chỉ đọc** (cờ `readOnly` trong `data/accounts.json`; nick mới thêm mặc định bật, nick có
+từ trước giữ như cũ, cờ sai kiểu coi là bật) bị chặn ở cả ba lớp: xếp tin (`enqueueSingle` /
+`enqueueBatch` bắt buộc khai báo `readOnly`, dùng chung cho MCP và dashboard; dashboard còn chặn
+duyệt nháp), MCP đọc lại cờ theo nick đang dùng mỗi lần gọi tool, và `OutboxSender` không đụng hàng
+đợi (không gửi, không "đang soạn") - kiểm cả lúc lấy tin lẫn ngay trước khi gọi Zalo.
+
 Cổng kiểm LÚC GỬI và kiểm lại ngay trước khi gọi Zalo:
 - tin lẻ: kill switch + cách tin trước tối thiểu vài giây;
 - lô: thêm chỉ bạn bè, nhịp ngẫu nhiên, khung giờ, trần ngày (tin lô phải chờ thì dời riêng nó).

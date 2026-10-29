@@ -93,6 +93,7 @@ export const api = {
   sessionLogout: () => post<SessionStatus>("/api/session/logout"),
   accounts: () => request<AccountsResponse>("/api/accounts"),
   activateAccount: (id: string) => post<SessionStatus>(`/api/accounts/${enc(id)}/activate`),
+  setAccountReadOnly: (id: string, readOnly: boolean) => post<AccountsResponse>(`/api/accounts/${enc(id)}/read-only`, { readOnly }),
   mobileSync: () => request<MobileSyncResponse>("/api/mobile-sync"),
   mobileSyncStart: (body: MobileSyncStartRequest) => post<MobileSyncResponse>("/api/mobile-sync/start", body),
   mobileSyncCancel: () => post<MobileSyncResponse>("/api/mobile-sync/cancel"),

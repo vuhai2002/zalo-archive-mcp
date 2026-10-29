@@ -8,7 +8,7 @@ import { parseEnv } from "../config/env-schema.js";
 import { getMeta, setMeta } from "../storage/thread-directory-store.js";
 import { createActiveAccountToolContext } from "./active-account-tool-context.js";
 
-const nick = (id: string) => ({ id, uid: null, displayName: null, avatarUrl: null, addedAt: "x", lastActiveAt: null });
+const nick = (id: string, readOnly = false) => ({ id, uid: null, displayName: null, avatarUrl: null, addedAt: "x", lastActiveAt: null, readOnly });
 
 describe("ngữ cảnh tool MCP theo nick đang dùng", () => {
   it("chưa có nick: báo cần đăng nhập trên dashboard; đổi nick trên dashboard thì tool theo ngay", () => {
@@ -22,8 +22,10 @@ describe("ngữ cảnh tool MCP theo nick đang dùng", () => {
     setMeta(ctx.db, "danh_dau", "phu");
     assert.match(ctx.mediaRoot, /nick-phu[\\/]media$/);
 
-    writeAccountRegistry(dataDir, { ...registry, activeAccountId: "nick-chinh" });
+    assert.equal(ctx.readOnly, false);
+    writeAccountRegistry(dataDir, { activeAccountId: "nick-chinh", accounts: [nick("nick-phu"), nick("nick-chinh", true)] });
     assert.equal(ctx.accountId, "nick-chinh");
+    assert.equal(ctx.readOnly, true, "nick mượn / nick mới chỉ đọc: tool gửi biết ngay");
     assert.equal(getMeta(ctx.db, "danh_dau"), null, "DB của nick khác");
     ctx.close();
   });

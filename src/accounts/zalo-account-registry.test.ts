@@ -20,7 +20,7 @@ describe("danh sách nick", () => {
   it("quét QR nick đã có (cùng uid) thì dùng lại nick cũ, nick lạ thì thêm với id = uid", () => {
     let reg: AccountRegistry = {
       activeAccountId: "nick-phu",
-      accounts: [{ id: "nick-phu", uid: "111", displayName: "Phụ", avatarUrl: null, addedAt: NOW, lastActiveAt: null }],
+      accounts: [{ id: "nick-phu", uid: "111", displayName: "Phụ", avatarUrl: null, addedAt: NOW, lastActiveAt: null, readOnly: false }],
     };
     const again = upsertAccountByUid(reg, "111", NOW);
     assert.equal(again.account.id, "nick-phu");
@@ -29,6 +29,8 @@ describe("danh sách nick", () => {
     const fresh = upsertAccountByUid(reg, "222", NOW);
     assert.equal(fresh.account.id, "222");
     assert.equal(fresh.isNew, true);
+    assert.equal(fresh.account.readOnly, true, "nick mới mặc định chỉ đọc");
+    assert.equal(again.account.readOnly, false, "nick đã có giữ nguyên");
     reg = setActiveAccountId(fresh.registry, "222");
     assert.equal(reg.activeAccountId, "222");
     assert.equal(reg.accounts.length, 2);
@@ -46,13 +48,20 @@ describe("danh sách nick", () => {
           { id: "../../etc", uid: "1" },
           { id: "ok-1", uid: "abc", displayName: " Tên " },
           { id: "ok-1", uid: "2" },
+          { id: "ok-2", uid: "3", readOnly: "có" },
+          { id: "ok-3", uid: "4", readOnly: true },
         ],
       }),
     );
     const reg = readAccountRegistry(dir)!;
     assert.deepEqual(
-      reg.accounts.map((a) => [a.id, a.uid, a.displayName]),
-      [["ok-1", null, "Tên"]],
+      reg.accounts.map((a) => [a.id, a.uid, a.displayName, a.readOnly]),
+      // Thiếu cờ (nick có từ trước): như cũ, gửi được. Cờ sai kiểu: nghi ngờ thì chỉ đọc
+      [
+        ["ok-1", null, "Tên", false],
+        ["ok-2", "3", null, true],
+        ["ok-3", "4", null, true],
+      ],
     );
     assert.equal(reg.activeAccountId, null);
   });

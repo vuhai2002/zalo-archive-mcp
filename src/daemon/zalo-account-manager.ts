@@ -7,6 +7,7 @@ import {
   activeAccount,
   findAccount,
   replaceAccount,
+  setAccountReadOnly,
   setActiveAccountId,
   upsertAccountByUid,
   writeAccountRegistry,
@@ -146,6 +147,17 @@ export class ZaloAccountManager {
     if (canLogin) await this.session(id).start();
   }
 
+  /** Nick ở chế độ Chỉ đọc. Nick không có trong danh sách: coi như chỉ đọc (không bao giờ mở nhầm) */
+  isReadOnly(id: string): boolean {
+    return findAccount(this.registry, id)?.readOnly ?? true;
+  }
+
+  setReadOnly(id: string, readOnly: boolean): void {
+    if (!findAccount(this.registry, id)) throw new UnknownAccountError(`Không có nick ${id}`);
+    this.saveRegistry(setAccountReadOnly(this.registry, id, readOnly));
+    this.d.log.info({ account: id, readOnly }, readOnly ? "Nick chuyển sang Chỉ đọc" : "Nick được mở gửi tin");
+  }
+
   shutdown(): void {
     this.qr.cancel();
     for (const s of this.sessions.values()) s.stop();
@@ -193,6 +205,7 @@ export class ZaloAccountManager {
         log: this.d.log.child({ account: id }),
         io: this.io,
         onIdentity: (who) => this.noteIdentity(id, who),
+        isReadOnly: () => this.isReadOnly(id),
       });
       this.sessions.set(id, s);
     }

@@ -27,6 +27,8 @@ export type OutboxSenderDeps = {
   sendTyping?: TypingFn;
   /** Không gửi khi listener đang rớt: không thấy được tin dội về, và trạng thái phiên chưa rõ */
   isListenerConnected: () => boolean;
+  /** Nick ở chế độ Chỉ đọc: không gọi Zalo gì cả (không gửi, không "đang soạn"), tin để nguyên trong hàng */
+  isReadOnly: () => boolean;
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
   random?: () => number;
@@ -35,6 +37,7 @@ export type OutboxSenderDeps = {
 /** Hàng đợi trống thì 2 giây kiểm một lần: tin "gửi ngay" phải đi trong vài giây */
 const IDLE_CHECK_MS = 2_000;
 const LISTENER_DOWN_CHECK_MS = 10_000;
+const READ_ONLY_CHECK_MS = 10_000;
 /** Chờ dài nhất giữa hai lần kiểm, để tin mới / mở khóa có hiệu lực sớm */
 const MAX_WAIT_MS = 30_000;
 const BATCH_MIN_LATENESS_HOURS = 48;
@@ -42,7 +45,7 @@ const BATCH_MIN_LATENESS_HOURS = 48;
 const TYPING_TIMEOUT_MS = 10_000;
 
 /**
- * Vòng gửi của daemon - nơi DUY NHẤT gọi Zalo để gửi. Mỗi lượt lấy MỘT tin đã
+ * Vòng gửi của daemon - nơi DUY NHẤT gọi Zalo để gửi. Nick Chỉ đọc thì không đụng gì. Mỗi lượt lấy MỘT tin đã
  * duyệt tới hạn, kiểm cổng, gửi. Cài đặt đọc lại mỗi lượt (sửa trên dashboard là ăn ngay).
  * Lỗi gửi đầu tiên bật kill switch - nick chính không được thử lại mù quáng.
  * Không bao giờ gửi lại một tin đã gọi Zalo (kể cả khi hỏng): gửi hai lần trên
@@ -73,6 +76,7 @@ export class OutboxSender {
     const now = this.now();
     const item = peekNextDue(db, now.toISOString());
     if (!item) return IDLE_CHECK_MS;
+    if (this.d.isReadOnly()) return READ_ONLY_CHECK_MS;
     if (!this.d.isListenerConnected()) return LISTENER_DOWN_CHECK_MS;
     const settings = getSendSettings(db, env);
 
@@ -106,7 +110,9 @@ export class OutboxSender {
     if (!claimForSending(db, item.id, now.toISOString())) return 0;
     await this.typeLikeAHuman(item);
 
-    const blocked = blockReasonBeforeSend(db, env, settings, item, this.now(), this.d.isListenerConnected());
+    const blocked = this.d.isReadOnly()
+      ? "nick vừa chuyển sang Chỉ đọc"
+      : blockReasonBeforeSend(db, env, settings, item, this.now(), this.d.isListenerConnected());
     if (blocked) {
       revertSendingToApproved(db, item.id);
       log.warn({ id: item.id, reason: blocked }, "Dừng ngay trước khi gửi - trả tin về hàng đợi");

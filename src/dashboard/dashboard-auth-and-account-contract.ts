@@ -27,6 +27,8 @@ export type AccountSummary = {
   /** Còn cookie đã lưu: chuyển sang là chạy được ngay, không cần quét QR */
   hasCredentials: boolean;
   active: boolean;
+  /** Chỉ đọc: không soạn, không gửi gì qua nick này */
+  readOnly: boolean;
 };
 export type AccountsResponse = { accounts: AccountSummary[] };
 

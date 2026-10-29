@@ -8,7 +8,8 @@ export const nickLabel = (a: Pick<AccountSummary, "displayName" | "id">) => a.di
 
 /**
  * Danh sách nick đã từng đăng nhập trên máy này. Mỗi lúc chỉ một nick chạy; chuyển
- * nick không xóa gì - dữ liệu từng nick giữ riêng, quay lại thì nối tiếp.
+ * nick không xóa gì - dữ liệu từng nick giữ riêng, quay lại thì nối tiếp. Nick Chỉ đọc
+ * (mặc định của nick mới) chỉ nghe + lưu tin, không gửi gì.
  */
 export function ZaloNickListCard({
   accounts,
@@ -17,6 +18,7 @@ export function ZaloNickListCard({
   timeZone,
   onSwitch,
   onAdd,
+  onToggleReadOnly,
 }: {
   accounts: AccountSummary[] | null;
   busy: boolean;
@@ -24,6 +26,7 @@ export function ZaloNickListCard({
   timeZone: string;
   onSwitch: (a: AccountSummary) => void;
   onAdd: () => void;
+  onToggleReadOnly: (a: AccountSummary) => void;
 }) {
   return (
     <SectionCard
@@ -54,6 +57,16 @@ export function ZaloNickListCard({
                   {!a.hasCredentials ? " · cần quét QR lại" : ""}
                 </div>
               </div>
+              {a.readOnly && <Badge tone="amber">Chỉ đọc</Badge>}
+              <button
+                type="button"
+                className={BTN_SECONDARY}
+                disabled={busy}
+                onClick={() => onToggleReadOnly(a)}
+                title={a.readOnly ? "Cho phép soạn và gửi tin qua nick này" : "Chỉ nghe và lưu tin, không gửi gì qua nick này"}
+              >
+                {a.readOnly ? "Mở gửi tin" : "Chuyển sang Chỉ đọc"}
+              </button>
               {a.active ? (
                 <Badge tone="blue">Đang dùng</Badge>
               ) : (

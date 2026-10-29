@@ -60,6 +60,8 @@ export class ZaloSessionManager {
       log: Logger;
       io?: SessionIo;
       onIdentity?: (who: SessionIdentity) => void;
+      /** Nick ở chế độ Chỉ đọc (hỏi lại mỗi lượt gửi) - vòng gửi không gọi Zalo khi đúng */
+      isReadOnly: () => boolean;
     },
   ) {
     this.io = d.io ?? REAL_SESSION_IO;
@@ -155,6 +157,7 @@ export class ZaloSessionManager {
       paths: this.d.paths,
       keyHex: this.d.keyHex,
       log: this.d.log,
+      isReadOnly: this.d.isReadOnly,
       onGaveUp: () => {
         handle.stop();
         if (this.archive !== handle) return;

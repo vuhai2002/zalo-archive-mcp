@@ -17,6 +17,11 @@ export type AccountRecord = {
   avatarUrl: string | null;
   addedAt: string;
   lastActiveAt: string | null;
+  /**
+   * Chỉ đọc: kho nghe + lưu tin nhưng KHÔNG soạn, KHÔNG gửi gì qua nick này (MCP, dashboard và
+   * vòng gửi đều chặn). Nick mới thêm mặc định chỉ đọc; mở gửi là việc người dùng tự làm.
+   */
+  readOnly: boolean;
 };
 
 export type AccountRegistry = { activeAccountId: string | null; accounts: AccountRecord[] };
@@ -46,6 +51,9 @@ function parseRegistry(raw: unknown): AccountRegistry {
       avatarUrl: str(a.avatarUrl),
       addedAt: str(a.addedAt) ?? new Date(0).toISOString(),
       lastActiveAt: str(a.lastActiveAt),
+      // Nick có từ trước khi có cờ này (vd nick phụ) giữ nguyên như cũ: gửi được.
+      // Có cờ mà giá trị lạ (file bị sửa tay): coi là chỉ đọc - nghi ngờ thì khóa
+      readOnly: a.readOnly === undefined ? false : a.readOnly !== false,
     });
   }
   const active = str(r?.activeAccountId);
@@ -88,12 +96,19 @@ export function upsertAccountByUid(
     const account = { ...sameId, uid };
     return { registry: replaceAccount(registry, account), account, isNew: false };
   }
-  const account: AccountRecord = { id: uid, uid, displayName: null, avatarUrl: null, addedAt: nowIso, lastActiveAt: null };
+  // Nick lạ mới quét QR: mặc định CHỈ ĐỌC, không gì gửi đi được cho tới khi người dùng tự mở
+  const account: AccountRecord = { id: uid, uid, displayName: null, avatarUrl: null, addedAt: nowIso, lastActiveAt: null, readOnly: true };
   return { registry: { ...registry, accounts: [...registry.accounts, account] }, account, isNew: true };
 }
 
 export function replaceAccount(registry: AccountRegistry, account: AccountRecord): AccountRegistry {
   return { ...registry, accounts: registry.accounts.map((a) => (a.id === account.id ? account : a)) };
+}
+
+export function setAccountReadOnly(registry: AccountRegistry, id: string, readOnly: boolean): AccountRegistry {
+  const account = findAccount(registry, id);
+  if (!account) throw new Error(`Không có nick ${id}`);
+  return replaceAccount(registry, { ...account, readOnly });
 }
 
 export function setActiveAccountId(registry: AccountRegistry, id: string): AccountRegistry {

@@ -23,6 +23,18 @@ export function accountAndSessionRoutes(ctx: DashboardAppContext): Hono {
 
   app.get("/accounts", (c) => c.json({ accounts: accounts.accounts() } satisfies AccountsResponse));
   app.post("/accounts/:id/activate", (c) => act(c, () => accounts.switchTo(c.req.param("id"))));
+  // Bật / tắt Chỉ đọc. Mở gửi là quyết định của người dùng: dashboard hỏi xác nhận trước khi gọi
+  app.post("/accounts/:id/read-only", async (c) => {
+    const body = (await c.req.json().catch(() => null)) as { readOnly?: unknown } | null;
+    if (typeof body?.readOnly !== "boolean") return c.json({ error: "readOnly phải là true hoặc false" }, 400);
+    try {
+      accounts.setReadOnly(c.req.param("id"), body.readOnly);
+    } catch (err) {
+      if (err instanceof UnknownAccountError) return c.json({ error: err.message }, 404);
+      throw err;
+    }
+    return c.json({ accounts: accounts.accounts() } satisfies AccountsResponse);
+  });
 
   app.get("/session", (c) => c.json(accounts.status()));
   app.post("/session/login-qr", (c) => act(c, () => accounts.startQrLogin()));

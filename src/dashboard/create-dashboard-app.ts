@@ -65,7 +65,8 @@ export function createDashboardApp(ctx: DashboardAppContext, opts: { webDistDir:
     }
     let scoped = perAccount.get(active.account.id);
     if (!scoped) {
-      scoped = accountScopedApi({ db: active.db, env: ctx.env, paths: active.paths });
+      const id = active.account.id;
+      scoped = accountScopedApi({ db: active.db, env: ctx.env, paths: active.paths, readOnly: () => ctx.accounts.isReadOnly(id) });
       perAccount.set(active.account.id, scoped);
     }
     return scoped.fetch(c.req.raw);

@@ -55,6 +55,7 @@ function setup(withCredentials = true) {
     log: createSilentLogger(),
     io,
     onIdentity: (who) => identities.push(who),
+    isReadOnly: () => false,
   });
   return { m, paths, cookieLogins, identities, counts: () => ({ started: archivesStarted, stopped: archivesStopped }) };
 }

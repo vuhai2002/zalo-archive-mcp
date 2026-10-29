@@ -20,6 +20,7 @@ function setup(opts: { now?: Date; connected?: boolean; send?: SendTextFn; typin
   ]);
   const sent: Array<[string, string]> = [];
   let clock = opts.now ?? AT_10AM;
+  let readOnly = false;
   const sender = new OutboxSender({
     db,
     env,
@@ -33,6 +34,7 @@ function setup(opts: { now?: Date; connected?: boolean; send?: SendTextFn; typin
     sendTyping: opts.typing ?? (async () => {}),
     sleep: async () => {},
     isListenerConnected: () => opts.connected ?? true,
+    isReadOnly: () => readOnly,
     now: () => clock,
     random: () => 0,
   });
@@ -48,7 +50,14 @@ function setup(opts: { now?: Date; connected?: boolean; send?: SendTextFn; typin
       note: null,
       status: "approved",
     });
-  return { db, sender, sent, queue, advance: (ms: number) => (clock = new Date(clock.getTime() + ms)) };
+  return {
+    db,
+    sender,
+    sent,
+    queue,
+    advance: (ms: number) => (clock = new Date(clock.getTime() + ms)),
+    setReadOnly: (v: boolean) => (readOnly = v),
+  };
 }
 
 describe("OutboxSender", () => {
@@ -158,5 +167,20 @@ describe("OutboxSender", () => {
     await sender.tick();
     assert.equal(getOutboxItem(db, id)!.status, "failed");
     assert.equal(getKillSwitch(db).killed, true);
+  });
+
+  it("nick Chỉ đọc: không gửi, không 'đang soạn', tin nằm nguyên; chuyển sang Chỉ đọc giữa lúc 'đang soạn' thì dừng", async () => {
+    let typed = 0;
+    const s = setup({ typing: async () => void typed++ });
+    s.setReadOnly(true);
+    const id = s.queue("u-lan", "không được đi");
+    await s.sender.tick();
+    assert.deepEqual([s.sent.length, typed, getOutboxItem(s.db, id)!.status], [0, 0, "approved"]);
+
+    // Đang soạn thì nick bị chuyển sang Chỉ đọc
+    const t2 = setup({ typing: async () => void t2.setReadOnly(true) });
+    const id2 = t2.queue("u-lan", "cũng không được đi");
+    await t2.sender.tick();
+    assert.deepEqual([t2.sent.length, getOutboxItem(t2.db, id2)!.status], [0, "approved"]);
   });
 });

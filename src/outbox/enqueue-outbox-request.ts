@@ -14,10 +14,12 @@ import { getSendSettings } from "../storage/send-settings-store.js";
  */
 export const MAX_TEXT_LENGTH = 2000;
 const MAX_SCHEDULE_DAYS_AHEAD = 60;
+export const READ_ONLY_ERROR = "Nick Zalo đang dùng ở chế độ Chỉ đọc - không soạn, không gửi tin qua nick này.";
 const UNSAFE_CHARS_ERROR = "Nội dung/ghi chú chứa ký tự điều khiển (CR, ESC, đảo chiều chữ...) - không được phép.";
 
 export type SendWhen = "now" | "schedule" | "draft";
-export type EnqueueContext = { db: DatabaseSync; env: AppEnv; now?: () => Date };
+/** `readOnly` bắt buộc: mọi đường vào phải nói rõ nick đang dùng có được gửi không */
+export type EnqueueContext = { db: DatabaseSync; env: AppEnv; readOnly: boolean; now?: () => Date };
 export type EnqueueResult =
   | { ok: true; ids: number[]; batchId: string | null; notBefore: string | null; warnings: string[] }
   | { ok: false; error: string };
@@ -61,6 +63,7 @@ function isDuplicatePending(db: DatabaseSync, threadId: string, text: string): n
 
 /** Một tin tới một hội thoại (tin lẻ: không trần, không khung giờ) */
 export function enqueueSingle(ctx: EnqueueContext, req: Common & { threadId: string; text: string }): EnqueueResult {
+  if (ctx.readOnly) return { ok: false, error: READ_ONLY_ERROR };
   if (req.note && containsUnsafeControlChars(req.note)) return { ok: false, error: UNSAFE_CHARS_ERROR };
   const text = checkText(req.text);
   if (typeof text !== "string") return { ok: false, ...text };
@@ -93,6 +96,7 @@ export function enqueueBatch(
   ctx: EnqueueContext,
   req: Common & { items: Array<{ threadId: string; text: string }> },
 ): EnqueueResult {
+  if (ctx.readOnly) return { ok: false, error: READ_ONLY_ERROR };
   const settings = getSendSettings(ctx.db, ctx.env);
   if (req.items.length === 0) return { ok: false, error: "Danh sách người nhận trống." };
   if (req.items.length > settings.batchMaxItems) return { ok: false, error: `Tối đa ${settings.batchMaxItems} người mỗi lô.` };

@@ -92,3 +92,31 @@ describe("dashboard: nick Zalo", () => {
     assert.match(((await res.json()) as { error: string }).error, /đợi 12 giây/);
   });
 });
+
+describe("dashboard: nick Chỉ đọc", () => {
+  it("nick Chỉ đọc: gửi từ dashboard bị từ chối, duyệt nháp bị chặn; bật / tắt qua route, nick lạ 404", async () => {
+    const h = await createDashboardHarness({ accountIds: ["test"] });
+    upsertMessage(h.nick("test").db, sampleMessage(), { source: "live", receivedAt: "2026-10-28T03:00:00.000Z" });
+    const cookie = await h.login();
+    const post = (url: string, body: unknown) => h.call(url, { ...h.json(body), cookie });
+    const draft = await post("/api/outbox", { threadId: "u-lan", text: "nháp trước khi khóa", when: "draft" });
+    assert.equal(draft.status, 200);
+    const draftId = ((await draft.json()) as { id: number }).id;
+
+    const lock = await post("/api/accounts/test/read-only", { readOnly: true });
+    assert.equal(lock.status, 200);
+    assert.equal(((await lock.json()) as { accounts: Array<{ readOnly: boolean }> }).accounts[0]!.readOnly, true);
+    const session = (await (await h.call("/api/session", { cookie })).json()) as SessionStatus;
+    assert.equal(session.account?.readOnly, true);
+
+    const send = await post("/api/outbox", { threadId: "u-lan", text: "không được đi", when: "now" });
+    assert.equal(send.status, 400);
+    assert.match(((await send.json()) as { error: string }).error, /Chỉ đọc/);
+    assert.equal((await post(`/api/outbox/${draftId}/approve`, {})).status, 409);
+
+    assert.equal((await post("/api/accounts/test/read-only", { readOnly: "có" })).status, 400);
+    assert.equal((await post("/api/accounts/khong-co/read-only", { readOnly: false })).status, 404);
+    assert.equal((await post("/api/accounts/test/read-only", { readOnly: false })).status, 200);
+    assert.equal((await post("/api/outbox", { threadId: "u-lan", text: "giờ thì được", when: "now" })).status, 200);
+  });
+});

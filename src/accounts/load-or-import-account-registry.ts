@@ -48,7 +48,8 @@ export function loadOrImportAccountRegistry(
     const who = identityOf(paths.databaseFile);
     // Hai thư mục cùng một uid (hiếm): giữ cái đầu, không để danh sách có nick trùng
     if (who.uid && accounts.some((a) => a.uid === who.uid)) continue;
-    accounts.push({ id, ...who, addedAt: now, lastActiveAt: null });
+    // Kho của bản cũ đã chạy (và gửi) trước khi có chế độ chỉ đọc: giữ nguyên như cũ
+    accounts.push({ id, ...who, addedAt: now, lastActiveAt: null, readOnly: false });
     const cookieAt = fs.existsSync(paths.credentialsFile) ? fs.statSync(paths.credentialsFile).mtimeMs : -1;
     if (cookieAt > newestCookie) {
       newestCookie = cookieAt;

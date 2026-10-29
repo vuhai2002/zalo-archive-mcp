@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
-import { useArchiveTimeZone } from "../../layout/dashboard-shell-context";
+import { useArchiveTimeZone, useDashboardShell } from "../../layout/dashboard-shell-context";
 import { IconRefresh } from "../../shared/action-and-media-icons";
 import { IconArrowLeft, IconSearch } from "../../shared/dashboard-icons";
 import { ContactAvatar } from "../../shared/contact-avatar";
@@ -19,6 +19,8 @@ type ScrollIntent = { kind: "bottom" } | { kind: "keep"; prevHeight: number; pre
 
 export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBack: () => void }) {
   const tz = useArchiveTimeZone();
+  // Nick Chỉ đọc: không có ô soạn tin (máy chủ cũng từ chối mọi lệnh gửi)
+  const readOnly = useDashboardShell().session?.account?.readOnly ?? false;
   const t = useThreadMessages(threadId);
   const scrollRef = useRef<HTMLDivElement>(null);
   const intent = useRef<ScrollIntent | null>({ kind: "bottom" });
@@ -153,7 +155,13 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
         ))}
       </div>
 
-      <MessageComposer threadId={threadId} onSent={afterSent} />
+      {readOnly ? (
+        <div className="border-t border-line bg-surface px-4 py-3 text-center text-[13px] text-ink-soft">
+          Nick này đang ở chế độ <b>Chỉ đọc</b>: kho chỉ nghe và lưu tin, không gửi gì. Đổi trong trang Tài khoản Zalo.
+        </div>
+      ) : (
+        <MessageComposer threadId={threadId} onSent={afterSent} />
+      )}
     </div>
   );
 }

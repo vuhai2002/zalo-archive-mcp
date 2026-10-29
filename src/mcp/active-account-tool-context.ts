@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import type { DatabaseSync } from "node:sqlite";
-import { accountRegistryFile, readAccountRegistry } from "../accounts/zalo-account-registry.js";
+import { accountRegistryFile, activeAccount, readAccountRegistry, type AccountRecord } from "../accounts/zalo-account-registry.js";
 import { accountPaths } from "../config/account-paths.js";
 import type { AppEnv } from "../config/env-schema.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
@@ -14,12 +14,15 @@ import type { ReadToolContext } from "./archive-read-tool-handlers.js";
  *
  * MCP chỉ ĐỌC danh sách nick, không bao giờ ghi.
  */
-export function createActiveAccountToolContext(env: AppEnv, dataDir: string): ReadToolContext & { close: () => void } {
+export function createActiveAccountToolContext(
+  env: AppEnv,
+  dataDir: string,
+): ReadToolContext & { readonly readOnly: boolean; close: () => void } {
   const dbs = new Map<string, DatabaseSync>();
   let cacheKey = "";
-  let cachedId: string | null = null;
+  let cached: AccountRecord | null = null;
 
-  const activeId = (): string => {
+  const active = (): AccountRecord => {
     let key = "";
     try {
       const stat = fs.statSync(accountRegistryFile(dataDir));
@@ -28,19 +31,25 @@ export function createActiveAccountToolContext(env: AppEnv, dataDir: string): Re
       key = "missing";
     }
     if (key !== cacheKey) {
-      cachedId = key === "missing" ? null : (readAccountRegistry(dataDir)?.activeAccountId ?? null);
+      const registry = key === "missing" ? null : readAccountRegistry(dataDir);
+      cached = registry ? activeAccount(registry) : null;
       cacheKey = key;
     }
-    if (!cachedId) {
+    if (!cached) {
       throw new Error("Chưa có nick Zalo nào. Người dùng cần chạy dashboard (pnpm start) và đăng nhập Zalo bằng QR.");
     }
-    return cachedId;
+    return cached;
   };
+  const activeId = (): string => active().id;
 
   return {
     env,
     get accountId() {
       return activeId();
+    },
+    /** Nick đang dùng ở chế độ Chỉ đọc: tool gửi từ chối, không xếp gì vào hàng đợi */
+    get readOnly() {
+      return active().readOnly;
     },
     get db() {
       const id = activeId();
