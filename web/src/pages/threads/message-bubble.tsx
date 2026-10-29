@@ -2,9 +2,11 @@ import type { ArchivedMessage, TextStyleSpan } from "../../archive-api-types";
 import { sourceLabel } from "../../shared/archive-status-labels";
 import { ContactAvatar } from "../../shared/contact-avatar";
 import { formatClock, formatDateTime } from "../../shared/format-archive-time";
+import { MessageAlbumGrid } from "./message-album-grid";
 import { MessageAttachmentView } from "./message-attachment-view";
 import { MessageReactionPill } from "./message-reaction-pill";
 import { isSystemMessage } from "./message-grouping";
+import { mergeAlbumReactions } from "./photo-album-grouping";
 import { RichMessageText } from "./rich-message-text";
 
 const VISUAL_KINDS = new Set(["photo", "gif", "sticker"]);
@@ -40,8 +42,11 @@ export function MessageBubble({
   last,
   onMediaLoad,
   onMediaRetried,
+  album = null,
 }: {
   msg: ArchivedMessage;
+  /** Album ảnh (đã gộp, xếp theo vị trí): hiện khung lưới thay cho ảnh lẻ của `msg` */
+  album?: ArchivedMessage[] | null;
   isGroup: boolean;
   /** Tin được trích dẫn nếu đang có trong danh sách đã tải; không có thì chỉ hiện dấu "trả lời" */
   quoted: ArchivedMessage | undefined;
@@ -69,8 +74,11 @@ export function MessageBubble({
 
   const hasSticker = msg.msgType === "chat.sticker" && msg.attachments.some((a) => a.kind === "sticker" && a.status === "done");
   const hasText = !hasSticker && msg.text.trim().length > 0;
-  // Ảnh / gif / sticker không chữ, không trích dẫn: hiện trần như Zalo, không khung bong bóng
-  const bare = !hasText && !msg.quoteMsgId && msg.attachments.length > 0 && msg.attachments.every((a) => VISUAL_KINDS.has(a.kind));
+  // Ảnh / gif / sticker không chữ, không trích dẫn: hiện trần như Zalo, không khung bong bóng.
+  // Album luôn hiện trần; chú thích (nếu có) nằm dưới khung lưới
+  const bare =
+    !!album || (!hasText && !msg.quoteMsgId && msg.attachments.length > 0 && msg.attachments.every((a) => VISUAL_KINDS.has(a.kind)));
+  const albumCaption = album ? album.map((m) => m.text.trim()).filter(Boolean).join("\n") : "";
   const showName = isGroup && !self && first;
   const showMeta = last || recalled;
 
@@ -102,11 +110,20 @@ export function MessageBubble({
           <>
             {showName && <div className="mb-1 px-1 text-[12px] text-chat-time">{name}</div>}
             <div className={`space-y-1 ${recalled ? "opacity-70" : ""}`}>
-              {msg.attachments.map((att) => (
-                <MessageAttachmentView key={att.id} att={att} onMediaLoad={onMediaLoad} onRetried={onMediaRetried} />
-              ))}
+              {album ? (
+                <MessageAlbumGrid album={album} onMediaLoad={onMediaLoad} onMediaRetried={onMediaRetried} />
+              ) : (
+                msg.attachments.map((att) => (
+                  <MessageAttachmentView key={att.id} att={att} onMediaLoad={onMediaLoad} onRetried={onMediaRetried} />
+                ))
+              )}
             </div>
-            <MessageReactionPill reactions={msg.reactions} />
+            {albumCaption && (
+              <div className="mt-1 max-w-[360px] whitespace-pre-wrap rounded-lg border border-black/5 bg-bubble px-3 py-2 text-[14.5px] leading-[1.45] text-chat-ink dark:border-white/5">
+                {albumCaption}
+              </div>
+            )}
+            <MessageReactionPill reactions={album ? mergeAlbumReactions(album) : msg.reactions} />
             {last && (
               <span title={timeTitle} className="mt-1 rounded-full bg-black/25 px-2 py-0.5 text-[11px] tabular-nums text-white dark:bg-white/15">
                 {formatClock(msg.sentAt, timeZone)}

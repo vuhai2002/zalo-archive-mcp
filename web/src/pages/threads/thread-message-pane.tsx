@@ -10,6 +10,7 @@ import { BTN_ICON, EmptyState, ErrorNote, formatNumber, LoadingText } from "../.
 import { MessageBubble } from "./message-bubble";
 import { MessageComposer } from "./message-composer";
 import { layoutMessages } from "./message-grouping";
+import { collapseAlbums } from "./photo-album-grouping";
 import { useThreadMessages } from "./use-thread-messages";
 
 /** Cách đáy dưới ngần này coi như "đang đọc tin mới nhất" - ảnh tải xong thì kéo theo xuống đáy */
@@ -70,7 +71,9 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
 
   const byMsgId = useMemo(() => new Map(t.messages.map((m) => [m.msgId, m] as const)), [t.messages]);
   const isGroup = t.thread?.threadType === "group";
-  const layouts = useMemo(() => layoutMessages(t.messages, tz), [t.messages, tz]);
+  // Ảnh cùng album gộp thành một mục trước khi xếp cụm / vạch giờ
+  const items = useMemo(() => collapseAlbums(t.messages), [t.messages]);
+  const layouts = useMemo(() => layoutMessages(items.map((x) => x.msg), tz), [items, tz]);
 
   return (
     <div className="gc-card flex h-full min-h-0 flex-col overflow-hidden">
@@ -132,7 +135,7 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
         )}
         {t.olderError && <p className="text-center text-[12px] text-red-600 dark:text-red-400">{t.olderError}</p>}
 
-        {t.messages.map((m, i) => (
+        {items.map(({ msg: m, album }, i) => (
           <Fragment key={m.id}>
             {layouts[i]!.separatorLabel && (
               <div className="mb-1 mt-4 flex justify-center first:mt-1">
@@ -143,6 +146,7 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
             )}
             <MessageBubble
               msg={m}
+              album={album}
               isGroup={isGroup}
               quoted={m.quoteMsgId ? byMsgId.get(m.quoteMsgId) : undefined}
               timeZone={tz}

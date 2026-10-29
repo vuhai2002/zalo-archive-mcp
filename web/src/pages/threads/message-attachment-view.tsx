@@ -31,7 +31,7 @@ function playableKind(att: AttachmentInfo): "video" | "audio" | null {
  * luôn đúng; chặn ở đây để một giá trị lạ (vd `javascript:`) không bao giờ lọt
  * vào `href`/`src`.
  */
-function sameOriginUrl(url: string | null): string | null {
+export function sameOriginUrl(url: string | null): string | null {
   if (!url) return null;
   try {
     const u = new URL(url, window.location.origin);
@@ -45,7 +45,7 @@ function sameOriginUrl(url: string | null): string | null {
  * Ảnh SVG mở ở tab mới là chạy được script trên origin của dashboard - file do
  * người lạ gửi thì đó là đường XSS. Chỉ cho bấm mở tab mới với ảnh raster.
  */
-function canOpenInNewTab(mime: string | null): boolean {
+export function canOpenInNewTab(mime: string | null): boolean {
   return !mime || !mime.toLowerCase().includes("svg");
 }
 

@@ -112,6 +112,8 @@ export type ArchivedMessage = {
   textStyles: TextStyleSpan[];
   /** Tin cuộc gọi: `text` là "tiêu đề\nthời lượng"; cuộc gọi tới mình mà không nghe thì tô đỏ */
   call: { missedIncoming: boolean } | null;
+  /** Ảnh thuộc album (nhiều ảnh gửi cùng lúc): cùng `id` thì gộp một khung lưới, xếp theo `index` */
+  album: { id: string; index: number; total: number } | null;
   /** Cảm xúc trên tin như Zalo, gộp theo loại; `emoji` null = mã Zalo chưa biết (hiện `icon`) */
   reactions: Array<{ icon: string; emoji: string | null; count: number; mine: boolean; names: string[] }>;
   attachments: AttachmentInfo[];

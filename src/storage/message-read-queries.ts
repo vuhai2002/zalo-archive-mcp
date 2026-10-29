@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { ThreadKind } from "../archive/archived-message-types.js";
 import { callNoticeOf } from "../archive/zalo-call-message-text.js";
 import { withZaloEmoticons } from "../archive/zalo-emoticon-emoji.js";
+import { photoAlbumOf, type PhotoAlbum } from "../archive/zalo-photo-album.js";
 import { buildFtsMatchExpression } from "../shared/fold-vietnamese-for-search.js";
 import { withGroupEventMemberNames } from "./group-event-member-names.js";
 import { reactionSummaries, type ReactionSummary } from "./message-reaction-store.js";
@@ -45,6 +46,8 @@ export type MessageRow = {
   textStyles: TextStyleSpan[];
   /** Tin cuộc gọi (chữ đã dựng sẵn "tiêu đề\nthời lượng"); null với tin khác */
   call: { missedIncoming: boolean } | null;
+  /** Ảnh thuộc album (nhiều ảnh gửi cùng lúc) - dashboard gộp thành khung lưới; null với tin khác */
+  album: PhotoAlbum | null;
   /** Cảm xúc trên tin, gộp theo loại */
   reactions: ReactionSummary[];
   attachments: AttachmentRow[];
@@ -59,7 +62,9 @@ const MESSAGE_COLUMNS = `m.id, m.msg_id, m.thread_id, m.thread_type, m.sender_id
   CASE WHEN m.msg_type = 'chat.recommended' AND json_valid(m.raw_json)
     THEN json_extract(m.raw_json, '$.content.action') END AS rec_action,
   CASE WHEN m.msg_type = 'chat.recommended' AND json_valid(m.raw_json)
-    THEN json_extract(m.raw_json, '$.content.params') END AS rec_params`;
+    THEN json_extract(m.raw_json, '$.content.params') END AS rec_params,
+  CASE WHEN m.msg_type = 'chat.photo' AND json_valid(m.raw_json)
+    THEN json_extract(m.raw_json, '$.content.params') END AS photo_params`;
 /** Avatar người gửi lấy từ danh bạ người */
 const SENDER_JOIN = "LEFT JOIN contacts c ON c.user_id = m.sender_id";
 
@@ -142,6 +147,7 @@ function toMessageRow(r: Record<string, unknown>): MessageRow {
     source: String(r.source),
     textStyles: shown.spans,
     call: call ? { missedIncoming: call.missedIncoming } : null,
+    album: photoAlbumOf(r.photo_params),
     reactions: [],
     attachments: [],
   };
