@@ -6,6 +6,7 @@ import { hostGuard, requireJsonBody, requireSession } from "./dashboard-security
 import { accountAndSessionRoutes } from "./routes/account-and-session-routes.js";
 import { archiveBrowseRoutes } from "./routes/archive-browse-routes.js";
 import { dashboardPasswordRoutes } from "./routes/dashboard-password-routes.js";
+import { mobileSyncRoutes } from "./routes/mobile-sync-routes.js";
 import { mediaFileRoute } from "./routes/media-file-route.js";
 import { outboxAndSettingsRoutes } from "./routes/outbox-and-settings-routes.js";
 
@@ -53,6 +54,7 @@ export function createDashboardApp(ctx: DashboardAppContext, opts: { webDistDir:
   api.use("*", requireSession(ctx.auth));
   api.route("/", dashboardPasswordRoutes(ctx));
   api.route("/", accountAndSessionRoutes(ctx));
+  api.route("/", mobileSyncRoutes(ctx));
   const perAccount = new Map<string, Hono>();
   api.all("*", (c) => {
     const active = ctx.accounts.active();

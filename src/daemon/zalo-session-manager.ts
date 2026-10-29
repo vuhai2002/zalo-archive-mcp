@@ -81,6 +81,11 @@ export class ZaloSessionManager {
     };
   }
 
+  /** Đồng bộ từ điện thoại của phiên đang chạy; null khi nick không chạy */
+  mobileSync(): ArchiveHandle["mobileSync"] | null {
+    return this.archive?.mobileSync ?? null;
+  }
+
   isBusy(): boolean {
     return this.state === "running" || this.state === "logging_in";
   }

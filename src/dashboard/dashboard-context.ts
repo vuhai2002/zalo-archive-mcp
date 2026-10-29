@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { AccountPaths } from "../config/account-paths.js";
 import type { AppEnv } from "../config/env-schema.js";
 import type { DashboardAuth } from "./dashboard-auth.js";
-import type { AccountSummary, SessionStatus } from "./dashboard-api-contract.js";
+import type { AccountSummary, MobileSyncStatus, SessionStatus } from "./dashboard-api-contract.js";
 
 /** Phần quản lý nick + phiên Zalo mà dashboard cần - interface để test thay bằng bản giả */
 export type AccountControl = {
@@ -15,6 +15,14 @@ export type AccountControl = {
   stopActive: () => void;
   logoutActive: () => void;
   switchTo: (id: string) => Promise<void>;
+  /** Đồng bộ lịch sử từ điện thoại của nick đang chạy; null khi nick chưa chạy */
+  mobileSync: () => MobileSyncControl | null;
+};
+
+export type MobileSyncControl = {
+  status: () => MobileSyncStatus | null;
+  start: (range: { fromTs: number; toTs: number }) => Promise<{ ok: boolean; error?: string }>;
+  cancel: () => Promise<void>;
 };
 
 /** Dùng chung cho cả dashboard: mật khẩu, danh sách nick, cấu hình */

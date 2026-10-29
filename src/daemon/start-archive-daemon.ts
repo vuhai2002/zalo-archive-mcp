@@ -6,7 +6,9 @@ import type { AppEnv } from "../config/env-schema.js";
 import { MediaDownloadWorker } from "../media/media-download-worker.js";
 import { OutboxSender } from "../outbox/outbox-sender-loop.js";
 import { setMeta } from "../storage/thread-directory-store.js";
+import path from "node:path";
 import { startArchiveListener } from "../zalo/archive-listener.js";
+import { MobileSyncSession } from "../zalo/mobile-sync/mobile-sync-session.js";
 import { startKeepAliveLoop } from "../zalo/keep-alive-loop.js";
 import { startDirectoryLookupLoop } from "./directory-lookup-loop.js";
 
@@ -21,7 +23,12 @@ export type DaemonDeps = {
   onGaveUp: () => void;
 };
 
-export type ArchiveHandle = { stop: () => void; isListenerConnected: () => boolean };
+export type ArchiveHandle = {
+  stop: () => void;
+  isListenerConnected: () => boolean;
+  /** Đồng bộ lịch sử từ điện thoại cho phiên này (chỉ chạy khi người dùng bấm trên dashboard) */
+  mobileSync?: MobileSyncSession;
+};
 
 const HEARTBEAT_MS = 60_000;
 
@@ -102,6 +109,16 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
   sender.start();
   stops.push(() => sender.stop());
 
+  // Đồng bộ từ điện thoại: chỉ gắn listener sự kiện, không tự gửi yêu cầu nào
+  const mobileSync = new MobileSyncSession({
+    api,
+    db,
+    accountId: path.basename(d.paths.root),
+    workDir: path.join(d.paths.root, "mobile-sync-tmp"),
+    log: log.child({ part: "mobile-sync" }),
+  });
+  stops.push(() => mobileSync.dispose());
+
   stops.push(
     startKeepAliveLoop({
       api,
@@ -114,6 +131,7 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
 
   return {
     isListenerConnected: listener.isConnected,
+    mobileSync,
     stop: () => {
       for (const stop of stops.reverse()) {
         try {

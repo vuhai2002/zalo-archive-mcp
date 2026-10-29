@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { MessageSource, NormalizedMessage, NormalizedRecall } from "../archive/archived-message-types.js";
 import { inTransaction } from "../shared/db-transaction.js";
 import { noteContactSeen } from "./contact-store.js";
+import { findCliMsgIdTwin, isProvisionalMsgId, promoteProvisionalTwin } from "./provisional-message-id-twin.js";
 import { foldVietnameseForSearch } from "../shared/fold-vietnamese-for-search.js";
 
 export type UpsertResult = { id: number; inserted: boolean };
@@ -13,6 +14,9 @@ export type UpsertResult = { id: number; inserted: boolean };
  * nhật ký sau khi sửa parser): CẬP NHẬT các cột suy ra từ payload, nhưng GIỮ
  * `source`, `received_at`, `raw_json` của lần đầu - đó là sự thật về việc tin
  * đã vào kho bằng đường nào, lúc nào.
+ *
+ * Tin id tạm từ điện thoại (`mb_...`) được ghép với bản id thật của cùng tin: tới sau
+ * bản thật thì bỏ qua, tới trước thì bản thật tới sau nâng nó lên id thật.
  */
 export function upsertMessage(
   db: DatabaseSync,
@@ -20,9 +24,14 @@ export function upsertMessage(
   meta: { source: MessageSource; receivedAt: string },
 ): UpsertResult {
   return inTransaction(db, () => {
-    const existing = db.prepare("SELECT id FROM messages WHERE msg_id = ?").get(msg.msgId) as
+    let existing = db.prepare("SELECT id FROM messages WHERE msg_id = ?").get(msg.msgId) as
       | { id: number }
       | undefined;
+    if (!existing) {
+      const twin = findCliMsgIdTwin(db, msg);
+      if (twin && isProvisionalMsgId(msg.msgId)) return { id: twin.id, inserted: false };
+      if (twin) existing = promoteProvisionalTwin(db, twin, msg);
+    }
 
     let id: number;
     if (existing) {

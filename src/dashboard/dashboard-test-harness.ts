@@ -12,7 +12,7 @@ import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { createDashboardApp } from "./create-dashboard-app.js";
 import type { SessionStatus } from "./dashboard-api-contract.js";
 import { createDashboardAuth } from "./dashboard-auth.js";
-import type { AccountControl } from "./dashboard-context.js";
+import type { AccountControl, MobileSyncControl } from "./dashboard-context.js";
 import { dashboardPasswordFile } from "./dashboard-password-store.js";
 
 /** Dựng dashboard thật (route, auth, file mật khẩu) với bộ quản lý nick GIẢ - chỉ dùng trong test */
@@ -27,7 +27,11 @@ export async function createDashboardHarness(opts: { passwordSet?: boolean; acco
 
   const nicks = new Map<string, { paths: AccountPaths; db: DatabaseSync }>();
   for (const id of opts.accountIds ?? ["test"]) nicks.set(id, { paths: accountPaths(dataDir, id), db: openArchiveDatabase(":memory:") });
-  const state = { activeId: nicks.size > 0 ? [...nicks.keys()][0]! : null, cooldown: false };
+  const state = {
+    activeId: nicks.size > 0 ? [...nicks.keys()][0]! : null,
+    cooldown: false,
+    mobileSync: null as MobileSyncControl | null,
+  };
   const status = (): SessionStatus => ({
     state: "stopped",
     account: state.activeId
@@ -51,6 +55,7 @@ export async function createDashboardHarness(opts: { passwordSet?: boolean; acco
     },
     stopActive: () => {},
     logoutActive: () => {},
+    mobileSync: () => state.mobileSync,
     switchTo: async (id) => {
       if (!nicks.has(id)) throw new UnknownAccountError(`Không có nick ${id}`);
       state.activeId = id;

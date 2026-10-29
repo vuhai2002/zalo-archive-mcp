@@ -7,6 +7,8 @@ import type {
   AccountsResponse,
   AuthStatusResponse,
   MeResponse,
+  MobileSyncResponse,
+  MobileSyncStartRequest,
   OutboxItem,
   OutboxListResponse,
   OutboxStatus,
@@ -91,6 +93,9 @@ export const api = {
   sessionLogout: () => post<SessionStatus>("/api/session/logout"),
   accounts: () => request<AccountsResponse>("/api/accounts"),
   activateAccount: (id: string) => post<SessionStatus>(`/api/accounts/${enc(id)}/activate`),
+  mobileSync: () => request<MobileSyncResponse>("/api/mobile-sync"),
+  mobileSyncStart: (body: MobileSyncStartRequest) => post<MobileSyncResponse>("/api/mobile-sync/start", body),
+  mobileSyncCancel: () => post<MobileSyncResponse>("/api/mobile-sync/cancel"),
 
   overview: (days: number) => request<OverviewResponse>(withQuery("/api/overview", { days })),
 

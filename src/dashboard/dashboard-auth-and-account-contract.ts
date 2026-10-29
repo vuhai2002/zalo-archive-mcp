@@ -30,6 +30,28 @@ export type AccountSummary = {
 };
 export type AccountsResponse = { accounts: AccountSummary[] };
 
+// ---------- Đồng bộ lịch sử từ điện thoại ----------
+// GET  /api/mobile-sync                                  -> MobileSyncResponse
+// POST /api/mobile-sync/start  { fromDate?, toDate? }    -> MobileSyncResponse | 400 | 409 nick chưa chạy / đang có lượt
+// POST /api/mobile-sync/cancel {}                        -> MobileSyncResponse
+// fromDate / toDate: "YYYY-MM-DD" theo giờ của kho; bỏ trống = không giới hạn phía đó.
+export type MobileSyncStage =
+  | "idle" | "requesting" | "waiting_confirm" | "waiting_backup" | "mobile_idle" | "downloading"
+  | "decrypting" | "resolving_ids" | "importing" | "completed" | "failed" | "cancelled";
+export type MobileSyncStatus = {
+  stage: MobileSyncStage;
+  /** 0-100 cho bước đang chạy (tải / giải mã / nhập) */
+  progress: number;
+  message: string;
+  range?: { fromTs: number | null; toTs: number | null };
+  error?: string;
+  stats?: { conversations: number; conversationsResolved: number; conversationsUnresolved: number; messagesRead: number; messagesImported: number; messagesSkipped: number; messagesOutOfRange: number; durationMs: number };
+  startedAt?: number;
+  updatedAt: number;
+};
+export type MobileSyncResponse = { available: boolean; status: MobileSyncStatus | null };
+export type MobileSyncStartRequest = { fromDate?: string; toDate?: string };
+
 // ---------- Phiên Zalo của nick đang dùng ----------
 // GET  /api/session                 -> SessionStatus (web hỏi lại mỗi 2 giây khi đang ở màn QR)
 // POST /api/session/login-qr   {}   -> SessionStatus  (dừng nick đang chạy, tạo QR; quét nick nào thì dùng nick đó)

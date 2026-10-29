@@ -104,6 +104,11 @@ export class ZaloAccountManager {
     this.qr.start(async (api) => this.adoptQrLogin(api));
   }
 
+  /** Đồng bộ lịch sử từ điện thoại của nick đang chạy; null khi chưa chạy */
+  mobileSync() {
+    return this.activeSession()?.mobileSync() ?? null;
+  }
+
   /** Chạy lại nick đang dùng bằng cookie đã lưu */
   async startActive(): Promise<void> {
     const ctx = this.active();

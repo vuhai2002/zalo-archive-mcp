@@ -261,4 +261,19 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX message_reaction_taps_reactor ON message_reaction_taps (msg_id, reactor_id, reacted_at);
   `,
+  // 9: đồng bộ lịch sử từ điện thoại - bản sao lưu dùng id "plain" (dạng ngắn của điện thoại),
+  // kho dùng id "noise" (id web 19 số). Cặp đã đổi qua API znoise được giữ lại cho lần đồng bộ sau.
+  `
+  CREATE TABLE mobile_id_map (
+    kind     TEXT NOT NULL CHECK (kind IN ('user', 'group')),
+    plain_id TEXT NOT NULL,
+    noise_id TEXT NOT NULL,
+    PRIMARY KEY (kind, plain_id)
+  );
+  `,
+  // 10: tin mình gửi từ điện thoại không có id toàn cục trong bản sao lưu (id tạm `mb_<cliMsgId>`);
+  // ghép với bản id thật của cùng tin theo hội thoại + cliMsgId để không nhập trùng
+  `
+  CREATE INDEX messages_thread_cli ON messages (thread_id, cli_msg_id);
+  `,
 ];

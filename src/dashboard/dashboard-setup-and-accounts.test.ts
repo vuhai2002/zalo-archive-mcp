@@ -63,6 +63,26 @@ describe("dashboard: nick Zalo", () => {
     assert.equal((await h.call("/api/accounts/khong-co/activate", { ...h.json({}), cookie })).status, 404);
   });
 
+  it("đồng bộ từ điện thoại: nick chưa chạy thì 409; ngày theo giờ kho đổi thành mốc đầu / cuối ngày", async () => {
+    const h = await createDashboardHarness();
+    const cookie = await h.login();
+    const post = (url: string, body: unknown) => h.call(url, { ...h.json(body), cookie });
+    assert.equal((await post("/api/mobile-sync/start", {})).status, 409);
+
+    const started: Array<{ fromTs: number; toTs: number }> = [];
+    h.state.mobileSync = {
+      status: () => null,
+      start: async (r) => (started.push(r), { ok: true }),
+      cancel: async () => {},
+    };
+    assert.equal((await post("/api/mobile-sync/start", { fromDate: "2026-10-01", toDate: "2026-10-28" })).status, 200);
+    // 01/10 00:00 giờ VN = 30/09 17:00 UTC; hết 28/10 giờ VN = 28/10 16:59:59.999 UTC
+    assert.deepEqual(started, [{ fromTs: Date.parse("2026-09-30T17:00:00.000Z"), toTs: Date.parse("2026-10-28T16:59:59.999Z") }]);
+    assert.equal((await post("/api/mobile-sync/start", { fromDate: "01/10/2026" })).status, 400);
+    assert.equal((await post("/api/mobile-sync/start", { fromDate: "2026-10-28", toDate: "2026-10-01" })).status, 400);
+    assert.deepEqual(await (await h.call("/api/mobile-sync", { cookie })).json(), { available: true, status: null });
+  });
+
   it("vừa đăng nhập Zalo xong mà bấm Chạy: 429 kèm số giây phải đợi", async () => {
     const h = await createDashboardHarness();
     h.state.cooldown = true;

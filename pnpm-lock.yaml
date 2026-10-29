@@ -29,6 +29,9 @@ importers:
       pino:
         specifier: ^10.4.0
         version: 10.4.0
+      xz-decompress:
+        specifier: 0.2.3
+        version: 0.2.3
       zca-js:
         specifier: 2.2.0
         version: 2.2.0(patch_hash=961b70a0467b722de31022c3de4a95fd6e4618213a9c8a292035c9cbe9f6ddc3)
@@ -1401,6 +1404,10 @@ packages:
       utf-8-validate:
         optional: true
 
+  xz-decompress@0.2.3:
+    resolution: {integrity: sha512-O8v6HG8T0PrKBcpyWA13GkSYWFvncwzuzcLx5A7++l3HsE3atmoetXjIxrZ/JV/nbvSZ7WS4+3XvREZuVn+rEA==}
+    engines: {node: '>=16'}
+
   zca-js@2.2.0:
     resolution: {integrity: sha512-pBU0T0/uadH3Neq7yMssUmE769VVuqKhL8YD1HqQQG8e6lkwueAopNu0vhJdqiJRHZdPIEomT2FxRzauOx4pgA==}
     engines: {node: '>=18.0.0'}
@@ -2474,6 +2481,8 @@ snapshots:
   wrappy@1.0.2: {}
 
   ws@8.22.0: {}
+
+  xz-decompress@0.2.3: {}
 
   zca-js@2.2.0(patch_hash=961b70a0467b722de31022c3de4a95fd6e4618213a9c8a292035c9cbe9f6ddc3):
     dependencies:

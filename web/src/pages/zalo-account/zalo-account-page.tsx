@@ -7,6 +7,7 @@ import { IconQr } from "../../shared/action-and-media-icons";
 import { useConfirmDialog } from "../../shared/confirm-dialog";
 import { IconSignal } from "../../shared/dashboard-icons";
 import { BTN_PRIMARY, ErrorNote, SectionCard } from "../../shared/ui-bits";
+import { MobileHistorySyncCard } from "./mobile-history-sync-card";
 import { nickLabel, ZaloNickListCard } from "./zalo-nick-list-card";
 import { ZaloQrLoginPanel } from "./zalo-qr-login-panel";
 import { ZaloSessionStatusCard, type SessionAction } from "./zalo-session-status-card";
@@ -113,6 +114,8 @@ export function ZaloAccountPage() {
           onAdd={addNick}
         />
       )}
+
+      {session.account && <MobileHistorySyncCard confirm={confirm} />}
 
       {confirmDialog}
     </div>
