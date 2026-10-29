@@ -1,7 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { inTransaction } from "../shared/db-transaction.js";
 
-export type DirectoryEntry = { threadId: string; name: string | null };
+export type DirectoryEntry = { threadId: string; name: string | null; avatarUrl?: string | null };
 
 /**
  * Ghi danh sách bạn bè lấy từ Zalo: tên danh bạ ĐÈ tên lấy từ tin nhắn, và cờ
@@ -26,21 +26,33 @@ export function replaceFriendDirectory(db: DatabaseSync, friends: DirectoryEntry
   });
 }
 
-/** Ghi tên nhóm (tên nhóm có thể đổi nên luôn ghi đè khi có tên mới) */
+/** Ghi tên + avatar nhóm (có thể đổi nên luôn ghi đè khi có giá trị mới) */
 export function upsertGroupNames(db: DatabaseSync, groups: DirectoryEntry[]): void {
   const now = new Date().toISOString();
   inTransaction(db, () => {
     const stmt = db.prepare(
-      `INSERT INTO threads (thread_id, thread_type, name, updated_at) VALUES (?, 'group', ?, ?)
+      `INSERT INTO threads (thread_id, thread_type, name, avatar_url, updated_at) VALUES (?, 'group', ?, ?, ?)
        ON CONFLICT (thread_id, thread_type) DO UPDATE SET
-         name = COALESCE(excluded.name, threads.name), updated_at = excluded.updated_at`,
+         name = COALESCE(excluded.name, threads.name), avatar_url = COALESCE(excluded.avatar_url, threads.avatar_url),
+         updated_at = excluded.updated_at`,
     );
-    for (const g of groups) stmt.run(g.threadId, g.name, now);
+    for (const g of groups) stmt.run(g.threadId, g.name, g.avatarUrl ?? null, now);
   });
 }
 
 /**
- * Nhóm đã có tin trong kho nhưng chưa biết tên - để hỏi tên theo lô. Nhóm
+ * Cập nhật cờ bạn bè của MỘT người ngay khi có sự kiện kết bạn / hủy kết bạn,
+ * không chờ lần đồng bộ danh sách bạn bè kế tiếp.
+ */
+export function setFriendFlag(db: DatabaseSync, userId: string, friend: boolean): void {
+  db.prepare(
+    `INSERT INTO threads (thread_id, thread_type, is_friend, updated_at) VALUES (?, 'user', ?, ?)
+     ON CONFLICT (thread_id, thread_type) DO UPDATE SET is_friend = excluded.is_friend, updated_at = excluded.updated_at`,
+  ).run(userId, friend ? 1 : 0, new Date().toISOString());
+}
+
+/**
+ * Nhóm đã có tin trong kho nhưng chưa biết tên, avatar hoặc danh sách thành viên - để hỏi theo lô. Nhóm
  * hoạt động gần nhất trước; nhóm đã hỏi mà không ra tên thì chờ tới
  * `retryBeforeIso` mới hỏi lại (không hỏi mãi, không chặn đường nhóm mới).
  */
@@ -48,7 +60,10 @@ export function groupsMissingName(db: DatabaseSync, limit: number, retryBeforeIs
   const rows = db
     .prepare(
       `SELECT thread_id FROM threads
-       WHERE thread_type = 'group' AND name IS NULL AND (name_lookup_at IS NULL OR name_lookup_at < ?)
+       WHERE thread_type = 'group'
+         AND (name IS NULL OR avatar_url IS NULL
+              OR NOT EXISTS (SELECT 1 FROM group_members gm WHERE gm.group_id = threads.thread_id))
+         AND (name_lookup_at IS NULL OR name_lookup_at < ?)
        ORDER BY last_message_at DESC LIMIT ?`,
     )
     .all(retryBeforeIso, limit) as Array<{ thread_id: string }>;

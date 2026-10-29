@@ -9,7 +9,8 @@ import { startDashboardServer } from "../dashboard/start-dashboard-server.js";
 import { ZaloSessionManager } from "../daemon/zalo-session-manager.js";
 import { createLogger } from "../shared/logger.js";
 import { acquireSingleInstanceLock } from "../shared/single-instance-lock.js";
-import { resetStuckDownloads } from "../storage/attachment-queue-store.js";
+import { isAllowedMediaHost } from "../media/media-file-naming.js";
+import { requeueNowAllowedAttachments, resetStuckDownloads } from "../storage/attachment-queue-store.js";
 import { closeDanglingConnection } from "../storage/connection-event-store.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { failStuckSending } from "../storage/outbox-store.js";
@@ -28,6 +29,8 @@ const db = openArchiveDatabase(paths.databaseFile);
 // Dọn dấu vết lần chạy trước bị chết ngang
 if (closeDanglingConnection(db, getMeta(db, "listener_heartbeat_at"))) log.warn("Lần chạy trước dừng đột ngột - đã ghi bù khoảng thủng");
 const resetMedia = resetStuckDownloads(db, env.MEDIA_MAX_ATTEMPTS);
+const requeued = requeueNowAllowedAttachments(db, (url) => isAllowedMediaHost(url, env.MEDIA_ALLOWED_HOST_SUFFIXES));
+if (requeued > 0) log.info({ requeued }, "Tải lại file từng bị chặn vì host (nay đã được phép)");
 const failedSends = failStuckSending(db);
 if (failedSends > 0) log.warn({ failedSends }, "Có tin đang gửi dở từ lần trước - đánh failed, KHÔNG tự gửi lại");
 if (resetMedia > 0) log.info({ resetMedia }, "Đưa media tải dở về hàng đợi");

@@ -1,6 +1,7 @@
 import type { ArchivedMessage } from "../../archive-api-types";
 import { sourceLabel } from "../../shared/archive-status-labels";
 import { formatClock, formatDateTime } from "../../shared/format-archive-time";
+import { ContactAvatar } from "../../shared/contact-avatar";
 import { MessageAttachmentView } from "./message-attachment-view";
 
 /**
@@ -24,20 +25,30 @@ export function MessageBubble({
 }) {
   const self = msg.isSelf;
   const recalled = msg.recalledAt !== null;
-  const hasText = msg.text.trim().length > 0;
+  // Sticker đã có ảnh: hiện ảnh trần như Zalo, bỏ khung bong bóng và chữ "[sticker]"
+  const bareSticker = msg.msgType === "chat.sticker" && msg.attachments.some((a) => a.kind === "sticker" && a.status === "done");
+  const hasText = !bareSticker && msg.text.trim().length > 0;
+  const showSender = isGroup && !self;
 
   return (
-    <div className={`flex ${self ? "justify-end" : "justify-start"}`}>
+    <div className={`flex items-end gap-2 ${self ? "justify-end" : "justify-start"}`}>
+      {showSender && (
+        <span className="mb-5 shrink-0">
+          <ContactAvatar name={msg.senderName?.trim() || msg.senderId} seed={msg.senderId} url={msg.senderAvatarUrl} size="sm" />
+        </span>
+      )}
       <div className={`flex min-w-0 max-w-[88%] flex-col sm:max-w-[72%] ${self ? "items-end" : "items-start"}`}>
-        {isGroup && !self && (
+        {showSender && (
           <div className="mb-0.5 max-w-full truncate px-1 text-[12px] font-medium text-zalo-600">
             {msg.senderName?.trim() ? msg.senderName : msg.senderId}
           </div>
         )}
 
         <div
-          className={`min-w-0 max-w-full space-y-2 rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed ${
-            self ? "rounded-br-md bg-zalo-500 text-white" : "rounded-bl-md border border-line bg-surface text-ink"
+          className={`min-w-0 max-w-full space-y-2 text-[14px] leading-relaxed ${
+            bareSticker
+              ? ""
+              : `rounded-2xl px-3.5 py-2 ${self ? "rounded-br-md bg-zalo-500 text-white" : "rounded-bl-md border border-line bg-surface text-ink"}`
           } ${recalled ? "opacity-70 outline-1 outline-dashed outline-red-400" : ""}`}
         >
           {msg.quoteMsgId && (

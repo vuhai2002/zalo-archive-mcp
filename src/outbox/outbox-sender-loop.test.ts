@@ -122,6 +122,8 @@ describe("OutboxSender", () => {
     const night = new Date("2026-10-28T16:30:00.000Z"); // 23:30 giờ VN, ngoài khung 7h-22h của lô
     const { db, sender, sent, queue, advance } = setup({ now: night });
     const id = queue("u-lan", "lô", "batch");
+    // Giờ duyệt theo đồng hồ GIẢ của test, không theo giờ thật của máy chạy test
+    db.prepare("UPDATE outbox SET approved_at = ? WHERE id = ?").run(night.toISOString(), id);
     await sender.tick();
     const deferred = getOutboxItem(db, id)!;
     assert.equal(deferred.status, "approved");

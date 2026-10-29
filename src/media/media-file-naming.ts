@@ -25,6 +25,7 @@ const DEFAULT_EXT_BY_KIND: Record<string, string> = {
   video: ".mp4",
   voice: ".aac",
   file: ".bin",
+  sticker: ".webp",
 };
 
 /** Đuôi an toàn: chỉ chữ/số, tối đa 8 ký tự */

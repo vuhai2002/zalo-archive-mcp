@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { MessageSource, NormalizedMessage, NormalizedRecall } from "../archive/archived-message-types.js";
 import { inTransaction } from "../shared/db-transaction.js";
+import { noteContactSeen } from "./contact-store.js";
 import { foldVietnameseForSearch } from "../shared/fold-vietnamese-for-search.js";
 
 export type UpsertResult = { id: number; inserted: boolean };
@@ -72,6 +73,9 @@ export function upsertMessage(
     ).run({ msgId: msg.msgId });
 
     touchThread(db, msg);
+    // Người gửi + người kia của hội thoại 1-1 vào danh bạ, để sau đó hỏi avatar
+    noteContactSeen(db, msg.senderId, msg.isSelf ? null : msg.senderName);
+    if (msg.threadType === "user" && msg.threadId !== msg.senderId) noteContactSeen(db, msg.threadId, null);
     return { id, inserted: !existing };
   });
 }

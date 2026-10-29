@@ -81,19 +81,41 @@ export type OverviewResponse = {
 
 // ---------- Hội thoại + tin ----------
 // GET /api/threads?query=&limit=50&offset=0
+//   Không có query: chỉ hội thoại ĐÃ có tin. Có query: tìm cả bạn bè chưa từng nhắn (để gửi tin mới).
 export type ThreadSummary = {
   threadId: string;
   threadType: ThreadKind;
   name: string | null;
+  /** Link avatar trên CDN Zalo (tải thẳng từ trình duyệt); null thì hiện chữ cái đầu */
+  avatarUrl: string | null;
   isFriend: boolean;
   lastMessageAt: string | null;
   messageCount: number;
 };
-export type ThreadListResponse = { threads: ThreadSummary[]; total: number };
+/** Tin cuối của hội thoại, để hiện dòng xem trước kiểu Zalo ("Bạn: 📎 file.mp4") */
+export type LastMessagePreview = {
+  isSelf: boolean;
+  senderName: string | null;
+  msgType: string;
+  text: string;
+  attachmentKind: AttachmentInfo["kind"] | null;
+  attachmentName: string | null;
+  recalled: boolean;
+};
+export type MemberAvatar = { userId: string; name: string | null; avatarUrl: string | null };
+/** Một dòng trong danh sách hội thoại: thêm tin cuối + avatar vài thành viên (ghép avatar nhóm) */
+export type ThreadListItem = ThreadSummary & {
+  lastMessage: LastMessagePreview | null;
+  /** Nhóm không có ảnh riêng: tối đa 4 thành viên đầu để ghép avatar; memberCount = tổng thành viên */
+  memberAvatars: MemberAvatar[];
+  memberCount: number | null;
+};
+export type ThreadListResponse = { threads: ThreadListItem[]; total: number };
 
 export type AttachmentInfo = {
   id: number;
-  kind: "photo" | "video" | "file" | "voice" | "gif";
+  /** sticker: ảnh sticker Zalo đã tải về kho - hiện như ảnh, không khung bong bóng */
+  kind: "photo" | "video" | "file" | "voice" | "gif" | "sticker";
   status: "pending" | "downloading" | "done" | "failed" | "too_large" | "blocked_host";
   fileName: string | null;
   sizeBytes: number | null;
@@ -109,6 +131,7 @@ export type ArchivedMessage = {
   threadType: ThreadKind;
   senderId: string;
   senderName: string | null;
+  senderAvatarUrl: string | null;
   isSelf: boolean;
   msgType: string;
   text: string;
@@ -121,7 +144,10 @@ export type ArchivedMessage = {
 
 // GET /api/threads/:threadId/messages?beforeId=&limit=50
 //   -> tin theo thời gian TĂNG dần; trang cũ hơn: beforeId = messages[0].id; hết khi messages rỗng
-export type ThreadMessagesResponse = { thread: ThreadSummary; messages: ArchivedMessage[] };
+export type ThreadMessagesResponse = {
+  thread: ThreadSummary & { memberAvatars: MemberAvatar[]; memberCount: number | null };
+  messages: ArchivedMessage[];
+};
 
 // GET /api/search?q=&threadId=&fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD&limit=50  (mới nhất trước)
 export type SearchResult = ArchivedMessage & { threadName: string | null; threadIsFriend: boolean };

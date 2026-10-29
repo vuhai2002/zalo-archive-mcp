@@ -11,7 +11,7 @@ describe("parseEnv", () => {
     assert.equal(env.DASHBOARD_HOST, "127.0.0.1");
     assert.equal(env.DASHBOARD_PASSWORD, undefined);
     assert.equal(env.ARCHIVE_TIMEZONE, "Asia/Ho_Chi_Minh");
-    assert.deepEqual(env.MEDIA_ALLOWED_HOST_SUFFIXES, ["zdn.vn", "zadn.vn", "zalo.me", "zaloapp.com", "zalo.vn"]);
+    assert.deepEqual(env.MEDIA_ALLOWED_HOST_SUFFIXES, ["zdn.vn", "zadn.vn", "zalo.me", "zaloapp.com", "zalo.vn", "dlfl.vn", "flchat.vn"]);
     assert.equal(env.CREDENTIALS_ENCRYPTION_KEY, undefined);
   });
 

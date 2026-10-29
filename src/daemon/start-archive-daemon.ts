@@ -7,8 +7,8 @@ import { MediaDownloadWorker } from "../media/media-download-worker.js";
 import { OutboxSender } from "../outbox/outbox-sender-loop.js";
 import { setMeta } from "../storage/thread-directory-store.js";
 import { startArchiveListener } from "../zalo/archive-listener.js";
-import { resolveMissingGroupNames, syncFriendDirectory } from "../zalo/contact-directory-sync.js";
 import { startKeepAliveLoop } from "../zalo/keep-alive-loop.js";
+import { startDirectoryLookupLoop } from "./directory-lookup-loop.js";
 
 export type DaemonDeps = {
   api: API;
@@ -24,8 +24,6 @@ export type DaemonDeps = {
 export type ArchiveHandle = { stop: () => void; isListenerConnected: () => boolean };
 
 const HEARTBEAT_MS = 60_000;
-const GROUP_NAME_INTERVAL_MS = 10 * 60_000;
-const FIRST_DIRECTORY_SYNC_DELAY_MS = 15_000;
 
 /**
  * Ghép mọi khối chạy khi ĐÃ đăng nhập Zalo: listener ghi kho, tải media, đồng bộ
@@ -38,6 +36,15 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
     const t = setInterval(fn, ms);
     stops.push(() => clearInterval(t));
   };
+
+  // Tên + avatar nhóm, hồ sơ người nhắn, ảnh sticker, danh sách bạn bè
+  const directory = startDirectoryLookupLoop({
+    api,
+    db,
+    log: log.child({ part: "directory" }),
+    friendSyncEveryMs: env.DIRECTORY_SYNC_HOURS * 3_600_000,
+  });
+  stops.push(directory.stop);
 
   const listener = startArchiveListener({
     api,
@@ -52,6 +59,7 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
     },
     offlineReplay: env.OFFLINE_REPLAY_ENABLED,
     onGaveUp: d.onGaveUp,
+    onFriendListChanged: directory.requestFriendSync,
   });
   stops.push(listener.stop);
 
@@ -60,11 +68,6 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
     if (listener.isConnected()) setMeta(db, "listener_heartbeat_at", new Date().toISOString());
   });
 
-  const dirLog = log.child({ part: "directory" });
-  const firstSync = setTimeout(() => void syncFriendDirectory(api, db, dirLog), FIRST_DIRECTORY_SYNC_DELAY_MS);
-  stops.push(() => clearTimeout(firstSync));
-  if (env.DIRECTORY_SYNC_HOURS > 0) every(env.DIRECTORY_SYNC_HOURS * 3_600_000, () => syncFriendDirectory(api, db, dirLog));
-  every(GROUP_NAME_INTERVAL_MS, () => resolveMissingGroupNames(api, db, dirLog));
 
   if (env.MEDIA_DOWNLOAD_ENABLED) {
     const media = new MediaDownloadWorker({

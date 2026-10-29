@@ -5,6 +5,7 @@ import type { DashboardContext } from "./dashboard-context.js";
 import { hostGuard, requireJsonBody, requireSession } from "./dashboard-security-middleware.js";
 import { archiveBrowseRoutes } from "./routes/archive-browse-routes.js";
 import { authAndSessionRoutes } from "./routes/auth-and-session-routes.js";
+import { mediaFileRoute } from "./routes/media-file-route.js";
 import { outboxAndSettingsRoutes } from "./routes/outbox-and-settings-routes.js";
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -38,6 +39,7 @@ export function createDashboardApp(ctx: DashboardContext, opts: { webDistDir: st
   api.route("/", authAndSessionRoutes(ctx));
   api.route("/", archiveBrowseRoutes(ctx));
   api.route("/", outboxAndSettingsRoutes(ctx));
+  api.route("/", mediaFileRoute(ctx));
   // Route /api lạ phải 404 JSON, không rơi xuống trang SPA bên dưới
   api.all("*", (c) => c.json({ error: "Không có route này" }, 404));
   app.route("/api", api);

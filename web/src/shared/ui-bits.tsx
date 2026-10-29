@@ -140,16 +140,38 @@ export function InfoTile({ label, value, hint }: { label: string; value: ReactNo
   );
 }
 
-/** Avatar tròn chữ cái đầu - màu sinh từ chuỗi để ổn định giữa các lần render */
-export function InitialAvatar({ name, seed }: { name: string; seed: string }) {
-  const palette = ["bg-zalo-500", "bg-sky-500", "bg-indigo-500", "bg-teal-500", "bg-rose-500", "bg-amber-500"];
+export type AvatarSize = "xs" | "sm" | "md" | "lg";
+export const AVATAR_SIZE_CLASS: Record<AvatarSize, string> = {
+  xs: "h-7 w-7 text-[10px]",
+  sm: "h-7 w-7 text-[11px]",
+  md: "h-9 w-9 text-[13px]",
+  lg: "h-12 w-12 text-[16px]",
+};
+
+/** Hai chữ cái đầu như Zalo: "Khúc Mẫn" -> "KM", "Lan" -> "L" */
+function initialsOf(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const first = [...(words[0] ?? "?")][0] ?? "?";
+  const last = words.length > 1 ? ([...words[words.length - 1]!][0] ?? "") : "";
+  return (first + last).toUpperCase();
+}
+
+/** Avatar tròn chữ cái đầu, nền chuyển màu - màu sinh từ chuỗi để ổn định giữa các lần render */
+export function InitialAvatar({ name, seed, size = "md" }: { name: string; seed: string; size?: AvatarSize }) {
+  const palette = [
+    "from-indigo-500 to-violet-500",
+    "from-sky-500 to-blue-600",
+    "from-teal-400 to-emerald-600",
+    "from-rose-400 to-pink-600",
+    "from-amber-400 to-orange-500",
+    "from-fuchsia-500 to-purple-600",
+  ];
   const hash = [...seed].reduce((a, ch) => a + ch.charCodeAt(0), 0);
-  const initial = ([...name.trim()][0] ?? "?").toUpperCase();
   return (
     <span
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[14px] font-semibold text-white ${palette[hash % palette.length]}`}
+      className={`flex ${AVATAR_SIZE_CLASS[size]} shrink-0 items-center justify-center rounded-full bg-gradient-to-br font-semibold text-white ${palette[hash % palette.length]}`}
     >
-      {initial}
+      {initialsOf(name)}
     </span>
   );
 }

@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ThreadSummary } from "../../archive-api-types";
+import type { ThreadListItem } from "../../archive-api-types";
 import { api, errorText } from "../../dashboard-api-client";
 import { useArchiveTimeZone } from "../../layout/dashboard-shell-context";
 import { IconRefresh } from "../../shared/action-and-media-icons";
 import { IconSearch } from "../../shared/dashboard-icons";
-import { formatDateTime } from "../../shared/format-archive-time";
-import { ThreadKindBadge, threadDisplayName } from "../../shared/thread-kind-badge";
-import { BTN_ICON, EmptyState, ErrorNote, formatNumber, InitialAvatar, LoadingText } from "../../shared/ui-bits";
+import { BTN_ICON, EmptyState, ErrorNote, formatNumber, LoadingText } from "../../shared/ui-bits";
 import { useDebouncedValue } from "../../shared/use-debounced-value";
+import { ThreadListRow } from "./thread-list-row";
 
 const PAGE_SIZE = 50;
 
@@ -15,7 +14,7 @@ export function ThreadListPanel({ selectedId, onSelect }: { selectedId?: string;
   const tz = useArchiveTimeZone();
   const [query, setQuery] = useState("");
   const debounced = useDebouncedValue(query.trim(), 300);
-  const [threads, setThreads] = useState<ThreadSummary[]>([]);
+  const [threads, setThreads] = useState<ThreadListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,36 +76,12 @@ export function ThreadListPanel({ selectedId, onSelect }: { selectedId?: string;
         {!loading && !error && threads.length === 0 && (
           <EmptyState text={debounced ? "Không có hội thoại nào khớp." : "Kho chưa có hội thoại nào."} />
         )}
-        <ul>
-          {threads.map((t) => {
-            const active = t.threadId === selectedId;
-            return (
-              <li key={t.threadId}>
-                <button
-                  type="button"
-                  onClick={() => onSelect(t.threadId)}
-                  aria-current={active ? "true" : undefined}
-                  className={`flex w-full items-center gap-3 border-b border-line/60 px-3 py-2.5 text-left transition-colors ${
-                    active ? "bg-zalo-50" : "hover:bg-tile/70"
-                  }`}
-                >
-                  <InitialAvatar name={threadDisplayName(t.name)} seed={t.threadId} />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <span className={`min-w-0 flex-1 truncate text-[14px] font-medium ${active ? "text-zalo-700" : "text-ink"}`}>
-                        {threadDisplayName(t.name)}
-                      </span>
-                      <span className="shrink-0 text-[11px] tabular-nums text-ink-soft">{formatDateTime(t.lastMessageAt, tz)}</span>
-                    </span>
-                    <span className="mt-1 flex items-center gap-2">
-                      <ThreadKindBadge threadType={t.threadType} isFriend={t.isFriend} />
-                      <span className="ml-auto text-[12px] tabular-nums text-ink-soft">{formatNumber(t.messageCount)} tin</span>
-                    </span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
+        <ul className="space-y-0.5 p-2">
+          {threads.map((t) => (
+            <li key={t.threadId}>
+              <ThreadListRow t={t} active={t.threadId === selectedId} timeZone={tz} onSelect={onSelect} />
+            </li>
+          ))}
         </ul>
         {loading && <LoadingText />}
         {!loading && !error && threads.length < total && (

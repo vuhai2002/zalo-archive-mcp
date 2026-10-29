@@ -5,7 +5,7 @@ export type ThreadKind = "user" | "group";
 /** Tin vào kho bằng đường nào - để kho trung thực về độ phủ */
 export type MessageSource = "live" | "old_messages" | "mobile_sync" | "journal_replay";
 
-export type AttachmentKind = "photo" | "video" | "file" | "voice" | "gif";
+export type AttachmentKind = "photo" | "video" | "file" | "voice" | "gif" | "sticker";
 
 export type AttachmentDescriptor = {
   kind: AttachmentKind;

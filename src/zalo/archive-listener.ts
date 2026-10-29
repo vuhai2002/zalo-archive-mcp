@@ -5,6 +5,7 @@ import { ingestArchiveEvent, type ArchiveEvent } from "../archive/archive-event-
 import { appendJournal } from "../archive/raw-event-journal.js";
 import { recordConnectionEvent } from "../storage/connection-event-store.js";
 import { setMeta } from "../storage/thread-directory-store.js";
+import { applyFriendEvent, applyGroupEvent } from "./directory-event-handlers.js";
 import { describeListenerError, isNetworkErrorCode } from "./listener-error-details.js";
 import { requestMissedMessages } from "./offline-message-replay.js";
 import { ReconnectPlanner, type ReconnectPlannerOptions } from "./reconnect-planner.js";
@@ -19,6 +20,8 @@ export type ArchiveListenerOptions = {
   offlineReplay: boolean;
   /** Gọi khi listener chớp-tắt quá ngưỡng: phiên nhiều khả năng đã chết */
   onGaveUp: () => void;
+  /** Có kết bạn / hủy kết bạn - daemon đồng bộ lại danh sách bạn bè */
+  onFriendListChanged?: () => void;
 };
 
 export type ArchiveListenerHandle = { stop: () => void; isConnected: () => boolean };
@@ -54,6 +57,14 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
     }
   };
 
+  const safely = (event: string, work: () => void) => {
+    try {
+      work();
+    } catch (err) {
+      log.warn({ err, event }, "Không xử lý được sự kiện (vẫn còn trong nhật ký)");
+    }
+  };
+
   const handle = (event: ArchiveEvent) => {
     journal(event.kind, event);
     const stats = ingestArchiveEvent(db, event, new Date(), log);
@@ -66,8 +77,17 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
   // Chưa đưa vào DB nhưng giữ nguyên văn để đắp sau (reaction, sự kiện nhóm, bạn bè)
   listener.on("reaction", (r) => journal("reaction", r));
   listener.on("old_reactions", (rs, isGroup) => journal("old_reactions", { isGroup, reactions: rs }));
-  listener.on("group_event", (e) => journal("group_event", e));
-  listener.on("friend_event", (e) => journal("friend_event", e));
+  // Sự kiện nhóm / bạn bè: giữ nguyên văn, và cập nhật danh bạ ngay (tên nhóm, cờ bạn bè)
+  listener.on("group_event", (e) => {
+    journal("group_event", e);
+    safely("group_event", () => applyGroupEvent(db, e));
+  });
+  listener.on("friend_event", (e) => {
+    journal("friend_event", e);
+    safely("friend_event", () => {
+      if (applyFriendEvent(db, e)) opts.onFriendListChanged?.();
+    });
+  });
 
   listener.on("connected", () => {
     connected = true;

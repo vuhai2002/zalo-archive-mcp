@@ -6,7 +6,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import { createSilentLogger } from "../shared/logger.js";
 import { sampleMessage } from "../storage/archive-store-test-helpers.js";
-import { getAttachment } from "../storage/attachment-queue-store.js";
+import { getAttachment, requeueNowAllowedAttachments } from "../storage/attachment-queue-store.js";
 import { upsertMessage } from "../storage/message-write-store.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { isAllowedMediaHost } from "./media-file-naming.js";
@@ -80,6 +80,15 @@ describe("MediaDownloadWorker", () => {
     const gone = setup("https://f1.zdn.vn/a", respond("", { status: 404 }));
     await gone.worker.tick();
     assert.equal(gone.att().status, "failed");
+  });
+
+  it("file từng bị chặn vì host, nay host được phép: đưa về hàng đợi tải lại", async () => {
+    const { db, worker, att } = setup("https://file-stal-21.dlfl.vn/gr/x", respond("x"));
+    await worker.tick();
+    assert.equal(att().status, "blocked_host");
+    const n = requeueNowAllowedAttachments(db, (url) => isAllowedMediaHost(url, [...HOSTS, "dlfl.vn"]));
+    assert.equal(n, 1);
+    assert.equal(att().status, "pending");
   });
 
   it("isAllowedMediaHost: khớp đúng đuôi tên miền, không bị lừa bởi tiền tố", () => {

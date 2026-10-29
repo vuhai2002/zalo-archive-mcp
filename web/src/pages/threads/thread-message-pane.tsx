@@ -5,7 +5,9 @@ import { useArchiveTimeZone } from "../../layout/dashboard-shell-context";
 import { IconRefresh } from "../../shared/action-and-media-icons";
 import { IconArrowLeft, IconSearch } from "../../shared/dashboard-icons";
 import { dayKey, formatDayHeading } from "../../shared/format-archive-time";
-import { ThreadKindBadge, threadDisplayName } from "../../shared/thread-kind-badge";
+import { ContactAvatar } from "../../shared/contact-avatar";
+import { MemberAvatarStack } from "../../shared/member-avatar-stack";
+import { threadDisplayName } from "../../shared/thread-kind-badge";
 import { BTN_ICON, EmptyState, ErrorNote, formatNumber, LoadingText } from "../../shared/ui-bits";
 import { MessageBubble } from "./message-bubble";
 import { MessageComposer } from "./message-composer";
@@ -68,10 +70,15 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
         <button type="button" onClick={onBack} aria-label="Quay lại danh sách" className={`${BTN_ICON} lg:hidden`}>
           <IconArrowLeft size={18} />
         </button>
+        {t.thread &&
+          (t.thread.threadType === "group" && !t.thread.avatarUrl && t.thread.memberAvatars.length > 0 ? (
+            <MemberAvatarStack members={t.thread.memberAvatars} memberCount={t.thread.memberCount} seed={t.thread.threadId} />
+          ) : (
+            <ContactAvatar name={threadDisplayName(t.thread.name)} seed={t.thread.threadId} url={t.thread.avatarUrl} size="lg" />
+          ))}
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             <h2 className="truncate text-[15px] font-semibold text-ink">{threadDisplayName(t.thread?.name)}</h2>
-            {t.thread && <ThreadKindBadge threadType={t.thread.threadType} isFriend={t.thread.isFriend} />}
           </div>
           <div className="truncate text-[12px] text-ink-soft">
             {t.thread ? `${formatNumber(t.thread.messageCount)} tin · ` : ""}

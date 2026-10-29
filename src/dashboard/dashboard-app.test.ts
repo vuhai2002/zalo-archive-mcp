@@ -111,6 +111,12 @@ describe("dashboard API", () => {
     assert.equal(res.status, 200);
     assert.equal(await res.text(), "anh");
     assert.match(res.headers.get("content-security-policy") ?? "", /sandbox/);
+    // Range cho trình phát video tua được
+    const part = await s.call("/api/media/1", { cookie, headers: { range: "bytes=1-" } });
+    assert.equal(part.status, 206);
+    assert.equal(part.headers.get("content-range"), "bytes 1-2/3");
+    assert.equal(await part.text(), "nh");
+    assert.equal((await s.call("/api/media/1", { cookie, headers: { range: "bytes=9-" } })).status, 416);
     s.db.prepare("UPDATE attachments SET local_path = '../../credentials.enc' WHERE id = 1").run();
     assert.equal((await s.call("/api/media/1", { cookie })).status, 404, "không thoát khỏi thư mục media");
   });

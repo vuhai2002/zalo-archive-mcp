@@ -14,6 +14,7 @@ export function toArchivedMessage(m: MessageRow): ArchivedMessage {
     threadType: m.threadType,
     senderId: m.senderId,
     senderName: m.senderName,
+    senderAvatarUrl: m.senderAvatarUrl,
     isSelf: m.isSelf,
     msgType: m.msgType,
     text: m.text,

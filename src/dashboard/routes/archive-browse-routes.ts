@@ -1,13 +1,10 @@
-import fs from "node:fs";
-import path from "node:path";
-import { Readable } from "node:stream";
 import { Hono } from "hono";
 import { startOfLocalDayDaysAgoUtc, startOfLocalDayUtc, startOfNextLocalDayUtc, startOfTodayUtc } from "../../shared/local-date-range.js";
-import { getAttachment } from "../../storage/attachment-queue-store.js";
 import { listenerGaps, recentConnectionEvents } from "../../storage/connection-event-store.js";
 import { HEARTBEAT_STALE_MS } from "../../storage/daemon-liveness.js";
 import { findThread, listThreadsPage, readThread, searchMessages } from "../../storage/message-read-queries.js";
 import { archiveTotals, countBy, dailyMessageCounts, topThreadsSince } from "../../storage/overview-stats-queries.js";
+import { groupMemberAvatars, lastMessagePreview } from "../../storage/thread-list-extras.js";
 import { getMeta, threadLabel } from "../../storage/thread-directory-store.js";
 import type { OverviewResponse, SearchResponse, ThreadListResponse, ThreadMessagesResponse } from "../dashboard-api-contract.js";
 import type { DashboardContext } from "../dashboard-context.js";
@@ -18,11 +15,14 @@ const clampInt = (raw: string | undefined, def: number, min: number, max: number
   return Number.isInteger(n) ? Math.min(max, Math.max(min, n)) : def;
 };
 
-/** Xem kho: tổng quan, hội thoại, tin, tìm kiếm, file media */
+/** Xem kho: tổng quan, hội thoại, tin, tìm kiếm (file media: media-file-route.ts) */
 export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
   const app = new Hono();
   const { db, env } = ctx;
   const tz = env.ARCHIVE_TIMEZONE;
+  /** Nhóm không có ảnh riêng: 4 thành viên đầu để ghép avatar như Zalo */
+  const groupAvatarParts = (type: string, id: string, avatarUrl: string | null) =>
+    type === "group" && !avatarUrl ? groupMemberAvatars(db, id, 4) : { memberAvatars: [], memberCount: null };
 
   app.get("/overview", (c) => {
     const days = clampInt(c.req.query("days"), 30, 1, 365);
@@ -53,7 +53,12 @@ export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
       limit: clampInt(c.req.query("limit"), 50, 1, 200),
       offset: clampInt(c.req.query("offset"), 0, 0, 1_000_000),
     });
-    return c.json(page satisfies ThreadListResponse);
+    const threads = page.threads.map((t) => ({
+      ...t,
+      lastMessage: lastMessagePreview(db, t.threadId, t.threadType) as ThreadListResponse["threads"][number]["lastMessage"],
+      ...groupAvatarParts(t.threadType, t.threadId, t.avatarUrl),
+    }));
+    return c.json({ threads, total: page.total } satisfies ThreadListResponse);
   });
 
   app.get("/threads/:threadId/messages", (c) => {
@@ -66,7 +71,10 @@ export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
       beforeId: beforeId || undefined,
       limit: clampInt(c.req.query("limit"), 50, 1, 200),
     });
-    return c.json({ thread, messages: messages.map(toArchivedMessage) } satisfies ThreadMessagesResponse);
+    return c.json({
+      thread: { ...thread, ...groupAvatarParts(thread.threadType, thread.threadId, thread.avatarUrl) },
+      messages: messages.map(toArchivedMessage),
+    } satisfies ThreadMessagesResponse);
   });
 
   app.get("/search", (c) => {
@@ -89,26 +97,6 @@ export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
       return { ...toArchivedMessage(m), threadName: label?.name ?? null, threadIsFriend: label?.isFriend ?? false };
     });
     return c.json({ messages: results } satisfies SearchResponse);
-  });
-
-  app.get("/media/:id", (c) => {
-    const a = getAttachment(db, clampInt(c.req.param("id"), 0, 0, Number.MAX_SAFE_INTEGER));
-    if (!a || a.status !== "done" || typeof a.local_path !== "string") return c.json({ error: "File chưa có" }, 404);
-    // local_path do kho tự đặt (sha256 + đuôi), vẫn kiểm không thoát khỏi thư mục media
-    const mediaRoot = path.resolve(ctx.paths.mediaDir);
-    const file = path.resolve(mediaRoot, a.local_path);
-    if (!file.startsWith(mediaRoot + path.sep) || !fs.existsSync(file)) return c.json({ error: "File chưa có" }, 404);
-    const stream = Readable.toWeb(fs.createReadStream(file)) as ReadableStream;
-    const fileName = typeof a.file_name === "string" ? a.file_name : path.basename(file);
-    return c.body(stream, 200, {
-      "content-type": typeof a.mime === "string" && a.mime ? a.mime : "application/octet-stream",
-      "content-length": String(fs.statSync(file).size),
-      "content-disposition": `inline; filename*=UTF-8''${encodeURIComponent(fileName)}`,
-      "x-content-type-options": "nosniff",
-      // File do người lạ gửi: không cho chạy script nếu là HTML/SVG
-      "content-security-policy": "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; sandbox",
-      "cache-control": "private, max-age=86400",
-    });
   });
 
   return app;

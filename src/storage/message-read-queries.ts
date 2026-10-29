@@ -1,15 +1,10 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ThreadKind } from "../archive/archived-message-types.js";
-import { buildFtsMatchExpression, foldVietnameseForSearch } from "../shared/fold-vietnamese-for-search.js";
+import { buildFtsMatchExpression } from "../shared/fold-vietnamese-for-search.js";
 
-export type ThreadSummary = {
-  threadId: string;
-  threadType: ThreadKind;
-  name: string | null;
-  isFriend: boolean;
-  lastMessageAt: string | null;
-  messageCount: number;
-};
+// Danh sách hội thoại tách sang thread-list-queries.ts; xuất lại để chỗ gọi cũ giữ nguyên
+export { findThread, listThreads, listThreadsPage, type ThreadSummary } from "./thread-list-queries.js";
+
 
 export type AttachmentRow = {
   id: number;
@@ -28,6 +23,7 @@ export type MessageRow = {
   threadType: ThreadKind;
   senderId: string;
   senderName: string | null;
+  senderAvatarUrl: string | null;
   isSelf: boolean;
   msgType: string;
   text: string;
@@ -38,60 +34,10 @@ export type MessageRow = {
   attachments: AttachmentRow[];
 };
 
-/** Danh sách hội thoại, mới nhất trước. `query` lọc theo tên (bỏ dấu) hoặc đúng id. */
-export function listThreads(db: DatabaseSync, opts: { query?: string; limit: number }): ThreadSummary[] {
-  return listThreadsPage(db, { ...opts, offset: 0 }).threads;
-}
-
-/** Như `listThreads` nhưng có phân trang và tổng số (cho dashboard) */
-export function listThreadsPage(
-  db: DatabaseSync,
-  opts: { query?: string; limit: number; offset: number },
-): { threads: ThreadSummary[]; total: number } {
-  // Lọc tên bằng JS vì cần bỏ dấu cả hai phía; vài nghìn hội thoại vẫn nhanh.
-  const rows = db
-    .prepare(
-      `SELECT thread_id, thread_type, name, is_friend, last_message_at FROM threads
-       ORDER BY last_message_at IS NULL, last_message_at DESC`,
-    )
-    .all() as Array<Record<string, unknown>>;
-
-  const raw = opts.query?.trim() ?? "";
-  const needle = foldVietnameseForSearch(raw);
-  const filtered = raw
-    ? rows.filter((r) => r.thread_id === raw || foldVietnameseForSearch(String(r.name ?? "")).includes(needle))
-    : rows;
-  const page = filtered.slice(opts.offset, opts.offset + opts.limit).map((r) => toThreadSummary(db, r));
-  return { threads: page, total: filtered.length };
-}
-
-/** Hội thoại theo đúng id; null nếu kho chưa từng thấy hội thoại này */
-export function findThread(db: DatabaseSync, threadId: string): ThreadSummary | null {
-  const row = db
-    .prepare(
-      `SELECT thread_id, thread_type, name, is_friend, last_message_at FROM threads
-       WHERE thread_id = ? ORDER BY last_message_at DESC LIMIT 1`,
-    )
-    .get(threadId) as Record<string, unknown> | undefined;
-  return row ? toThreadSummary(db, row) : null;
-}
-
-function toThreadSummary(db: DatabaseSync, r: Record<string, unknown>): ThreadSummary {
-  const count = db
-    .prepare("SELECT COUNT(*) AS n FROM messages WHERE thread_id = ? AND thread_type = ?")
-    .get(String(r.thread_id), String(r.thread_type)) as { n: number };
-  return {
-    threadId: String(r.thread_id),
-    threadType: r.thread_type as ThreadKind,
-    name: (r.name as string | null) ?? null,
-    isFriend: r.is_friend === 1,
-    lastMessageAt: (r.last_message_at as string | null) ?? null,
-    messageCount: Number(count.n),
-  };
-}
-
 const MESSAGE_COLUMNS = `m.id, m.msg_id, m.thread_id, m.thread_type, m.sender_id, m.sender_name, m.is_self,
-  m.msg_type, m.text, m.quote_msg_id, m.sent_at, m.recalled_at, m.source`;
+  m.msg_type, m.text, m.quote_msg_id, m.sent_at, m.recalled_at, m.source, c.avatar_url AS sender_avatar_url`;
+/** Avatar người gửi lấy từ danh bạ người */
+const SENDER_JOIN = "LEFT JOIN contacts c ON c.user_id = m.sender_id";
 
 /**
  * Tin của một hội thoại theo thứ tự thời gian. Phân trang lùi: `beforeId` là id
@@ -108,7 +54,7 @@ export function readThread(
     : undefined;
   const rows = db
     .prepare(
-      `SELECT ${MESSAGE_COLUMNS} FROM messages m
+      `SELECT ${MESSAGE_COLUMNS} FROM messages m ${SENDER_JOIN}
        WHERE m.thread_id = :threadId AND m.thread_type = :threadType
          AND (:cursorAt IS NULL OR m.sent_at < :cursorAt OR (m.sent_at = :cursorAt AND m.id < :cursorId))
        ORDER BY m.sent_at DESC, m.id DESC
@@ -133,7 +79,7 @@ export function searchMessages(
   if (!match) return [];
   const rows = db
     .prepare(
-      `SELECT ${MESSAGE_COLUMNS} FROM messages_fts f JOIN messages m ON m.id = f.rowid
+      `SELECT ${MESSAGE_COLUMNS} FROM messages_fts f JOIN messages m ON m.id = f.rowid ${SENDER_JOIN}
        WHERE messages_fts MATCH :match
          AND (:threadId IS NULL OR m.thread_id = :threadId)
          AND (:fromIso IS NULL OR m.sent_at >= :fromIso)
@@ -159,6 +105,7 @@ function toMessageRow(r: Record<string, unknown>): MessageRow {
     threadType: r.thread_type as ThreadKind,
     senderId: String(r.sender_id),
     senderName: (r.sender_name as string | null) ?? null,
+    senderAvatarUrl: (r.sender_avatar_url as string | null) ?? null,
     isSelf: r.is_self === 1,
     msgType: String(r.msg_type),
     text: String(r.text),

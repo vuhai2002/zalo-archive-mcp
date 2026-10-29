@@ -98,3 +98,25 @@ export function getAttachment(db: DatabaseSync, id: number): Record<string, unkn
       .get(id) as Record<string, unknown> | undefined) ?? null
   );
 }
+
+/**
+ * File từng bị chặn vì host lạ, nay host đã được thêm vào danh sách cho phép
+ * (vd file Zalo ở dlfl.vn): đưa về hàng đợi tải lại từ đầu. Chạy lúc khởi động.
+ */
+export function requeueNowAllowedAttachments(db: DatabaseSync, isAllowed: (url: string) => boolean): number {
+  const rows = db.prepare("SELECT id, remote_url FROM attachments WHERE status = 'blocked_host'").all() as Array<{
+    id: number;
+    remote_url: string;
+  }>;
+  const stmt = db.prepare(
+    "UPDATE attachments SET status = 'pending', attempts = 0, last_error = NULL, next_attempt_at = NULL WHERE id = ?",
+  );
+  let n = 0;
+  for (const r of rows) {
+    if (isAllowed(r.remote_url)) {
+      stmt.run(r.id);
+      n++;
+    }
+  }
+  return n;
+}

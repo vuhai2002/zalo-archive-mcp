@@ -174,4 +174,74 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE outbox ADD COLUMN deferred_until TEXT;
   `,
+  // 5: avatar + danh bạ người (tên, avatar của bạn bè và người lạ đã nhắn), sticker thành
+  // đính kèm tải về kho. attachments dựng lại để thêm loại 'sticker' vào CHECK.
+  `
+  ALTER TABLE threads ADD COLUMN avatar_url TEXT;
+
+  CREATE TABLE contacts (
+    user_id      TEXT PRIMARY KEY,
+    display_name TEXT,
+    avatar_url   TEXT,
+    updated_at   TEXT NOT NULL,
+    lookup_at    TEXT
+  );
+
+  -- Ảnh của từng sticker hỏi từ Zalo một lần rồi dùng lại
+  CREATE TABLE sticker_catalog (
+    sticker_id INTEGER PRIMARY KEY,
+    image_url  TEXT,
+    status     TEXT NOT NULL CHECK (status IN ('ok', 'failed')),
+    fetched_at TEXT NOT NULL
+  );
+
+  CREATE TABLE attachments_v5 (
+    id              INTEGER PRIMARY KEY,
+    msg_id          TEXT NOT NULL REFERENCES messages (msg_id),
+    kind            TEXT NOT NULL CHECK (kind IN ('photo', 'video', 'file', 'voice', 'gif', 'sticker')),
+    remote_url      TEXT NOT NULL,
+    file_name       TEXT,
+    declared_size   INTEGER,
+    status          TEXT NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending', 'downloading', 'done', 'failed', 'too_large', 'blocked_host')),
+    local_path      TEXT,
+    sha256          TEXT,
+    size_bytes      INTEGER,
+    mime            TEXT,
+    attempts        INTEGER NOT NULL DEFAULT 0,
+    last_error      TEXT,
+    next_attempt_at TEXT,
+    created_at      TEXT NOT NULL,
+    fetched_at      TEXT,
+    UNIQUE (msg_id, remote_url)
+  );
+  INSERT INTO attachments_v5 SELECT id, msg_id, kind, remote_url, file_name, declared_size, status, local_path,
+    sha256, size_bytes, mime, attempts, last_error, next_attempt_at, created_at, fetched_at FROM attachments;
+  DROP TABLE attachments;
+  ALTER TABLE attachments_v5 RENAME TO attachments;
+  CREATE INDEX attachments_queue ON attachments (status, next_attempt_at);
+  CREATE INDEX messages_msg_type ON messages (msg_type);
+  `,
+  // 6: bù cho kho có tin TRƯỚC bước 5: người gửi cũ vào danh bạ để được hỏi avatar,
+  // và nhóm đã hỏi tên (trước khi có cột avatar) được hỏi lại ngay thay vì chờ 24 giờ
+  `
+  INSERT OR IGNORE INTO contacts (user_id, display_name, updated_at)
+    SELECT sender_id, MAX(CASE WHEN is_self = 0 THEN sender_name END), MAX(received_at)
+    FROM messages GROUP BY sender_id;
+  INSERT OR IGNORE INTO contacts (user_id, display_name, updated_at)
+    SELECT thread_id, name, updated_at FROM threads WHERE thread_type = 'user' AND last_message_at IS NOT NULL;
+  UPDATE threads SET name_lookup_at = NULL WHERE thread_type = 'group' AND avatar_url IS NULL;
+  `,
+  // 7: thành viên THẬT của nhóm (từ Zalo), để ghép avatar nhóm đúng như Zalo - kể cả
+  // người chưa từng nhắn. Nhóm cũ được hỏi lại ngay để lấy danh sách thành viên.
+  `
+  CREATE TABLE group_members (
+    group_id TEXT NOT NULL,
+    user_id  TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    PRIMARY KEY (group_id, user_id)
+  );
+  ALTER TABLE threads ADD COLUMN member_count INTEGER;
+  UPDATE threads SET name_lookup_at = NULL WHERE thread_type = 'group';
+  `,
 ];

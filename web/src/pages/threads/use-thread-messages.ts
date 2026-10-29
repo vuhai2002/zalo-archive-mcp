@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ArchivedMessage, ThreadSummary } from "../../archive-api-types";
+import type { ArchivedMessage, ThreadMessagesResponse } from "../../archive-api-types";
 import { api, errorText } from "../../dashboard-api-client";
 
 const PAGE_SIZE = 50;
@@ -23,7 +23,7 @@ function mergeLatest(current: ArchivedMessage[], latest: ArchivedMessage[]): Arc
  * hoặc giấu nút sớm nếu server đếm khác cách web đếm.
  */
 export function useThreadMessages(threadId: string) {
-  const [thread, setThread] = useState<ThreadSummary | null>(null);
+  const [thread, setThread] = useState<ThreadMessagesResponse["thread"] | null>(null);
   const [messages, setMessages] = useState<ArchivedMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
