@@ -35,8 +35,10 @@ describe("evaluateSendPolicy - tin lẻ (người dùng chốt: thả cửa)", (
     assert.equal(evaluateSendPolicy(base({ lastAttemptAt: new Date(NOW.getTime() - 3_000) })).action, "send");
   });
 
-  it("kill switch chặn cả tin lẻ", () => {
-    assert.equal(evaluateSendPolicy(base({ killed: true, killReason: "x" })).action, "wait");
+  it("kill switch chặn cả tin lẻ, và kiểm lại sau 2 giây để mở khóa là tin đi ngay", () => {
+    const d = evaluateSendPolicy(base({ killed: true, killReason: "x" }));
+    assert.equal(d.action, "wait");
+    assert.equal(d.action === "wait" && Date.parse(d.retryAt) - NOW.getTime(), 2_000);
   });
 });
 

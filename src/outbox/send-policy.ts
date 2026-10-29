@@ -39,9 +39,13 @@ export type SendDecision =
   | { action: "wait"; scope: "item" | "global"; retryAt: string; reason: string }
   | { action: "reject"; reason: string };
 
+export const KILL_RECHECK_MS = 2_000;
+
 export function evaluateSendPolicy(i: SendPolicyInput): SendDecision {
   if (i.killed) {
-    return { action: "wait", scope: "global", retryAt: plusMs(i.now, 60_000), reason: `kill switch đang khóa: ${i.killReason ?? ""}` };
+    // Kiểm lại sau 2 giây: chỉ là đọc DB trên máy, không gọi Zalo. Mở khóa (dashboard hay
+    // `pnpm outbox unkill`, kể cả từ tiến trình khác) là tin đang chờ đi ngay sau đó.
+    return { action: "wait", scope: "global", retryAt: plusMs(i.now, KILL_RECHECK_MS), reason: `kill switch đang khóa: ${i.killReason ?? ""}` };
   }
 
   if (i.mode === "batch") {
