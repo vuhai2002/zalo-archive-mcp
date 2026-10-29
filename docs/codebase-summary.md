@@ -6,9 +6,9 @@
 | `src/config/` | `env-schema.ts` (zod, mọi núm chỉnh + mặc định an toàn), `env.ts` (nạp `.env` từ gốc project), `account-paths.ts` (thư mục mỗi nick), `app-secrets-store.ts` (khóa tự sinh) |
 | `src/accounts/` | `zalo-account-registry.ts` (danh sách nick + nick đang dùng, `data/accounts.json`), `load-or-import-account-registry.ts` (nhận thư mục bản cũ), `active-account-for-cli.ts` |
 | `src/archive/` | kiểu dữ liệu chung, nhật ký JSONL thô, `archive-event-ingestor.ts` (đường ghi dùng chung cho live và replay) |
-| `src/zalo/` | đăng nhập + credential mã hóa, chuẩn hóa sự kiện zca-js, listener + kế hoạch nối lại, đồng bộ danh bạ, khung offline replay / keepAlive |
+| `src/zalo/` | đăng nhập + credential mã hóa, chuẩn hóa sự kiện zca-js, listener + kế hoạch nối lại, đồng bộ danh bạ, khung offline replay / keepAlive; `mobile-sync/` (đồng bộ lịch sử từ điện thoại); `zca-renew-media-link-api.ts` + `renew-link-control-listener.ts` (xin lại link media, nhận link trả sau qua WS) |
 | `src/storage/` | mở DB + migration, ghi/đọc tin, FTS, đính kèm, sự kiện kết nối, outbox, cài đặt gửi, kill switch, trạng thái daemon |
-| `src/media/` | tải media: kiểm host, giới hạn cỡ, sha256, thử lại |
+| `src/media/` | tải media: kiểm host, giới hạn cỡ, sha256, thử lại; ảnh JXL sang PNG; xin lại link hết hạn (`media-link-renewer.ts`, lịch giãn nhịp `media-link-renew-schedule.ts`, dựng / đọc lời gọi `media-link-renewal-request.ts`) |
 | `src/mcp/` | MCP server, handler tool đọc + gửi (thuần, test trực tiếp), bọc nội dung không tin cậy, `active-account-tool-context.ts` (theo nick đang dùng) |
 | `src/outbox/` | nhận yêu cầu gửi (dùng chung MCP/dashboard), cổng gửi (thuần), vòng gửi, CLI |
 | `src/daemon/` | `zalo-account-manager.ts` (nick đang dùng, đổi nick, QR, nhịp đăng nhập), `zalo-session-manager.ts` (phiên một nick), `zalo-qr-login-flow.ts`, `zalo-login-cooldown.ts`, ghép các khối khi đã đăng nhập |

@@ -25,6 +25,7 @@ export function MessageBubble({
   first,
   last,
   onMediaLoad,
+  onMediaRetried,
 }: {
   msg: ArchivedMessage;
   isGroup: boolean;
@@ -34,6 +35,8 @@ export function MessageBubble({
   first: boolean;
   last: boolean;
   onMediaLoad: () => void;
+  /** Vừa bấm Thử lại trên một file hỏng */
+  onMediaRetried: () => void;
 }) {
   const self = msg.isSelf;
   const recalled = msg.recalledAt !== null;
@@ -86,7 +89,7 @@ export function MessageBubble({
             {showName && <div className="mb-1 px-1 text-[12px] text-chat-time">{name}</div>}
             <div className={`space-y-1 ${recalled ? "opacity-70" : ""}`}>
               {msg.attachments.map((att) => (
-                <MessageAttachmentView key={att.id} att={att} onMediaLoad={onMediaLoad} />
+                <MessageAttachmentView key={att.id} att={att} onMediaLoad={onMediaLoad} onRetried={onMediaRetried} />
               ))}
             </div>
             <MessageReactionPill reactions={msg.reactions} />
@@ -119,7 +122,7 @@ export function MessageBubble({
             {msg.attachments.length > 0 && (
               <div className={`space-y-1.5 ${hasText ? "mb-1.5" : ""}`}>
                 {msg.attachments.map((att) => (
-                  <MessageAttachmentView key={att.id} att={att} onMediaLoad={onMediaLoad} />
+                  <MessageAttachmentView key={att.id} att={att} onMediaLoad={onMediaLoad} onRetried={onMediaRetried} />
                 ))}
               </div>
             )}

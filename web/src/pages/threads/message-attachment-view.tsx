@@ -1,5 +1,7 @@
+import { useState } from "react";
 import type { AttachmentInfo } from "../../archive-api-types";
-import { IconDownload, IconFileText, IconImage } from "../../shared/action-and-media-icons";
+import { api, errorText } from "../../dashboard-api-client";
+import { IconDownload, IconFileText, IconImage, IconRefresh } from "../../shared/action-and-media-icons";
 import { mediaStatusLabel } from "../../shared/archive-status-labels";
 import { formatFileSize } from "../../shared/format-file-size";
 
@@ -47,19 +49,71 @@ function canOpenInNewTab(mime: string | null): boolean {
   return !mime || !mime.toLowerCase().includes("svg");
 }
 
-export function MessageAttachmentView({ att, onMediaLoad }: { att: AttachmentInfo; onMediaLoad?: () => void }) {
+/** Nhãn trạng thái của file chưa xem được; link hết hạn có nhãn riêng */
+function pendingLabel(att: AttachmentInfo, retried: boolean): string {
+  if (retried || att.renewState === "waiting") return "Đang xin lại link";
+  if (att.renewState === "gave_up") return "Link hết hạn, Zalo không cấp lại";
+  return mediaStatusLabel(att.status);
+}
+
+/** File chưa xem được: tên + trạng thái; tải hỏng thì có nút Thử lại (xin lại link rồi tải) */
+function UnavailableAttachment({ att, name, onRetried }: { att: AttachmentInfo; name: string; onRetried?: () => void }) {
+  // Nhớ đúng bản `att` lúc bấm: kho trả trạng thái mới (object mới) thì hiện theo trạng thái thật
+  const [retriedAtt, setRetriedAtt] = useState<AttachmentInfo | null>(null);
+  const retried = retriedAtt === att;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const canRetry = att.status === "failed" && !retried;
+
+  async function retry() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.attachmentRetry(att.id);
+      setRetriedAtt(att);
+      onRetried?.();
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-black/15 bg-bubble px-3 py-2 text-[13px] text-chat-time dark:border-white/15">
+      {isImageKind(att.kind) ? <IconImage size={16} /> : <IconFileText size={16} />}
+      <span className="min-w-0 truncate">{name}</span>
+      <span className="shrink-0 text-[12px]">· {pendingLabel(att, retried)}</span>
+      {canRetry && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={retry}
+          title="Xin Zalo cấp lại link rồi tải lại file"
+          className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] font-medium text-zalo-500 hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
+        >
+          <IconRefresh size={13} /> {busy ? "Đang gửi..." : "Thử lại"}
+        </button>
+      )}
+      {error && <span className="w-full text-[12px] text-red-600 dark:text-red-400">{error}</span>}
+    </div>
+  );
+}
+
+export function MessageAttachmentView({
+  att,
+  onMediaLoad,
+  onRetried,
+}: {
+  att: AttachmentInfo;
+  onMediaLoad?: () => void;
+  /** Vừa bấm Thử lại thành công: khung chat hỏi lại kho sau một lúc */
+  onRetried?: () => void;
+}) {
   const url = att.status === "done" ? sameOriginUrl(att.url) : null;
   const name = att.fileName ?? KIND_LABEL[att.kind];
 
-  if (!url) {
-    return (
-      <div className="flex items-center gap-2 rounded-lg border border-dashed border-black/15 bg-bubble px-3 py-2 text-[13px] text-chat-time dark:border-white/15">
-        {isImageKind(att.kind) ? <IconImage size={16} /> : <IconFileText size={16} />}
-        <span className="min-w-0 truncate">{name}</span>
-        <span className="shrink-0 text-[12px]">· {mediaStatusLabel(att.status)}</span>
-      </div>
-    );
-  }
+  if (!url) return <UnavailableAttachment att={att} name={name} onRetried={onRetried} />;
 
   if (att.kind === "sticker") {
     // Sticker hiện như Zalo: ảnh nhỏ, không khung

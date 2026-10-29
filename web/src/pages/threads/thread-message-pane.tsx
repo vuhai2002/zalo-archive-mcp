@@ -55,6 +55,12 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
     setTimeout(() => void refreshLatest(), 2_000);
   }, [refreshLatest]);
 
+  // Xin lại link + tải lại mất vài giây (lâu hơn nếu phải chờ lượt): hỏi lại kho hai nhịp
+  const afterMediaRetried = useCallback(() => {
+    setTimeout(() => void refreshLatest(), 6_000);
+    setTimeout(() => void refreshLatest(), 20_000);
+  }, [refreshLatest]);
+
   const onMediaLoad = useCallback(() => {
     const el = scrollRef.current;
     if (el && stickToBottom.current) el.scrollTop = el.scrollHeight;
@@ -141,6 +147,7 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
               first={layouts[i]!.firstInGroup}
               last={layouts[i]!.lastInGroup}
               onMediaLoad={onMediaLoad}
+              onMediaRetried={afterMediaRetried}
             />
           </Fragment>
         ))}

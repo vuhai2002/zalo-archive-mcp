@@ -33,6 +33,13 @@ dùng ghi ở `data/accounts.json`); daemon, MCP và lệnh CLI đều theo nick
    hồi tới trước, cập nhật hội thoại.
 4. `media-download-worker.ts` tải từng đính kèm (chỉ host CDN Zalo, kiểm mỗi bước redirect),
    lưu theo sha256.
+5. Link hết hạn (403/404/410, hoặc CDN trả 200 kèm trang báo hết hạn): `media-link-renewer.ts`
+   xin Zalo cấp lại link qua `renewlink` (cmd 12094, tham số như bước chuyển tiếp của Zalo Web:
+   file 1 / ảnh 2 / video 5). Zalo thường trả `{async: true}` rồi gửi link qua sự kiện điều khiển
+   WS cmd 601 `act = "renew_link"` - `renew-link-control-listener.ts` đọc thẳng khung WS (zca-js bỏ
+   qua sự kiện này), ghép theo link gốc, chờ tối đa 30 giây. Mỗi file một lần tự động; các lệnh
+   cách nhau ngẫu nhiên 4-10 giây, trần 200/ngày (lượt cấp lúc xếp hàng, quá trần sang ngày sau).
+   Dashboard có nút "Thử lại" trên file hỏng.
 
 Parser sai: sửa code, `pnpm replay-journal` dựng lại (giữ `source`/`received_at` của lần đầu).
 

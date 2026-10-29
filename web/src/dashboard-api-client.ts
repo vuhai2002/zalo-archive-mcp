@@ -96,6 +96,7 @@ export const api = {
   mobileSync: () => request<MobileSyncResponse>("/api/mobile-sync"),
   mobileSyncStart: (body: MobileSyncStartRequest) => post<MobileSyncResponse>("/api/mobile-sync/start", body),
   mobileSyncCancel: () => post<MobileSyncResponse>("/api/mobile-sync/cancel"),
+  attachmentRetry: (id: number) => post<{ ok: true }>(`/api/attachments/${id}/retry`),
 
   overview: (days: number) => request<OverviewResponse>(withQuery("/api/overview", { days })),
 

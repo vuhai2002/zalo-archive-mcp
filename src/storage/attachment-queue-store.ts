@@ -7,6 +7,10 @@ export type PendingAttachment = {
   remoteUrl: string;
   fileName: string | null;
   attempts: number;
+  /** Tới lượt xin Zalo cấp lại link trước khi tải */
+  needsRenew: boolean;
+  /** Đã xin lại link lúc nào (null = chưa từng) */
+  renewedAt: string | null;
 };
 
 /**
@@ -22,7 +26,7 @@ export function claimNextAttachment(db: DatabaseSync, nowIso: string): PendingAt
          WHERE status = 'pending' AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
          ORDER BY id LIMIT 1
        )
-       RETURNING id, msg_id, kind, remote_url, file_name, attempts`,
+       RETURNING id, msg_id, kind, remote_url, file_name, attempts, needs_renew, renewed_at`,
     )
     .get(nowIso) as Record<string, unknown> | undefined;
   if (!row) return null;
@@ -33,6 +37,8 @@ export function claimNextAttachment(db: DatabaseSync, nowIso: string): PendingAt
     remoteUrl: String(row.remote_url),
     fileName: (row.file_name as string | null) ?? null,
     attempts: Number(row.attempts),
+    needsRenew: Number(row.needs_renew) === 1,
+    renewedAt: (row.renewed_at as string | null) ?? null,
   };
 }
 

@@ -4,6 +4,9 @@ import { ThreadType, type API } from "zca-js";
 import type { AccountPaths } from "../config/account-paths.js";
 import type { AppEnv } from "../config/env-schema.js";
 import { MediaDownloadWorker } from "../media/media-download-worker.js";
+import { MediaLinkRenewer } from "../media/media-link-renewer.js";
+import { attachRenewLinkListener, RenewLinkReplyWaiter } from "../zalo/renew-link-control-listener.js";
+import { installRenewMediaLinkApi } from "../zalo/zca-renew-media-link-api.js";
 import { OutboxSender } from "../outbox/outbox-sender-loop.js";
 import { setMeta } from "../storage/thread-directory-store.js";
 import path from "node:path";
@@ -77,7 +80,38 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
 
 
   if (env.MEDIA_DOWNLOAD_ENABLED) {
+    const renewLog = log.child({ part: "media-renew" });
+    const replies = new RenewLinkReplyWaiter();
+    if (env.MEDIA_RENEW_ENABLED) {
+      stops.push(
+        attachRenewLinkListener(
+          api,
+          (results) => {
+            const matched = replies.deliver(results);
+            renewLog.info({ results: results.length, matched, keys: results.map((r) => r.key.slice(0, 120)) }, "Zalo trả link qua WebSocket");
+          },
+          (err) => renewLog.warn({ err }, "Không đọc được sự kiện renew_link"),
+        ),
+      );
+    }
+    const renewer = env.MEDIA_RENEW_ENABLED
+      ? new MediaLinkRenewer({
+          db,
+          replies,
+          call: installRenewMediaLinkApi(api),
+          pacing: {
+            minGapSeconds: env.MEDIA_RENEW_MIN_GAP_SECONDS,
+            maxGapSeconds: env.MEDIA_RENEW_MAX_GAP_SECONDS,
+            dailyCap: env.MEDIA_RENEW_DAILY_CAP,
+            timeZone: env.ARCHIVE_TIMEZONE,
+          },
+          log: renewLog,
+        })
+      : undefined;
+    const requeued = renewer?.requeueExpired(new Date()) ?? 0;
+    if (requeued > 0) log.info({ requeued }, "Đã xếp lượt xin lại link cho file hỏng vì link hết hạn");
     const media = new MediaDownloadWorker({
+      renewer,
       db,
       mediaDir: d.paths.mediaDir,
       log: log.child({ part: "media" }),

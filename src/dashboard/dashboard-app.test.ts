@@ -95,4 +95,19 @@ describe("dashboard API", () => {
     s.db.prepare("UPDATE attachments SET local_path = '../../credentials.enc' WHERE id = 1").run();
     assert.equal((await s.call("/api/media/1", { cookie })).status, 404, "không thoát khỏi thư mục media");
   });
+
+  it("Thử lại file tải hỏng: đưa vào hàng xin lại link; file chưa hỏng 409, file lạ 404", async () => {
+    const s = await setup();
+    const cookie = await login(s);
+    const retry = (id: number) => s.call(`/api/attachments/${id}/retry`, { ...s.json({}), cookie });
+    assert.equal((await retry(1)).status, 409, "file đang chờ tải thì không cần thử lại");
+    assert.equal((await retry(99)).status, 404);
+    s.db.prepare("UPDATE attachments SET status = 'failed', last_error = 'HTTP 404', renewed_at = '2026-10-28T04:00:00.000Z'").run();
+    const thread = async () =>
+      ((await (await s.call("/api/threads/u-lan/messages", { cookie })).json()) as { messages: Array<{ attachments: unknown[] }> })
+        .messages[0]!.attachments[0] as { status: string; renewState: string | null };
+    assert.deepEqual(await thread().then((a) => [a.status, a.renewState]), ["failed", "gave_up"]);
+    assert.equal((await retry(1)).status, 200);
+    assert.deepEqual(await thread().then((a) => [a.status, a.renewState]), ["pending", "waiting"]);
+  });
 });

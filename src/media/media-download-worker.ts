@@ -9,6 +9,7 @@ import {
   type PendingAttachment,
 } from "../storage/attachment-queue-store.js";
 import { downloadToTempFile, type DownloadOutcome } from "./download-to-file.js";
+import type { MediaLinkRenewer } from "./media-link-renewer.js";
 import { chooseExtension, mediaRelativePath } from "./media-file-naming.js";
 import { placeDownloadedFile, saveJxlPhotoAsPng, type SavedMedia } from "./save-jxl-photo-as-png.js";
 import { convertJxlToPng, looksLikeJxl, zaloJxlVariantUrl } from "./zalo-jxl-photo.js";
@@ -25,6 +26,8 @@ export type MediaWorkerOptions = {
   now?: () => Date;
   /** Đổi ảnh JXL sang PNG; test thay bằng bản giả để khỏi nạp WASM */
   convertJxl?: (bytes: Uint8Array) => Uint8Array;
+  /** Xin Zalo cấp lại link khi link hết hạn; không có thì link hết hạn là hỏng hẳn */
+  renewer?: MediaLinkRenewer;
 };
 
 const IDLE_MS = 10_000;
@@ -35,7 +38,8 @@ const RETRY_BASE_MS = 60_000;
  * băng thông). URL Zalo có thể hết hạn nên tải sớm là việc chính; tuổi thọ
  * thật chưa đo - đo trên nick phụ rồi chỉnh MEDIA_MAX_ATTEMPTS và nhịp thử lại.
  *
- * Còn thiếu (chờ số đo): làm mới URL hết hạn qua renewlink như Zalo Web.
+ * Link hết hạn (tin cũ từ điện thoại, lấy bù, file hỏng lâu) thì xin Zalo cấp lại
+ * link mới như Zalo Web, mỗi file một lần, theo lượt đã giãn nhịp (`renewer`).
  */
 export class MediaDownloadWorker {
   private timer: ReturnType<typeof setTimeout> | null = null;
@@ -84,6 +88,13 @@ export class MediaDownloadWorker {
   }
 
   private async download(item: PendingAttachment, now: Date): Promise<number> {
+    if (item.needsRenew && this.o.renewer) {
+      const renewed = await this.o.renewer.renew(item, now);
+      if (renewed.kind === "wait") return 0;
+      if (renewed.kind === "failed") return 1_000;
+      item = { ...item, remoteUrl: renewed.url, renewedAt: now.toISOString() };
+    }
+
     let result = await this.fetchToTemp(item.remoteUrl);
     let jxlError: string | null = null;
     // Bản JPG trên CDN ảnh Zalo hỏng (Zalo giữ gốc ở JXL, khâu đổi ra JPG lỗi): thử bản JXL gốc
@@ -100,7 +111,9 @@ export class MediaDownloadWorker {
 
     if (!result.ok) {
       // Ghi kèm "JXL" khi đã thử: lần khởi động sau không xếp lại ảnh này lần nữa
-      const error = jxlError ? `${result.error} (bản JXL: ${jxlError})` : result.error;
+      let error = jxlError ? `${result.error} (bản JXL: ${jxlError})` : result.error;
+      if (result.expired && this.o.renewer?.scheduleAfterExpiry(item, error, now)) return 1_000;
+      if (result.expired && item.renewedAt) error = `Link đã xin lại vẫn hỏng: ${error}`;
       this.retryOrFail(item, now, { ...result, error });
       this.o.log.warn({ id: item.id, kind: item.kind, error, attempts: item.attempts }, "Tải media hỏng");
       return 1_000;

@@ -89,6 +89,8 @@ export type AttachmentInfo = {
   /** Có khi status = "done": GET url này (cùng cookie) để xem/tải file */
   url: string | null;
   mime: string | null;
+  /** Link hết hạn: "waiting" = đang chờ lượt xin Zalo cấp lại; "gave_up" = đã xin mà vẫn không tải được */
+  renewState: "waiting" | "gave_up" | null;
 };
 
 export type ArchivedMessage = {

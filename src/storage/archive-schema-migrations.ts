@@ -276,4 +276,11 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   `
   CREATE INDEX messages_thread_cli ON messages (thread_id, cli_msg_id);
   `,
+  // 11: link media hết hạn thì xin Zalo cấp lại (renewlink) rồi tải lại - mỗi file một lần.
+  // needs_renew = chờ tới lượt xin; original_url = link gốc trước khi được cấp lại.
+  `
+  ALTER TABLE attachments ADD COLUMN needs_renew INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE attachments ADD COLUMN renewed_at TEXT;
+  ALTER TABLE attachments ADD COLUMN original_url TEXT;
+  `,
 ];

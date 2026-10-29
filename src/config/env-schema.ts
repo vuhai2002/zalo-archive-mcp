@@ -69,6 +69,12 @@ export const envSchema = z
           .filter(Boolean),
       )
       .refine((list) => list.length > 0, "cần ít nhất một host"),
+    // Link media hết hạn thì xin Zalo cấp lại (như Zalo Web), mỗi file một lần. Các lệnh
+    // cách nhau ngẫu nhiên [MIN, MAX] giây, tối đa DAILY_CAP lệnh mỗi ngày - quá thì để ngày sau.
+    MEDIA_RENEW_ENABLED: flag(true),
+    MEDIA_RENEW_MIN_GAP_SECONDS: int(4, 1, 3600),
+    MEDIA_RENEW_MAX_GAP_SECONDS: int(10, 1, 3600),
+    MEDIA_RENEW_DAILY_CAP: int(200, 1, 10000),
 
     // Cổng gửi - MẶC ĐỊNH (dashboard sửa được, phần sửa lưu trong DB và đè lên đây).
     // Tin lẻ: chỉ cách nhau tối thiểu vài giây. Lô (gửi nhiều người): nhịp ngẫu nhiên,
@@ -98,6 +104,10 @@ export const envSchema = z
   .refine((e) => e.RECONNECT_BASE_DELAY_SECONDS <= e.RECONNECT_MAX_DELAY_SECONDS, {
     message: "RECONNECT_BASE_DELAY_SECONDS phải <= RECONNECT_MAX_DELAY_SECONDS",
     path: ["RECONNECT_BASE_DELAY_SECONDS"],
+  })
+  .refine((e) => e.MEDIA_RENEW_MIN_GAP_SECONDS <= e.MEDIA_RENEW_MAX_GAP_SECONDS, {
+    message: "MEDIA_RENEW_MIN_GAP_SECONDS phải <= MEDIA_RENEW_MAX_GAP_SECONDS",
+    path: ["MEDIA_RENEW_MIN_GAP_SECONDS"],
   });
 
 export type AppEnv = z.infer<typeof envSchema>;

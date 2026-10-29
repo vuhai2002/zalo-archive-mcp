@@ -17,6 +17,10 @@ export type AttachmentRow = {
   localPath: string | null;
   sizeBytes: number | null;
   mime: string | null;
+  /** Đang chờ lượt xin Zalo cấp lại link */
+  renewPending: boolean;
+  /** Đã xin lại link (thành công hay không) */
+  renewed: boolean;
 };
 
 export type MessageRow = {
@@ -134,7 +138,8 @@ function withAttachments(db: DatabaseSync, messages: MessageRow[]): MessageRow[]
   const reactions = reactionSummaries(db, messages.map((m) => m.msgId), getMeta(db, "self_uid"));
   for (const m of messages) m.reactions = reactions.get(m.msgId) ?? [];
   const stmt = db.prepare(
-    "SELECT id, msg_id, kind, status, file_name, local_path, size_bytes, mime FROM attachments WHERE msg_id = ? ORDER BY id",
+    `SELECT id, msg_id, kind, status, file_name, local_path, size_bytes, mime, needs_renew, renewed_at
+     FROM attachments WHERE msg_id = ? ORDER BY id`,
   );
   for (const m of messages) {
     m.attachments = (stmt.all(m.msgId) as Array<Record<string, unknown>>).map((a) => ({
@@ -145,6 +150,8 @@ function withAttachments(db: DatabaseSync, messages: MessageRow[]): MessageRow[]
       localPath: (a.local_path as string | null) ?? null,
       sizeBytes: a.size_bytes === null ? null : Number(a.size_bytes),
       mime: (a.mime as string | null) ?? null,
+      renewPending: Number(a.needs_renew) === 1,
+      renewed: a.renewed_at !== null,
     }));
   }
   return messages;

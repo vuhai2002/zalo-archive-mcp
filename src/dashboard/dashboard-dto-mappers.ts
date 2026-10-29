@@ -33,6 +33,7 @@ export function toArchivedMessage(m: MessageRow): ArchivedMessage {
         sizeBytes: a.sizeBytes,
         url: a.status === "done" ? `/api/media/${a.id}` : null,
         mime: a.mime,
+        renewState: a.renewPending ? "waiting" : a.renewed && a.status === "failed" ? "gave_up" : null,
       }),
     ),
   };
