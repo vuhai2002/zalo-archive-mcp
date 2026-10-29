@@ -1,0 +1,23 @@
+node_modules/
+dist/
+
+# Dữ liệu thật: tin nhắn, media, DB, cookie mã hóa, nhật ký sự kiện. KHÔNG BAO GIỜ commit.
+data/
+*.db
+*.db-wal
+*.db-shm
+*.enc
+*.jsonl
+
+# Biến môi trường thật
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+*.log
+.DS_Store
+web/dist/
+
+# Ghi chép nghiên cứu / kế hoạch nội bộ, chỉ để trên máy
+plans/

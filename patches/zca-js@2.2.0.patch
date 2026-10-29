@@ -1,0 +1,26 @@
+diff --git a/dist/apis/listen.js b/dist/apis/listen.js
+index ce5d95e1ea1791f5225e7d4a6f2cd734f0c2d67d..b79d86d3c9ed1f1f5ba84ce5eaf7c9d5d8043e52 100644
+--- a/dist/apis/listen.js
++++ b/dist/apis/listen.js
+@@ -172,7 +172,7 @@ export class Listener extends EventEmitter {
+                         ping();
+                     }, this.ctx.settings.features.socket.ping_interval);
+                 }
+-                if (version == 1 && cmd == 501 && subCmd == 0) {
++                if (version == 1 && [501, 551].includes(cmd) && subCmd == 0) {
+                     const parsedData = (await decodeEventData(parsed, this.cipherKey)).data;
+                     const { msgs } = parsedData;
+                     for (const msg of msgs) {
+diff --git a/dist/cjs/apis/listen.cjs b/dist/cjs/apis/listen.cjs
+index 1e8be5688e3684404b1452a4a2743db4d8a69fd6..24c7fe50ec91d621361ad6a385742697d9be861e 100644
+--- a/dist/cjs/apis/listen.cjs
++++ b/dist/cjs/apis/listen.cjs
+@@ -185,7 +185,7 @@ class Listener extends EventEmitter {
+                         ping();
+                     }, this.ctx.settings.features.socket.ping_interval);
+                 }
+-                if (version == 1 && cmd == 501 && subCmd == 0) {
++                if (version == 1 && [501, 551].includes(cmd) && subCmd == 0) {
+                     const parsedData = (await utils.decodeEventData(parsed, this.cipherKey)).data;
+                     const { msgs } = parsedData;
+                     for (const msg of msgs) {

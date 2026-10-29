@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Kho Zalo</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <!--
+      Gắn class .dark TRƯỚC khi React render: để cho useEffect thì trang vẽ một
+      khung sáng rồi mới tối lại, mắt thấy rõ cú nháy trắng mỗi lần tải.
+      Khóa localStorage phải khớp `KEY` trong src/shared/use-theme.ts.
+    -->
+    <script>
+      (function () {
+        try {
+          var luu = localStorage.getItem("zalo-archive-theme");
+          var toi = luu ? luu === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          if (toi) document.documentElement.classList.add("dark");
+        } catch (e) {
+          /* localStorage bị chặn (chế độ riêng tư): cứ để giao diện sáng */
+        }
+      })();
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

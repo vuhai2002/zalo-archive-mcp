@@ -1,0 +1,102 @@
+import { Link } from "react-router-dom";
+import type { OutboxItem } from "../../archive-api-types";
+import { createdByLabel, outboxStatusLabel, outboxStatusTone } from "../../shared/archive-status-labels";
+import { formatDateTime } from "../../shared/format-archive-time";
+import { ThreadKindBadge, threadDisplayName } from "../../shared/thread-kind-badge";
+import { Badge, btnClass } from "../../shared/ui-bits";
+
+export function OutboxItemCard({
+  item,
+  timeZone,
+  busy,
+  onApprove,
+  onCancel,
+}: {
+  item: OutboxItem;
+  timeZone: string;
+  busy: boolean;
+  onApprove: () => void;
+  onCancel: () => void;
+}) {
+  const canApprove = item.status === "draft";
+  const canCancel = item.status === "draft" || item.status === "approved";
+
+  return (
+    <li className="gc-card p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Link
+          to={`/threads/${encodeURIComponent(item.threadId)}`}
+          className="min-w-0 max-w-full truncate text-[15px] font-semibold text-ink hover:text-zalo-600 hover:underline"
+          title="Mở hội thoại"
+        >
+          {threadDisplayName(item.threadName)}
+        </Link>
+        <ThreadKindBadge threadType={item.threadType} />
+        <Badge tone={item.mode === "batch" ? "amber" : "gray"} dot={false}>
+          {item.mode === "batch" ? "Gửi lô" : "Tin lẻ"}
+        </Badge>
+        <span className="ml-auto">
+          <Badge tone={outboxStatusTone(item.status)}>{outboxStatusLabel(item.status)}</Badge>
+        </span>
+      </div>
+
+      <p className="mt-2.5 whitespace-pre-wrap rounded-lg bg-tile/50 px-3 py-2 text-[14px] leading-relaxed text-ink [overflow-wrap:anywhere]">
+        {item.text}
+      </p>
+
+      <dl className="mt-2.5 grid grid-cols-1 gap-x-4 gap-y-1 text-[12px] text-ink-soft sm:grid-cols-2">
+        <div>
+          <dt className="inline">Tạo: </dt>
+          <dd className="inline text-ink">
+            {formatDateTime(item.createdAt, timeZone)} · {createdByLabel(item.createdBy)}
+          </dd>
+        </div>
+        {item.notBefore && (
+          <div>
+            <dt className="inline">Gửi từ: </dt>
+            <dd className="inline text-ink">{formatDateTime(item.notBefore, timeZone)}</dd>
+          </div>
+        )}
+        {item.finishedAt && (
+          <div>
+            <dt className="inline">Xong lúc: </dt>
+            <dd className="inline text-ink">{formatDateTime(item.finishedAt, timeZone)}</dd>
+          </div>
+        )}
+        {item.batchId && (
+          <div className="min-w-0 truncate">
+            <dt className="inline">Lô: </dt>
+            <dd className="inline font-mono text-ink">{item.batchId}</dd>
+          </div>
+        )}
+        {item.note && (
+          <div className="sm:col-span-2">
+            <dt className="inline">Ghi chú: </dt>
+            <dd className="inline whitespace-pre-wrap text-ink [overflow-wrap:anywhere]">{item.note}</dd>
+          </div>
+        )}
+      </dl>
+
+      {item.error && (
+        <p className="mt-2 break-words rounded-lg bg-red-50 px-3 py-2 text-[12px] text-red-700 dark:bg-red-950/40 dark:text-red-300">
+          {item.error}
+        </p>
+      )}
+
+      {(canApprove || canCancel) && (
+        <div className="mt-3 flex flex-wrap justify-end gap-2">
+          {canCancel && (
+            <button type="button" className={btnClass("secondary", "sm")} disabled={busy} onClick={onCancel}>
+              Hủy
+            </button>
+          )}
+          {canApprove && (
+            <button type="button" className={btnClass("primary", "sm")} disabled={busy} onClick={onApprove}>
+              Duyệt
+            </button>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}

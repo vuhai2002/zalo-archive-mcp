@@ -1,0 +1,48 @@
+{
+  "name": "zalo-archive-mcp",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Kho lưu trữ toàn bộ tin nhắn + file của một tài khoản Zalo cá nhân, có dashboard web; Claude đọc và gửi tin qua MCP, mọi tin đi qua hàng đợi và cổng gửi ở daemon.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "login": "tsx --disable-warning=ExperimentalWarning src/bin/login-with-qr.ts",
+    "start": "tsx --disable-warning=ExperimentalWarning src/bin/run-archive-daemon.ts",
+    "mcp": "tsx --disable-warning=ExperimentalWarning src/bin/run-mcp-stdio-server.ts",
+    "outbox": "tsx --disable-warning=ExperimentalWarning src/bin/outbox-admin.ts",
+    "replay-journal": "tsx --disable-warning=ExperimentalWarning src/bin/replay-raw-journal.ts",
+    "test": "node --disable-warning=ExperimentalWarning --import tsx --test --test-timeout=60000 \"src/**/*.test.ts\" \"web/src/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p web",
+    "dev:web": "vite web",
+    "build:web": "vite build web",
+    "seed-demo": "tsx --disable-warning=ExperimentalWarning src/bin/seed-demo-archive.ts"
+  },
+  "packageManager": "pnpm@11.28.7+sha512.2161a30a2dc64b0c0f09786496fbce5f061be96b8ff11f0bc98e6bc675e0074ceb225b9197a278f2f171e6c9fb971bd1df8932e5bc31053baccdd52b15a1ae26",
+  "dependencies": {
+    "@hono/node-server": "^2.1.5",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "hono": "^4.13.14",
+    "luxon": "^3.7.2",
+    "pino": "^10.4.0",
+    "zca-js": "2.2.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/luxon": "^3.7.6",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.4",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  }
+}

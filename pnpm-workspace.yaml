@@ -1,0 +1,15 @@
+# pnpm v11 đọc các thiết lập supply-chain từ file này, KHÔNG đọc từ .npmrc
+minimumReleaseAge: 1440 # chờ 24h trước khi cài bản mới phát hành
+strictPeerDependencies: false # peer lệch phiên bản chỉ cảnh báo, không làm hỏng cài đặt
+audit:
+  level: moderate # pnpm audit báo từ mức moderate trở lên
+
+# Danh sách được chạy build script (pnpm v11 chặn mặc định).
+# SQLite dùng node:sqlite có sẵn nên không cần native dep nào.
+allowBuilds:
+  esbuild: true # binary của tsx
+
+# zca-js 2.2.0 trên npm bỏ sót tin 1-1 tới bằng cmd 551 (chỉ xử lý 501). Bản vá chép đúng
+# sửa của PR #378 upstream (đã merge, chưa phát hành). Lên zca-js mới có sửa này thì gỡ patch.
+patchedDependencies:
+  zca-js@2.2.0: patches/zca-js@2.2.0.patch
