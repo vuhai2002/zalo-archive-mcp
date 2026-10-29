@@ -22,7 +22,7 @@ export type * from "./dashboard-auth-and-account-contract.js";
 // GET /api/overview?days=30
 export type DailyCount = { day: string /* YYYY-MM-DD theo timeZone */; incoming: number; outgoing: number };
 export type TopThread = { threadId: string; threadType: ThreadKind; name: string | null; messages: number };
-export type ListenerGap = { from: string; to: string | null; closeCode: number | null; suspected?: boolean };
+export type ListenerGap = { from: string; to: string | null; closeCode: number | null; suspected?: boolean; asleep?: boolean };
 export type ConnectionEvent = { at: string; kind: string; code: number | null; detail: string | null };
 
 export type OverviewResponse = {

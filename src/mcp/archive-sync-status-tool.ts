@@ -14,7 +14,7 @@ const GAP_LOOKBACK_DAYS = 7;
  * trong đó có thể thiếu), media chưa tải, trạng thái cổng gửi. Model phải nói
  * với người dùng "có thể thiếu tin" thay vì khẳng định "không có tin nào".
  */
-export function syncStatusTool(ctx: ReadToolContext): ToolResult {
+export function syncStatusTool(ctx: ReadToolContext & { readonly readOnly: boolean }): ToolResult {
   const { db, env } = ctx;
   const tz = env.ARCHIVE_TIMEZONE;
   const t = (iso: string | null) => formatLocalTime(iso, tz);
@@ -53,13 +53,16 @@ export function syncStatusTool(ctx: ReadToolContext): ToolResult {
     `Listener: heartbeat cuối ${t(heartbeat)}.`,
     gaps.length
       ? `Khoảng KHÔNG nghe trong ${GAP_LOOKBACK_DAYS} ngày (tin trong đó có thể thiếu):\n${gaps
-          .map((g) => `  - ${t(g.from)} -> ${g.to ? t(g.to) : "HIỆN VẪN CHƯA NỐI LẠI"}${g.closeCode !== null ? ` (mã ${g.closeCode})` : ""}${g.suspected ? " (heartbeat đã cũ - nhiều khả năng daemon không chạy)" : ""}`)
+          .map((g) => `  - ${t(g.from)} -> ${g.to ? t(g.to) : "HIỆN VẪN CHƯA NỐI LẠI"}${g.closeCode !== null ? ` (mã ${g.closeCode})` : ""}${g.asleep ? " (máy ngủ / daemon bị treo; tin trong khoảng này thường đã được Zalo gửi bù khi nối lại)" : ""}${g.suspected ? " (heartbeat đã cũ - nhiều khả năng daemon không chạy)" : ""}`)
           .join("\n")}`
       : `Không có khoảng thủng nào được ghi nhận trong ${GAP_LOOKBACK_DAYS} ngày.`,
     `Sự kiện kết nối gần nhất: ${events.map((e) => `${t(e.at)} ${e.kind}${e.code !== null ? `(${e.code})` : ""}`).join("; ") || "chưa có"}.`,
     `Media: ${Object.entries(media).map(([k, v]) => `${k}=${v}`).join(", ") || "chưa có"}.`,
     `Hàng đợi gửi: ${outbox.map((o) => `${o.status}=${o.n}`).join(", ") || "trống"}.`,
-    `Daemon: ${sessionState ?? "chưa từng chạy"} (running = đang gửi được); kill switch ${kill.killed ? `ĐANG KHÓA (${kill.reason})` : "mở"}.`,
+    // Nick Chỉ đọc: daemon chạy vẫn không gửi gì, nên không được để model hiểu "running" là gửi được
+    ctx.readOnly
+      ? `Daemon: ${sessionState ?? "chưa từng chạy"}. Nick này CHỈ ĐỌC: không soạn, không gửi tin nào (người dùng tự mở gửi trên dashboard).`
+      : `Daemon: ${sessionState ?? "chưa từng chạy"} (running = đang gửi được); kill switch ${kill.killed ? `ĐANG KHÓA (${kill.reason})` : "mở"}.`,
     "Lưu ý: kho chỉ có tin từ lúc bắt đầu chạy listener; tin cũ hơn chưa có.",
   ];
   return toolOk(lines.join("\n"));

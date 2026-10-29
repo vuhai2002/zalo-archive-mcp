@@ -61,7 +61,7 @@ export const envSchema = z
     MEDIA_DOWNLOAD_TIMEOUT_MINUTES: int(15, 1, 240),
     MEDIA_ALLOWED_HOST_SUFFIXES: z
       .string()
-      .default("zdn.vn,zadn.vn,zalo.me,zaloapp.com,zalo.vn,dlfl.vn,flchat.vn")
+      .default("zdn.vn,zadn.vn,zalo.me,zaloapp.com,zalo.vn,dlfl.vn,flchat.vn,dlmd.me,mdchat.me")
       .transform((s) =>
         s
           .split(",")

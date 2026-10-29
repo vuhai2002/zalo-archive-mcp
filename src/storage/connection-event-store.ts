@@ -61,12 +61,39 @@ export function closeDanglingConnection(db: DatabaseSync, lastHeartbeatAt: strin
   return true;
 }
 
+/** Ghi chú của sự kiện `closed` do `recordSuspendGap` ghi bù - `listenerGaps` nhận ra khoảng máy ngủ qua nó */
+const SUSPEND_DETAIL = "Máy ngủ hoặc tiến trình bị treo (ghi bù khi chạy tiếp)";
+
+/**
+ * Máy ngủ (gập máy) thì tiến trình đứng im và WebSocket chết im lặng: listener không ghi được
+ * `closed`, chỉ thấy kết nối hỏng vài giây sau khi máy thức. Vòng heartbeat thấy hai nhịp liền
+ * nhau cách quá xa thì gọi hàm này ghi bù khoảng đó, tính từ nhịp cuối trước khi ngủ.
+ *
+ * Kết thúc khoảng: listener tự đóng rồi nối lại sau khi thức thì đã có `connected` thật. Chưa có
+ * sự kiện nào mà listener vẫn báo đang nối (kết nối sống qua giấc ngủ ngắn, hoặc chưa kịp thấy
+ * nó chết) thì ghi `connected` ở lúc thức, để khoảng không bị báo là "chưa nối lại".
+ */
+export function recordSuspendGap(
+  db: DatabaseSync,
+  p: { fromIso: string; nowIso: string; listenerConnected: boolean },
+): void {
+  const afterSleep = db
+    .prepare(`SELECT 1 FROM connection_events WHERE kind IN ${LIFECYCLE_KINDS} AND at > ? LIMIT 1`)
+    .get(p.fromIso);
+  recordConnectionEvent(db, "closed", { at: p.fromIso, detail: SUSPEND_DETAIL });
+  if (p.listenerConnected && !afterSleep) {
+    recordConnectionEvent(db, "connected", { at: p.nowIso, detail: "Nghe tiếp sau khi máy thức" });
+  }
+}
+
 export type ListenerGap = {
   from: string;
   to: string | null;
   closeCode: number | null;
   /** Không có sự kiện đóng, chỉ suy ra từ heartbeat đã cũ: nhiều khả năng daemon đang không chạy */
   suspected?: boolean;
+  /** Khoảng máy ngủ / tiến trình bị treo, ghi bù khi chạy tiếp (mốc đầu sớm hơn lúc ngủ thật tối đa 1 nhịp heartbeat) */
+  asleep?: boolean;
 };
 
 export type GapOptions = { lastHeartbeatAt: string | null; nowIso: string; staleAfterMs: number };
@@ -83,11 +110,11 @@ export type GapOptions = { lastHeartbeatAt: string | null; nowIso: string; stale
 export function listenerGaps(db: DatabaseSync, sinceIso: string, opts?: GapOptions): ListenerGap[] {
   const rows = db
     .prepare(
-      `SELECT at, kind, code FROM connection_events
+      `SELECT at, kind, code, detail FROM connection_events
        WHERE at >= ? AND kind IN ${LIFECYCLE_KINDS}
        ORDER BY at, id`,
     )
-    .all(sinceIso) as Array<{ at: string; kind: string; code: number | null }>;
+    .all(sinceIso) as Array<{ at: string; kind: string; code: number | null; detail: string | null }>;
 
   const before = lastLifecycleEvent(db, sinceIso);
   const gaps: ListenerGap[] = [];
@@ -104,7 +131,7 @@ export function listenerGaps(db: DatabaseSync, sinceIso: string, opts?: GapOptio
       }
     } else {
       lastConnectedAt = null;
-      open ??= { from: r.at, to: null, closeCode: r.code };
+      open ??= { from: r.at, to: null, closeCode: r.code, ...(r.detail === SUSPEND_DETAIL ? { asleep: true } : {}) };
     }
   }
   if (open) gaps.push(open);

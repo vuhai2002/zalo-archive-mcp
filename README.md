@@ -46,6 +46,9 @@ không soạn, không gửi gì qua nick đó (MCP, dashboard và daemon đều 
 tin). Muốn gửi thì bấm **Mở gửi tin** ở danh sách nick và xác nhận. Nick mượn, nick đang thử: để
 Chỉ đọc.
 
+**Máy ngủ / gập máy:** kho đứng im theo máy, thức dậy thì tự nối lại và Zalo gửi bù tin trong lúc ngủ
+(khoảng 2 tuần gần nhất). Tổng quan ghi khoảng đó là "máy ngủ" để biết kho đã không nghe lúc nào.
+
 **Tự chạy khi mở máy (Windows):** `pnpm autostart install` đặt một file vào thư mục Startup của bạn,
 mỗi lần đăng nhập Windows daemon tự chạy ẩn (không cửa sổ), log ở `data/logs/daemon.log`. Xem trạng thái:
 `pnpm autostart status`. Dừng: `pnpm stop`. Gỡ tự chạy: `pnpm autostart uninstall`.

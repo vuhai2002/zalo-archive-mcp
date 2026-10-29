@@ -91,6 +91,11 @@ Mỗi lần listener kết nối: xin Zalo gửi bù tin 1-1 (cmd 510), 2-5 giâ
 trong vòng `OFFLINE_REPLAY_MIN_INTERVAL_MINUTES` thì không xin lại. Tin trả về khử trùng theo msg_id.
 Mới lấy trang đầu (giới hạn zca-js 2.2.0); Zalo giữ khoảng 2 tuần.
 
+Khoảng không nghe (`connection_events`, hiện ở Tổng quan và `sync_status`): listener ghi lúc đóng / nối
+lại; tiến trình chết đột ngột thì lần khởi động sau ghi bù theo heartbeat cuối; máy ngủ thì vòng
+heartbeat (mỗi phút) thấy hai nhịp cách nhau quá 3 phút theo giờ máy và ghi bù khoảng đó
+(`recordSuspendGap`), vì lúc ngủ WebSocket chết im lặng, listener chỉ biết khi máy đã thức.
+
 ## Bảng chính (`src/storage/archive-schema-migrations.ts`)
 
 `messages` (UNIQUE msg_id, cột `source`), `messages_fts`, `message_recalls`, `attachments`,

@@ -9,6 +9,8 @@ import { attachRenewLinkListener, RenewLinkReplyWaiter } from "../zalo/renew-lin
 import { installRenewMediaLinkApi } from "../zalo/zca-renew-media-link-api.js";
 import { OutboxSender } from "../outbox/outbox-sender-loop.js";
 import { setMeta } from "../storage/thread-directory-store.js";
+import { recordSuspendGap } from "../storage/connection-event-store.js";
+import { HEARTBEAT_STALE_MS } from "../storage/daemon-liveness.js";
 import path from "node:path";
 import { startArchiveListener } from "../zalo/archive-listener.js";
 import { MobileSyncSession } from "../zalo/mobile-sync/mobile-sync-session.js";
@@ -75,9 +77,19 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
   });
   stops.push(listener.stop);
 
-  // Heartbeat: lần khởi động sau biết tiến trình chết lúc nào; MCP biết daemon còn sống để gửi
+  // Heartbeat: lần khởi động sau biết tiến trình chết lúc nào; MCP biết daemon còn sống để gửi.
+  // Hai nhịp cách quá xa (theo giờ máy) là máy vừa ngủ dậy: ghi bù khoảng không nghe đó.
+  let lastTick = { at: Date.now(), connected: listener.isConnected() };
   every(HEARTBEAT_MS, () => {
-    if (listener.isConnected()) setMeta(db, "listener_heartbeat_at", new Date().toISOString());
+    const now = Date.now();
+    const connected = listener.isConnected();
+    if (lastTick.connected && now - lastTick.at > HEARTBEAT_STALE_MS) {
+      const fromIso = new Date(lastTick.at).toISOString();
+      recordSuspendGap(db, { fromIso, nowIso: new Date(now).toISOString(), listenerConnected: connected });
+      log.warn({ from: fromIso, minutes: Math.round((now - lastTick.at) / 60_000) }, "Máy vừa ngủ dậy (hoặc daemon bị treo) - đã ghi khoảng không nghe");
+    }
+    lastTick = { at: now, connected };
+    if (connected) setMeta(db, "listener_heartbeat_at", new Date(now).toISOString());
   });
 
 

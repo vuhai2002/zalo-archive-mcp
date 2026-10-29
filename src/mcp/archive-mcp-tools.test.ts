@@ -20,8 +20,8 @@ function seededDb() {
   return db;
 }
 
-async function connectClient(db = seededDb()) {
-  const server = createArchiveMcpServer({ db, env, mediaRoot: "/media", accountId: "test", readOnly: false });
+async function connectClient(db = seededDb(), readOnly = false) {
+  const server = createArchiveMcpServer({ db, env, mediaRoot: "/media", accountId: "test", readOnly });
   const [clientT, serverT] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "0" });
   await Promise.all([server.connect(serverT), client.connect(clientT)]);
@@ -64,6 +64,15 @@ describe("MCP server kho", () => {
     assert.match(found, /1 tin khớp/);
     const status = textOf(await client.callTool({ name: "sync_status", arguments: {} }));
     assert.match(status, /Daemon: chưa từng chạy/);
+  });
+
+  it("sync_status trên nick Chỉ đọc nói rõ không gửi được, không ghi 'đang gửi được'", async () => {
+    const db = seededDb();
+    db.prepare("INSERT INTO meta (key, value) VALUES ('daemon_session_state', 'running')").run();
+    const { client } = await connectClient(db, true);
+    const status = textOf(await client.callTool({ name: "sync_status", arguments: {} }));
+    assert.match(status, /CHỈ ĐỌC/);
+    assert.doesNotMatch(status, /đang gửi được/);
   });
 
   it("send_message khi daemon không chạy: báo lỗi ngay, không xếp tin vào hàng đợi", async () => {

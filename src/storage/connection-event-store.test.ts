@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { closeDanglingConnection, listenerGaps, recordConnectionEvent } from "./connection-event-store.js";
+import { closeDanglingConnection, listenerGaps, recordConnectionEvent, recordSuspendGap } from "./connection-event-store.js";
 import { openArchiveDatabase } from "./open-archive-database.js";
 
 describe("connection events", () => {
@@ -53,4 +53,41 @@ describe("connection events", () => {
       { from: "2026-10-28T01:30:00.000Z", to: "2026-10-28T02:00:00.000Z", closeCode: null },
     ]);
   });
+
+  it("máy ngủ: listener tự đóng (1006) và nối lại trước nhịp heartbeat kế: khoảng tính từ lúc ngủ tới lúc nối lại", () => {
+    const db = openArchiveDatabase(":memory:");
+    recordConnectionEvent(db, "connected", { at: "2026-03-10T07:00:15.000Z" });
+    recordConnectionEvent(db, "closed", { at: "2026-03-10T07:31:23.000Z", code: 1006 });
+    recordConnectionEvent(db, "connected", { at: "2026-03-10T07:31:30.000Z" });
+    recordSuspendGap(db, { fromIso: "2026-03-10T07:05:00.000Z", nowIso: "2026-03-10T07:32:00.000Z", listenerConnected: true });
+    assert.deepEqual(listenerGaps(db, "2026-03-10T00:00:00.000Z"), [
+      { from: "2026-03-10T07:05:00.000Z", to: "2026-03-10T07:31:30.000Z", closeCode: null, asleep: true },
+    ]);
+    assert.equal(countKind(db, "connected"), 2, "không thêm 'connected' giả khi listener đã tự nối lại");
+  });
+
+  it("máy ngủ: nhịp heartbeat tới trước khi listener thấy kết nối chết: hai khoảng, không khoảng nào bỏ ngỏ", () => {
+    const db = openArchiveDatabase(":memory:");
+    recordConnectionEvent(db, "connected", { at: "2026-03-10T07:00:15.000Z" });
+    recordSuspendGap(db, { fromIso: "2026-03-10T07:05:00.000Z", nowIso: "2026-03-10T07:31:10.000Z", listenerConnected: true });
+    recordConnectionEvent(db, "closed", { at: "2026-03-10T07:31:23.000Z", code: 1006 });
+    recordConnectionEvent(db, "connected", { at: "2026-03-10T07:31:30.000Z" });
+    assert.deepEqual(listenerGaps(db, "2026-03-10T00:00:00.000Z"), [
+      { from: "2026-03-10T07:31:23.000Z", to: "2026-03-10T07:31:30.000Z", closeCode: 1006 },
+      { from: "2026-03-10T07:05:00.000Z", to: "2026-03-10T07:31:10.000Z", closeCode: null, asleep: true },
+    ]);
+  });
+
+  it("máy ngủ ngắn, kết nối sống qua giấc ngủ: khoảng đóng lại ở lúc thức, không báo 'chưa nối lại'", () => {
+    const db = openArchiveDatabase(":memory:");
+    recordConnectionEvent(db, "connected", { at: "2026-03-10T07:00:15.000Z" });
+    recordSuspendGap(db, { fromIso: "2026-03-10T07:05:00.000Z", nowIso: "2026-03-10T07:12:00.000Z", listenerConnected: true });
+    assert.deepEqual(listenerGaps(db, "2026-03-10T00:00:00.000Z"), [
+      { from: "2026-03-10T07:05:00.000Z", to: "2026-03-10T07:12:00.000Z", closeCode: null, asleep: true },
+    ]);
+  });
 });
+
+function countKind(db: ReturnType<typeof openArchiveDatabase>, kind: string): number {
+  return (db.prepare("SELECT COUNT(*) AS n FROM connection_events WHERE kind = ?").get(kind) as { n: number }).n;
+}

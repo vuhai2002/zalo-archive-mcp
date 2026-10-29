@@ -42,6 +42,7 @@ export function ListenerGapsPanel({ gaps }: { gaps: ListenerGap[] }) {
               </div>
               <div className="mt-0.5 text-[12px] opacity-80">
                 {g.suspected ? "Nghi có tin bị lọt trong khoảng này" : "Không thấy dấu hiệu mất tin"}
+                {g.asleep && " · máy ngủ / daemon bị treo"}
                 {g.closeCode !== null && ` · mã đóng ${g.closeCode}`}
               </div>
             </li>
