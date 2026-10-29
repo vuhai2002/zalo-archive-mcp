@@ -15,6 +15,8 @@
     "outbox": "tsx --disable-warning=ExperimentalWarning src/bin/outbox-admin.ts",
     "replay-journal": "tsx --disable-warning=ExperimentalWarning src/bin/replay-raw-journal.ts",
     "reset-password": "tsx --disable-warning=ExperimentalWarning src/bin/reset-dashboard-password.ts",
+    "stop": "tsx --disable-warning=ExperimentalWarning src/bin/stop-archive-daemon.ts",
+    "autostart": "tsx --disable-warning=ExperimentalWarning src/bin/windows-autostart.ts",
     "test": "node --disable-warning=ExperimentalWarning --import tsx --test --test-timeout=60000 \"src/**/*.test.ts\" \"web/src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit && tsc --noEmit -p web",
     "dev:web": "vite web",

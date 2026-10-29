@@ -41,6 +41,10 @@ quay lại nick cũ thì nối tiếp. Tin đến trong lúc một nick không c
 chạy lại, nhưng chỉ khoảng 2 tuần gần nhất. Mỗi lần đăng nhập Zalo cách nhau tối thiểu 30 giây để
 không bị coi là máy.
 
+**Tự chạy khi mở máy (Windows):** `pnpm autostart install` đặt một file vào thư mục Startup của bạn,
+mỗi lần đăng nhập Windows daemon tự chạy ẩn (không cửa sổ), log ở `data/logs/daemon.log`. Xem trạng thái:
+`pnpm autostart status`. Dừng: `pnpm stop`. Gỡ tự chạy: `pnpm autostart uninstall`.
+
 Quên mật khẩu dashboard: `pnpm reset-password` rồi tải lại trang để tạo mật khẩu mới (không đụng
 tới nick Zalo hay tin nhắn).
 
@@ -104,6 +108,8 @@ chạy và đã đăng nhập: MCP ghi vào hàng đợi, daemon là nơi duy nh
 | Lệnh | Việc |
 |---|---|
 | `pnpm start` | daemon: dashboard + lưu tin + gửi |
+| `pnpm autostart install` / `uninstall` / `status` | tự chạy daemon ẩn mỗi lần đăng nhập Windows |
+| `pnpm stop` | dừng daemon đang chạy (kể cả bản chạy ẩn) |
 | `pnpm login` | đăng nhập QR ở terminal (dự phòng; tắt daemon trước) |
 | `pnpm reset-password` | quên mật khẩu dashboard: xóa để tạo lại trên dashboard |
 | `pnpm mcp` | MCP server (thường để Claude tự gọi) |

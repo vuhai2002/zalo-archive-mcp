@@ -31,7 +31,18 @@ export function acquireSingleInstanceLock(lockFile: string): () => void {
   throw new Error(`Không lấy được khóa ${lockFile}`);
 }
 
-function isAlive(pid: number): boolean {
+/** pid của daemon đang giữ khóa (còn sống); null nếu không có daemon nào chạy */
+export function lockHolderPid(lockFile: string): number | null {
+  let pid: number;
+  try {
+    pid = Number(fs.readFileSync(lockFile, "utf-8").trim());
+  } catch {
+    return null;
+  }
+  return Number.isInteger(pid) && pid > 0 && isAlive(pid) ? pid : null;
+}
+
+export function isAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
