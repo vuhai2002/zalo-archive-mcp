@@ -47,7 +47,7 @@ export function syncStatusTool(ctx: ReadToolContext): ToolResult {
   const media = attachmentStatusCounts(db);
 
   const lines = [
-    `Tài khoản: ${getMeta(db, "self_display_name") ?? "?"} (uid ${getMeta(db, "self_uid") ?? "?"}), thư mục ${env.ZALO_ACCOUNT_ID}.`,
+    `Tài khoản: ${getMeta(db, "self_display_name") ?? "?"} (uid ${getMeta(db, "self_uid") ?? "?"}), thư mục ${ctx.accountId}.`,
     `Kho: ${counts.messages} tin, ${counts.threads} hội thoại, từ ${t(counts.oldest)} tới ${t(counts.newest)} (giờ ${tz}).`,
     `Theo nguồn: ${bySource.map((s) => `${s.source}=${s.n}`).join(", ") || "chưa có"}.`,
     `Listener: heartbeat cuối ${t(heartbeat)}.`,

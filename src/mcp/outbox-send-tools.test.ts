@@ -9,7 +9,7 @@ import { setKillSwitch } from "../storage/send-control-store.js";
 import { replaceFriendDirectory, setMeta } from "../storage/thread-directory-store.js";
 import { draftMessageTool, scheduleMessageTool, sendBatchTool, sendMessageTool } from "./outbox-send-tool-handlers.js";
 
-const env = parseEnv({ ZALO_ACCOUNT_ID: "test" });
+const env = parseEnv({});
 const NOW = new Date("2026-10-28T03:00:00.000Z");
 const live = { source: "live" as const, receivedAt: NOW.toISOString() };
 

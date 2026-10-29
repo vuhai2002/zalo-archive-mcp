@@ -3,15 +3,16 @@
 | Thư mục | Nội dung |
 |---|---|
 | `src/bin/` | điểm vào: `login-with-qr`, `run-archive-daemon`, `run-mcp-stdio-server`, `outbox-admin`, `replay-raw-journal`, `seed-demo-archive` |
-| `src/config/` | `env-schema.ts` (zod, mọi núm chỉnh + mặc định an toàn), `env.ts` (nạp `.env` từ gốc project), `account-paths.ts` |
+| `src/config/` | `env-schema.ts` (zod, mọi núm chỉnh + mặc định an toàn), `env.ts` (nạp `.env` từ gốc project), `account-paths.ts` (thư mục mỗi nick), `app-secrets-store.ts` (khóa tự sinh) |
+| `src/accounts/` | `zalo-account-registry.ts` (danh sách nick + nick đang dùng, `data/accounts.json`), `load-or-import-account-registry.ts` (nhận thư mục bản cũ), `active-account-for-cli.ts` |
 | `src/archive/` | kiểu dữ liệu chung, nhật ký JSONL thô, `archive-event-ingestor.ts` (đường ghi dùng chung cho live và replay) |
 | `src/zalo/` | đăng nhập + credential mã hóa, chuẩn hóa sự kiện zca-js, listener + kế hoạch nối lại, đồng bộ danh bạ, khung offline replay / keepAlive |
 | `src/storage/` | mở DB + migration, ghi/đọc tin, FTS, đính kèm, sự kiện kết nối, outbox, cài đặt gửi, kill switch, trạng thái daemon |
 | `src/media/` | tải media: kiểm host, giới hạn cỡ, sha256, thử lại |
-| `src/mcp/` | MCP server, handler tool đọc + gửi (thuần, test trực tiếp), bọc nội dung không tin cậy |
+| `src/mcp/` | MCP server, handler tool đọc + gửi (thuần, test trực tiếp), bọc nội dung không tin cậy, `active-account-tool-context.ts` (theo nick đang dùng) |
 | `src/outbox/` | nhận yêu cầu gửi (dùng chung MCP/dashboard), cổng gửi (thuần), vòng gửi, CLI |
-| `src/daemon/` | quản lý phiên Zalo (QR web, chạy/dừng/đăng xuất) + ghép các khối khi đã đăng nhập |
-| `src/dashboard/` | dashboard Hono: hợp đồng API, auth, middleware an ninh, routes |
+| `src/daemon/` | `zalo-account-manager.ts` (nick đang dùng, đổi nick, QR, nhịp đăng nhập), `zalo-session-manager.ts` (phiên một nick), `zalo-qr-login-flow.ts`, `zalo-login-cooldown.ts`, ghép các khối khi đã đăng nhập |
+| `src/dashboard/` | dashboard Hono: hợp đồng API, mật khẩu (`dashboard-password-store.ts`, `dashboard-auth.ts`, `login-attempt-limiter.ts`), middleware an ninh, routes (route kho dựng riêng mỗi nick) |
 | `web/` | giao diện React (Vite + Tailwind), build ra `web/dist` |
 | `src/shared/` | logger (stderr dễ đọc + file JSON), giao dịch SQLite, bỏ dấu tiếng Việt, ngày giờ theo múi giờ, khóa một tiến trình |
 | `patches/` | bản vá zca-js 2.2.0 cho tin 1-1 cmd 551 |

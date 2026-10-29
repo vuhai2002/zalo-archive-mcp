@@ -4,6 +4,8 @@
  * bị xóa lúc biên dịch nên không lọt byte nào của src/ vào bundle).
  */
 import type {
+  AccountsResponse,
+  AuthStatusResponse,
   MeResponse,
   OutboxItem,
   OutboxListResponse,
@@ -76,6 +78,8 @@ function withQuery(path: string, params: Record<string, string | number | undefi
 const enc = encodeURIComponent;
 
 export const api = {
+  authStatus: () => request<AuthStatusResponse>("/api/auth/status"),
+  setupPassword: (password: string, confirm: string) => post<MeResponse>("/api/auth/setup", { password, confirm }),
   login: (password: string) => post<MeResponse>("/api/auth/login", { password }),
   logout: () => post<{ ok: true }>("/api/auth/logout"),
   me: () => request<MeResponse>("/api/auth/me"),
@@ -85,6 +89,8 @@ export const api = {
   sessionStart: () => post<SessionStatus>("/api/session/start"),
   sessionStop: () => post<SessionStatus>("/api/session/stop"),
   sessionLogout: () => post<SessionStatus>("/api/session/logout"),
+  accounts: () => request<AccountsResponse>("/api/accounts"),
+  activateAccount: (id: string) => post<SessionStatus>(`/api/accounts/${enc(id)}/activate`),
 
   overview: (days: number) => request<OverviewResponse>(withQuery("/api/overview", { days })),
 

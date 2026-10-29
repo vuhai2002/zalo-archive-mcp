@@ -1,12 +1,13 @@
 // Tạo kho DEMO (dữ liệu giả) để xem dashboard khi chưa có nick Zalo nào.
 // LUÔN ghi vào data/accounts/demo, không bao giờ đụng account thật.
-// Cách dùng: pnpm seed-demo   rồi   ZALO_ACCOUNT_ID=demo pnpm start
+// Cách dùng: pnpm seed-demo   rồi mở dashboard, vào Tài khoản Zalo, chuyển sang nick "demo"
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { accountPaths } from "../config/account-paths.js";
-import { parseEnv } from "../config/env-schema.js";
-import { loadDotenvFile } from "../config/env.js";
+import { loadOrImportAccountRegistry } from "../accounts/load-or-import-account-registry.js";
+import { writeAccountRegistry } from "../accounts/zalo-account-registry.js";
+import { accountPaths, resolveDataDir } from "../config/account-paths.js";
+import { getEnv } from "../config/env.js";
 import type { AttachmentDescriptor, NormalizedMessage } from "../archive/archived-message-types.js";
 import { claimNextAttachment, markAttachmentDone } from "../storage/attachment-queue-store.js";
 import { recordConnectionEvent } from "../storage/connection-event-store.js";
@@ -15,10 +16,10 @@ import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { enqueueOutboxItem } from "../storage/outbox-store.js";
 import { replaceFriendDirectory, setMeta, upsertGroupNames } from "../storage/thread-directory-store.js";
 
-// Lấy DATA_DIR, múi giờ... từ .env nếu có; account luôn là demo
-loadDotenvFile();
-const env = parseEnv({ ...process.env, ZALO_ACCOUNT_ID: "demo" });
-const paths = accountPaths(env);
+// Lấy DATA_DIR, múi giờ... từ .env nếu có; nick luôn là "demo"
+const env = getEnv();
+const dataDir = resolveDataDir(env);
+const paths = accountPaths(dataDir, "demo");
 // Chỉ xóa thư mục do CHÍNH lệnh này tạo (có file đánh dấu). Ai đó lỡ đăng nhập nick thật
 // dưới tên "demo" thì từ chối, không xóa mất cookie và kho thật.
 const MARKER = path.join(paths.root, ".demo-archive-marker");
@@ -133,4 +134,12 @@ setMeta(db, "daemon_session_state", "logged_out");
 db.close();
 
 console.log(`Đã tạo kho demo tại ${paths.root}`);
-console.log("Xem dashboard: đặt DASHBOARD_PASSWORD trong .env, rồi chạy: ZALO_ACCOUNT_ID=demo pnpm start");
+// Thêm "demo" vào danh sách nick (không đổi nick đang dùng, trừ khi chưa có nick nào)
+const registry = loadOrImportAccountRegistry(dataDir);
+if (!registry.accounts.some((a) => a.id === "demo")) {
+  writeAccountRegistry(dataDir, {
+    activeAccountId: registry.activeAccountId ?? "demo",
+    accounts: [...registry.accounts, { id: "demo", uid: null, displayName: "Dữ liệu mẫu", avatarUrl: null, addedAt: new Date().toISOString(), lastActiveAt: null }],
+  });
+}
+console.log('Xem: chạy "pnpm start", mở dashboard, vào Tài khoản Zalo và chuyển sang nick "demo" (nếu chưa ở đó).');

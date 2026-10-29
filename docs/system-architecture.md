@@ -1,6 +1,7 @@
 # Kiến trúc hệ thống
 
-Ba tiến trình trên máy nhà, chung một file SQLite (WAL) mỗi account:
+Ba tiến trình trên máy nhà, chung một file SQLite (WAL) mỗi nick. Mỗi lúc chỉ MỘT nick chạy (nick đang
+dùng ghi ở `data/accounts.json`); daemon, MCP và lệnh CLI đều theo nick đó:
 
 ```
  điện thoại / Zalo PC / người khác
@@ -53,8 +54,28 @@ Cài đặt gửi: mặc định `.env`, sửa trên dashboard lưu `meta.send_s
 ## Dashboard
 
 Chạy trong tiến trình daemon (`src/dashboard`), phục vụ `web/dist`. Hợp đồng API:
-`src/dashboard/dashboard-api-contract.ts`. Phiên Zalo do `ZaloSessionManager` quản lý (QR qua web,
-chạy/dừng/đăng xuất), trạng thái ghi `meta.daemon_session_state` để MCP biết daemon gửi được không.
+`src/dashboard/dashboard-api-contract.ts` + `dashboard-auth-and-account-contract.ts`.
+
+- Mật khẩu: tạo trên dashboard lần đầu (`/api/auth/setup`, chỉ khi chưa có), lưu băm scrypt ở
+  `data/dashboard-password.json`; cookie phiên ký HMAC bằng khóa trong `data/app-secrets.json` + bản
+  băm (đặt lại mật khẩu là phiên cũ chết). Sai 5 lần / 10 phút thì khóa đăng nhập 1 phút.
+- Nick: `ZaloAccountManager` giữ danh sách nick, nick đang dùng, luồng QR (`ZaloQrLoginFlow`) và nhịp
+  đăng nhập (`ZaloLoginCooldown`, mặc định 30 giây giữa hai lần đăng nhập). QR luôn dừng nick đang
+  chạy trước; quét xong mới biết uid -> uid đã có thì nối tiếp thư mục cũ, chưa có thì thêm nick
+  (id = uid). Mỗi nick một `ZaloSessionManager` (cookie, chạy/dừng/đăng xuất), trạng thái ghi
+  `meta.daemon_session_state` trong DB nick đó để MCP biết daemon gửi được không.
+- Route kho / gửi / cài đặt / media dựng riêng cho từng nick (một lần), mỗi yêu cầu đi vào bộ route
+  của nick đang dùng; chưa có nick thì 409.
+
+Khóa mã hóa cookie tự sinh (`data/app-secrets.json`); máy chạy bản cũ thì lấy
+`CREDENTIALS_ENCRYPTION_KEY` trong `.env` một lần. Danh sách nick dựng từ các thư mục
+`data/accounts/*` có sẵn nếu chưa có `accounts.json`.
+
+## Lấy bù tin lỡ
+
+Mỗi lần listener kết nối: xin Zalo gửi bù tin 1-1 (cmd 510), 2-5 giây sau tin nhóm (511). Nối lại
+trong vòng `OFFLINE_REPLAY_MIN_INTERVAL_MINUTES` thì không xin lại. Tin trả về khử trùng theo msg_id.
+Mới lấy trang đầu (giới hạn zca-js 2.2.0); Zalo giữ khoảng 2 tuần.
 
 ## Bảng chính (`src/storage/archive-schema-migrations.ts`)
 
@@ -67,4 +88,6 @@ chạy/dừng/đăng xuất), trạng thái ghi `meta.daemon_session_state` đ�
 - Không đọc DB Zalo PC; lịch sử cũ (sau này) qua đồng bộ điện thoại chính thức của Zalo Web.
 - Nối lại ở tầng app (`retryOnClose:false`), chớp-tắt quá ngưỡng thì dừng hẳn và đòi đăng nhập lại.
 - Mã 3000 (phiên Zalo Web khác mở) thì chờ lâu, không giằng co.
-- Một daemon mỗi account (file khóa pid).
+- Một daemon mỗi thư mục `data/` (file khóa pid `data/daemon.lock`), một listener mỗi lúc.
+- Không bắt người dùng sửa `.env`: mọi thứ cần để dùng (mật khẩu, nick, khóa) làm trên dashboard
+  hoặc tự sinh; `.env` chỉ còn các núm vận hành có mặc định.

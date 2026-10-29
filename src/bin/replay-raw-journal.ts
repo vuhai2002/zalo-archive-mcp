@@ -1,7 +1,7 @@
 // Chạy lại nhật ký sự kiện thô vào kho - dùng sau khi sửa parser.
 // Tin đã có: cập nhật cột suy ra (giữ nguồn + giờ nhận cũ). Tin mới: ghi source = journal_replay.
-// Cách dùng: pnpm replay-journal   (nên tắt daemon trước)
-import { accountPaths } from "../config/account-paths.js";
+// Chạy cho nick đang dùng trên dashboard. Cách dùng: pnpm replay-journal   (nên tắt daemon trước)
+import { activeAccountForCli } from "../accounts/active-account-for-cli.js";
 import { getEnv } from "../config/env.js";
 import { ingestArchiveEvent, type ArchiveEvent } from "../archive/archive-event-ingestor.js";
 import { listJournalFiles, readJournalFile } from "../archive/raw-event-journal.js";
@@ -11,7 +11,7 @@ import { openArchiveDatabase } from "../storage/open-archive-database.js";
 const ARCHIVE_EVENT_KINDS = new Set(["message", "undo", "old_messages"]);
 
 const env = getEnv();
-const paths = accountPaths(env);
+const { paths } = activeAccountForCli(env);
 const log = createLogger({ name: "replay-journal", level: env.LOG_LEVEL });
 const db = openArchiveDatabase(paths.databaseFile);
 

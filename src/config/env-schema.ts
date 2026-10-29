@@ -20,12 +20,8 @@ const flag = (defaultValue: boolean) =>
 const int = (defaultValue: number, min: number, max: number) =>
   z.coerce.number().int().min(min).max(max).default(defaultValue);
 
-const ACCOUNT_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,40}$/;
-
 export const envSchema = z
   .object({
-    /** Tên thư mục account trong DATA_DIR (kebab-case), vd nick-phu, nick-chinh */
-    ZALO_ACCOUNT_ID: z.string().regex(ACCOUNT_ID_PATTERN, "chỉ chữ thường, số, gạch ngang"),
     /** Thư mục dữ liệu, tương đối với gốc project nếu không phải đường dẫn tuyệt đối */
     DATA_DIR: z.string().min(1).default("./data"),
     ARCHIVE_TIMEZONE: z
@@ -33,7 +29,10 @@ export const envSchema = z
       .default("Asia/Ho_Chi_Minh")
       .refine((tz) => IANAZone.isValidZone(tz), "timezone IANA không hợp lệ"),
     LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
-    /** 64 ký tự hex (32 byte). Chỉ bắt buộc với lệnh đăng nhập và daemon, MCP không cần */
+    /**
+     * KHÔNG cần đặt: khóa mã hóa cookie tự sinh ở data/app-secrets.json. Chỉ máy chạy bản
+     * cũ (khóa nằm trong .env) mới để dòng này, để lần đầu app lấy đúng khóa cũ.
+     */
     CREDENTIALS_ENCRYPTION_KEY: z
       .string()
       .regex(/^[0-9a-fA-F]{64}$/, "phải là 64 ký tự hex")
@@ -45,8 +44,13 @@ export const envSchema = z
     RECONNECT_DUPLICATE_WAIT_MINUTES: int(15, 1, 1440),
     RECONNECT_GIVE_UP_AFTER_FLAPS: int(8, 2, 100),
 
-    // Phần còn chờ số đo thật: mặc định tắt
-    OFFLINE_REPLAY_ENABLED: flag(false),
+    // Đăng nhập Zalo (cookie hoặc QR) cách nhau tối thiểu bấy nhiêu giây: tránh đăng nhập dồn dập
+    ZALO_LOGIN_COOLDOWN_SECONDS: int(30, 0, 3600),
+
+    // Kết nối xong thì xin Zalo gửi bù tin lỡ (lúc tắt máy, lúc đang dùng nick khác).
+    // Nối lại trong vòng bấy nhiêu phút kể từ lần xin trước thì không xin lại.
+    OFFLINE_REPLAY_ENABLED: flag(true),
+    OFFLINE_REPLAY_MIN_INTERVAL_MINUTES: int(10, 1, 1440),
     ZALO_KEEPALIVE_MINUTES: int(0, 0, 1440),
     DIRECTORY_SYNC_HOURS: int(12, 0, 168),
 
@@ -79,10 +83,9 @@ export const envSchema = z
     /** Tin hẹn giờ / đã duyệt trễ quá bấy nhiêu giờ so với giờ dự kiến thì bỏ, không gửi nữa */
     SEND_MAX_LATENESS_HOURS: int(12, 1, 720),
 
-    // Dashboard web (chạy cùng daemon). Không đặt mật khẩu thì dashboard không mở.
+    // Dashboard web (chạy cùng daemon). Mật khẩu tạo trên dashboard ở lần mở đầu tiên.
     DASHBOARD_HOST: z.string().min(1).default("127.0.0.1"),
     DASHBOARD_PORT: int(3210, 1, 65535),
-    DASHBOARD_PASSWORD: z.string().min(8, "tối thiểu 8 ký tự").optional(),
   })
   .refine((e) => e.SEND_BATCH_MIN_GAP_SECONDS <= e.SEND_BATCH_MAX_GAP_SECONDS, {
     message: "SEND_BATCH_MIN_GAP_SECONDS phải <= SEND_BATCH_MAX_GAP_SECONDS",

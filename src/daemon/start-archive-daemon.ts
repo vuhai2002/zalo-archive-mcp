@@ -57,7 +57,7 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
       duplicateWaitMs: env.RECONNECT_DUPLICATE_WAIT_MINUTES * 60_000,
       giveUpAfterFlaps: env.RECONNECT_GIVE_UP_AFTER_FLAPS,
     },
-    offlineReplay: env.OFFLINE_REPLAY_ENABLED,
+    offlineReplay: env.OFFLINE_REPLAY_ENABLED ? { minIntervalMs: env.OFFLINE_REPLAY_MIN_INTERVAL_MINUTES * 60_000 } : null,
     onGaveUp: d.onGaveUp,
     onFriendListChanged: directory.requestFriendSync,
   });

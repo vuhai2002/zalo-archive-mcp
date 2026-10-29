@@ -1,61 +1,52 @@
-// Daemon kho: dashboard web + phiên Zalo. Có cookie đã lưu thì tự đăng nhập và chạy;
-// chưa có thì chờ quét QR trên dashboard. Cách dùng: pnpm start
+// Daemon kho: dashboard web + phiên Zalo của nick đang dùng. Không cần sửa .env:
+// lần đầu mở dashboard thì tạo mật khẩu, rồi đăng nhập Zalo bằng QR ngay trên đó.
+// Nick đang dùng có cookie đã lưu thì tự đăng nhập và chạy. Cách dùng: pnpm start
 import fs from "node:fs";
 import path from "node:path";
-import { accountPaths } from "../config/account-paths.js";
-import { getEnv, requireCredentialsKey } from "../config/env.js";
+import { loadOrImportAccountRegistry } from "../accounts/load-or-import-account-registry.js";
+import { resolveDataDir } from "../config/account-paths.js";
+import { loadOrCreateAppSecrets } from "../config/app-secrets-store.js";
+import { getEnv } from "../config/env.js";
+import { openAccountDatabaseForDaemon } from "../daemon/prepare-account-database.js";
+import { ZaloAccountManager } from "../daemon/zalo-account-manager.js";
 import { createDashboardAuth } from "../dashboard/dashboard-auth.js";
+import { dashboardPasswordFile } from "../dashboard/dashboard-password-store.js";
 import { startDashboardServer } from "../dashboard/start-dashboard-server.js";
-import { ZaloSessionManager } from "../daemon/zalo-session-manager.js";
 import { createLogger } from "../shared/logger.js";
 import { acquireSingleInstanceLock } from "../shared/single-instance-lock.js";
-import { isAllowedMediaHost } from "../media/media-file-naming.js";
-import { requeueNowAllowedAttachments, resetStuckDownloads } from "../storage/attachment-queue-store.js";
-import { closeDanglingConnection } from "../storage/connection-event-store.js";
-import { openArchiveDatabase } from "../storage/open-archive-database.js";
-import { failStuckSending } from "../storage/outbox-store.js";
-import { getMeta, setMeta } from "../storage/thread-directory-store.js";
 
 const env = getEnv();
-const key = requireCredentialsKey(env);
-const paths = accountPaths(env);
-const log = createLogger({ name: "daemon", level: env.LOG_LEVEL, logFile: paths.logFile });
+const dataDir = resolveDataDir(env);
+fs.mkdirSync(dataDir, { recursive: true });
+const log = createLogger({ name: "daemon", level: env.LOG_LEVEL, logFile: path.join(dataDir, "logs", "daemon.log") });
 const version = JSON.parse(fs.readFileSync(new URL("../../package.json", import.meta.url), "utf-8")).version as string;
 
-fs.mkdirSync(paths.root, { recursive: true });
-const releaseLock = acquireSingleInstanceLock(path.join(paths.root, "daemon.lock"));
-const db = openArchiveDatabase(paths.databaseFile);
+// MỘT daemon cho cả thư mục data: hai daemon sẽ chạy hai listener cho cùng một nick
+const releaseLock = acquireSingleInstanceLock(path.join(dataDir, "daemon.lock"));
 
-// Dọn dấu vết lần chạy trước bị chết ngang
-if (closeDanglingConnection(db, getMeta(db, "listener_heartbeat_at"))) log.warn("Lần chạy trước dừng đột ngột - đã ghi bù khoảng thủng");
-const resetMedia = resetStuckDownloads(db, env.MEDIA_MAX_ATTEMPTS);
-const requeued = requeueNowAllowedAttachments(db, (url) => isAllowedMediaHost(url, env.MEDIA_ALLOWED_HOST_SUFFIXES));
-if (requeued > 0) log.info({ requeued }, "Tải lại file từng bị chặn vì host (nay đã được phép)");
-const failedSends = failStuckSending(db);
-if (failedSends > 0) log.warn({ failedSends }, "Có tin đang gửi dở từ lần trước - đánh failed, KHÔNG tự gửi lại");
-if (resetMedia > 0) log.info({ resetMedia }, "Đưa media tải dở về hàng đợi");
+const { secrets, created, legacyMismatch } = loadOrCreateAppSecrets(dataDir, env.CREDENTIALS_ENCRYPTION_KEY);
+if (created) log.info("Đã tạo khóa mã hóa của app (data/app-secrets.json) - đừng xóa file này, sẽ mất cookie đã lưu");
+if (legacyMismatch) log.warn("CREDENTIALS_ENCRYPTION_KEY trong .env khác khóa đang dùng (data/app-secrets.json) - dòng trong .env không còn tác dụng, xóa đi");
 
-const session = new ZaloSessionManager({ db, env, paths, keyHex: key, log });
-
-let closeDashboard: (() => void) | null = null;
-if (env.DASHBOARD_PASSWORD) {
-  closeDashboard = startDashboardServer(
-    { db, env, paths, session, version, auth: createDashboardAuth(env.DASHBOARD_PASSWORD, key) },
-    log.child({ part: "dashboard" }),
-  );
-} else {
-  log.warn('Chưa đặt DASHBOARD_PASSWORD trong .env - dashboard KHÔNG mở. Đăng nhập Zalo bằng "pnpm login".');
-}
+const accounts = new ZaloAccountManager({
+  env,
+  dataDir,
+  keyHex: secrets.credentialsKeyHex,
+  log,
+  registry: loadOrImportAccountRegistry(dataDir),
+  openDb: (file, id) => openAccountDatabaseForDaemon(file, env, log.child({ account: id })),
+});
+const auth = createDashboardAuth({ passwordFile: dashboardPasswordFile(dataDir), sessionSecretHex: secrets.sessionSecretHex });
+const closeDashboard = startDashboardServer({ env, auth, accounts, version }, log.child({ part: "dashboard" }));
+if (!auth.isPasswordSet()) log.info("Chưa có mật khẩu dashboard - mở dashboard để tạo mật khẩu lần đầu");
 
 let shuttingDown = false;
 const shutdown = (code: number, reason: string) => {
   if (shuttingDown) return;
   shuttingDown = true;
   log.info({ reason }, "Đang dừng daemon");
-  session.stop();
-  setMeta(db, "daemon_session_state", "stopped");
-  closeDashboard?.();
-  db.close();
+  accounts.shutdown();
+  closeDashboard();
   releaseLock();
   // Cho pino kịp ghi nốt log ra file
   setTimeout(() => process.exit(code), 300);
@@ -64,8 +55,10 @@ process.on("SIGINT", () => shutdown(0, "SIGINT"));
 process.on("SIGTERM", () => shutdown(0, "SIGTERM"));
 process.on("unhandledRejection", (err) => log.error({ err }, "Promise bị từ chối mà không ai bắt"));
 
-if (fs.existsSync(paths.credentialsFile)) {
-  await session.start();
+const active = accounts.active();
+if (active) {
+  log.info({ account: active.account.id }, "Nick đang dùng");
+  await accounts.boot();
 } else {
-  log.info("Chưa đăng nhập Zalo - mở dashboard, vào Tài khoản Zalo, quét QR (hoặc chạy pnpm login).");
+  log.info("Chưa có nick Zalo nào - mở dashboard, vào Tài khoản Zalo, quét QR");
 }

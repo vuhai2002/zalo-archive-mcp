@@ -9,7 +9,8 @@ import { toolError, toolOk, type ToolResult } from "./tool-result.js";
 import { wrapUntrustedContent } from "./wrap-untrusted-content.js";
 
 /** Handler THUẦN của các tool đọc: nhận db + env + tham số đã validate, trả ToolResult */
-export type ReadToolContext = { db: DatabaseSync; env: AppEnv; mediaRoot: string };
+/** `accountId`: thư mục nick đang dùng. Bản chạy thật đọc lại mỗi lần (xem active-account-tool-context.ts) */
+export type ReadToolContext = { db: DatabaseSync; env: AppEnv; mediaRoot: string; accountId: string };
 
 export function listThreadsTool(ctx: ReadToolContext, args: { query?: string; limit?: number }): ToolResult {
   const threads = listThreads(ctx.db, { query: args.query, limit: args.limit ?? 30 });

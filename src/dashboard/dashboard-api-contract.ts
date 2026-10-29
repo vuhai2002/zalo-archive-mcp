@@ -15,41 +15,8 @@ export type ApiError = { error: string };
 
 export type ThreadKind = "user" | "group";
 
-// ---------- Đăng nhập dashboard ----------
-// POST /api/auth/login   body LoginRequest  -> 200 MeResponse (đặt cookie) | 401 ApiError
-// POST /api/auth/logout  body {}            -> 200 { ok: true } (xóa cookie)
-// GET  /api/auth/me                         -> 200 MeResponse | 401
-export type LoginRequest = { password: string };
-export type MeResponse = { ok: true; accountId: string; timeZone: string; version: string };
-
-// ---------- Phiên Zalo (đăng nhập QR, listener) ----------
-// GET  /api/session                 -> SessionStatus (web hỏi lại mỗi 2 giây khi đang ở màn QR)
-// POST /api/session/login-qr   {}   -> SessionStatus  (bắt đầu tạo QR; ảnh có trong lần GET sau)
-// POST /api/session/start      {}   -> SessionStatus  (đăng nhập lại bằng cookie đã lưu + chạy listener)
-// POST /api/session/stop       {}   -> SessionStatus  (dừng listener, giữ cookie)
-// POST /api/session/logout     {}   -> SessionStatus  (dừng + XÓA cookie đã lưu; phải quét QR lại)
-export type SessionState =
-  | "logged_out" // chưa có cookie đã lưu
-  | "qr_pending" // đang chờ quét QR
-  | "logging_in" // đang đăng nhập bằng cookie
-  | "running" // đã đăng nhập, listener chạy (xem listenerConnected)
-  | "stopped" // có cookie nhưng người dùng đã dừng
-  | "gave_up" // listener chớp-tắt liên tục, nghi phiên chết -> cần đăng nhập lại
-  | "error"; // lỗi đăng nhập, xem lastError
-
-export type QrStatus = "waiting_scan" | "scanned" | "expired" | "declined";
-
-export type SessionStatus = {
-  state: SessionState;
-  selfUid: string | null;
-  displayName: string | null;
-  listenerConnected: boolean;
-  /** PNG base64 KHÔNG có tiền tố data:, chỉ có khi state = "qr_pending" */
-  qrImageBase64: string | null;
-  qrStatus: QrStatus | null;
-  lastError: string | null;
-  lastHeartbeatAt: string | null;
-};
+// Đăng nhập dashboard, phiên Zalo, danh sách nick: dashboard-auth-and-account-contract.ts
+export type * from "./dashboard-auth-and-account-contract.js";
 
 // ---------- Tổng quan / thống kê ----------
 // GET /api/overview?days=30

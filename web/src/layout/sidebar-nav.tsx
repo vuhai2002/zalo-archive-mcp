@@ -49,6 +49,8 @@ export function SidebarNav({
 }) {
   const { theme, toggle } = useTheme();
   const tone = sessionTone(session);
+  /** Nick đang dùng - đổi nick là thấy ngay ở chân sidebar */
+  const nickName = session?.account?.displayName ?? session?.displayName ?? session?.account?.id ?? null;
 
   return (
     <>
@@ -116,10 +118,14 @@ export function SidebarNav({
         )}
 
         <div className="flex items-center justify-between gap-2 border-t border-line px-4 py-3">
-          <span className="flex min-w-0 items-center gap-2 text-[12px] text-ink-soft" title={sessionShortText(session)}>
+          <span
+            className="flex min-w-0 items-center gap-2 text-[12px] text-ink-soft"
+            title={`${nickName ? `${nickName} - ` : ""}${sessionShortText(session)} - v${__APP_VERSION__}`}
+          >
             <span className={`h-2 w-2 shrink-0 rounded-full ${TONE_DOT_CLASS[tone]}`} />
             <span className="truncate">
-              {sessionShortText(session)} · v{__APP_VERSION__}
+              {nickName ? `${nickName} · ` : ""}
+              {sessionShortText(session)}
             </span>
           </span>
           <div className="flex shrink-0 items-center gap-0.5">

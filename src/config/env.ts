@@ -33,13 +33,3 @@ export function getEnv(): AppEnv {
   }
   return cached;
 }
-
-/** Khóa mã hóa credential; thiếu thì báo cách tạo thay vì lỗi crypto khó hiểu */
-export function requireCredentialsKey(env: AppEnv): string {
-  if (!env.CREDENTIALS_ENCRYPTION_KEY) {
-    throw new Error(
-      'Thiếu CREDENTIALS_ENCRYPTION_KEY trong .env. Tạo bằng: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"',
-    );
-  }
-  return env.CREDENTIALS_ENCRYPTION_KEY;
-}

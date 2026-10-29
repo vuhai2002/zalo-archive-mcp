@@ -148,9 +148,12 @@ export const AVATAR_SIZE_CLASS: Record<AvatarSize, string> = {
   lg: "h-12 w-12 text-[16px]",
 };
 
-/** Hai chữ cái đầu như Zalo: "Khúc Mẫn" -> "KM", "Lan" -> "L" */
+/** Hai chữ cái đầu như Zalo: "Khúc Mẫn" -> "KM", "Lan" -> "L"; bỏ từ không có chữ/số ("Tôi (demo)" -> "TD") */
 function initialsOf(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
+  const words = name
+    .split(/\s+/)
+    .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ""))
+    .filter(Boolean);
   const first = [...(words[0] ?? "?")][0] ?? "?";
   const last = words.length > 1 ? ([...words[words.length - 1]!][0] ?? "") : "";
   return (first + last).toUpperCase();

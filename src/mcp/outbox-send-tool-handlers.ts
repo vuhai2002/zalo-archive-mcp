@@ -26,6 +26,8 @@ const POLL_MS = 500;
 const FINAL_STATUSES = new Set<OutboxStatus>(["sent", "failed", "cancelled", "rejected"]);
 
 export async function sendMessageTool(ctx: SendToolContext, args: { thread_id: string; text: string }): Promise<ToolResult> {
+  // Chốt DB của nick lúc gọi: người dùng đổi nick trong lúc chờ thì vẫn theo dõi đúng mục vừa xếp
+  ctx = { ...ctx, db: ctx.db };
   const now = (ctx.now ?? (() => new Date()))();
   const readiness = daemonSendReadiness(ctx.db, now.getTime());
   if (!readiness.ready) return toolError(`Chưa gửi được: ${readiness.reason}`);

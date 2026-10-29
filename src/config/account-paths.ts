@@ -1,10 +1,11 @@
 import path from "node:path";
+import { ACCOUNT_ID_PATTERN } from "../accounts/zalo-account-registry.js";
 import type { AppEnv } from "./env-schema.js";
 import { PROJECT_ROOT } from "./env.js";
 
 /**
- * Mọi file của MỘT account nằm chung một thư mục `data/accounts/<id>/`, để chạy
- * thử trên nick phụ rồi chuyển sang nick chính không trộn dữ liệu của hai bên.
+ * Mọi file của MỘT nick nằm chung một thư mục `data/accounts/<id>/`: đổi nick
+ * (nick phụ, nick chính...) không trộn dữ liệu, quay lại nick cũ thì nối tiếp.
  */
 export type AccountPaths = {
   root: string;
@@ -20,8 +21,9 @@ export function resolveDataDir(env: AppEnv): string {
   return path.isAbsolute(env.DATA_DIR) ? env.DATA_DIR : path.resolve(PROJECT_ROOT, env.DATA_DIR);
 }
 
-export function accountPaths(env: AppEnv): AccountPaths {
-  const root = path.join(resolveDataDir(env), "accounts", env.ZALO_ACCOUNT_ID);
+export function accountPaths(dataDir: string, accountId: string): AccountPaths {
+  if (!ACCOUNT_ID_PATTERN.test(accountId)) throw new Error(`Tên nick không hợp lệ: ${accountId}`);
+  const root = path.join(dataDir, "accounts", accountId);
   return {
     root,
     credentialsFile: path.join(root, "credentials.enc"),

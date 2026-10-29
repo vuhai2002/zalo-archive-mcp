@@ -7,7 +7,7 @@ import { recordConnectionEvent } from "../storage/connection-event-store.js";
 import { setMeta } from "../storage/thread-directory-store.js";
 import { applyFriendEvent, applyGroupEvent } from "./directory-event-handlers.js";
 import { describeListenerError, isNetworkErrorCode } from "./listener-error-details.js";
-import { requestMissedMessages } from "./offline-message-replay.js";
+import { createMissedMessageRequester } from "./offline-message-replay.js";
 import { ReconnectPlanner, type ReconnectPlannerOptions } from "./reconnect-planner.js";
 import { messageToRaw, undoToRaw } from "./zalo-event-to-raw.js";
 
@@ -17,7 +17,8 @@ export type ArchiveListenerOptions = {
   journalDir: string;
   log: Logger;
   reconnect: ReconnectPlannerOptions;
-  offlineReplay: boolean;
+  /** Xin bù tin lỡ khi kết nối; null = tắt */
+  offlineReplay: { minIntervalMs: number } | null;
   /** Gọi khi listener chớp-tắt quá ngưỡng: phiên nhiều khả năng đã chết */
   onGaveUp: () => void;
   /** Có kết bạn / hủy kết bạn - daemon đồng bộ lại danh sách bạn bè */
@@ -48,6 +49,7 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
   let lastErrorRecordedAt = 0;
   // Lỗi gần nhất TRƯỚC lần đóng này, để phân biệt mất mạng với phiên bị từ chối
   let lastErrorCode: string | null = null;
+  const missed = opts.offlineReplay ? createMissedMessageRequester(api, log, opts.offlineReplay) : null;
 
   const journal = (event: string, payload: unknown) => {
     try {
@@ -96,7 +98,7 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
     recordConnectionEvent(db, "connected");
     setMeta(db, "listener_heartbeat_at", new Date().toISOString());
     log.info("Listener đã kết nối");
-    if (opts.offlineReplay) requestMissedMessages(api, log);
+    missed?.onConnected();
   });
 
   // BẮT BUỘC có handler: EventEmitter không có listener cho "error" sẽ ném và làm chết tiến trình
@@ -150,6 +152,7 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
     stop: () => {
       stopped = true;
       if (timer) clearTimeout(timer);
+      missed?.stop();
       try {
         listener.stop();
       } catch {

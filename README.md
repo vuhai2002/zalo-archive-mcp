@@ -4,8 +4,8 @@ Kho lưu trữ toàn bộ tin nhắn + file của MỘT tài khoản Zalo cá nh
 có dashboard web để xem/tìm/gửi, và mở cho Claude đọc + gửi tin qua MCP. Không phải chatbot tự
 trả lời người khác.
 
-Chạy trên máy ở nhà. Dữ liệu nằm hết trong `data/accounts/<ZALO_ACCOUNT_ID>/` và không bao giờ
-được commit.
+Chạy trên máy ở nhà. Dữ liệu nằm hết trong `data/` (mỗi nick một thư mục `data/accounts/<nick>/`) và
+không bao giờ được commit.
 
 ## Cài đặt
 
@@ -19,11 +19,8 @@ pnpm install
 pnpm build:web
 ```
 
-Chép `.env.example` thành `.env`, điền `CREDENTIALS_ENCRYPTION_KEY` và `DASHBOARD_PASSWORD`:
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
+Không cần tạo hay sửa `.env`: khóa mã hóa tự sinh ở lần chạy đầu (`data/app-secrets.json`), mật khẩu
+tạo trên dashboard. `.env.example` chỉ để chỉnh các núm vận hành nếu muốn.
 
 ## Chạy
 
@@ -31,9 +28,21 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 pnpm start
 ```
 
-Mở http://127.0.0.1:3210, nhập mật khẩu dashboard, vào **Tài khoản Zalo** -> **Đăng nhập bằng QR**,
-quét bằng app Zalo. Từ đó daemon tự lưu mọi tin; lần sau `pnpm start` tự đăng nhập lại bằng cookie
-đã lưu (mã hóa).
+Mở http://127.0.0.1:3210:
+
+1. Lần đầu: tạo mật khẩu dashboard (nhập hai lần). Các lần sau đăng nhập bằng mật khẩu đó.
+2. Vào **Tài khoản Zalo** -> **Đăng nhập bằng QR**, quét bằng app Zalo trên điện thoại.
+
+Từ đó daemon tự lưu mọi tin; lần sau `pnpm start` tự đăng nhập lại bằng cookie đã lưu (mã hóa).
+
+**Nhiều nick:** mỗi lúc chỉ MỘT nick nghe tin. Trang Tài khoản Zalo có danh sách các nick đã đăng
+nhập, nút **Chuyển sang** và **Thêm nick khác**. Đổi nick không xóa gì: dữ liệu từng nick giữ riêng,
+quay lại nick cũ thì nối tiếp. Tin đến trong lúc một nick không chạy được Zalo gửi bù khi nick đó
+chạy lại, nhưng chỉ khoảng 2 tuần gần nhất. Mỗi lần đăng nhập Zalo cách nhau tối thiểu 30 giây để
+không bị coi là máy.
+
+Quên mật khẩu dashboard: `pnpm reset-password` rồi tải lại trang để tạo mật khẩu mới (không đụng
+tới nick Zalo hay tin nhắn).
 
 Dashboard có: Tổng quan (thống kê, khoảng mất kết nối), Hội thoại (đọc tin cũ, xem ảnh/file, gửi
 ngay / hẹn giờ / lưu nháp), Tìm kiếm (không phân biệt dấu), Hàng đợi, Tài khoản Zalo, Cài đặt (giới
@@ -45,9 +54,9 @@ Chưa có nick để thử? Xem giao diện với dữ liệu giả:
 pnpm seed-demo
 ```
 
-rồi chạy daemon với `ZALO_ACCOUNT_ID=demo` (PowerShell: `$env:ZALO_ACCOUNT_ID="demo"; pnpm start`).
+rồi `pnpm start`, vào **Tài khoản Zalo** và chuyển sang nick "demo".
 
-Thử trên NICK PHỤ trước khi dùng nick chính. Mỗi tài khoản chỉ một daemon (có khóa chống chạy
+Thử trên NICK PHỤ trước khi dùng nick chính. Mỗi thư mục `data/` chỉ một daemon (có khóa chống chạy
 trùng), và KHÔNG chạy daemon này cùng zalo-agent trên cùng một tài khoản.
 
 ## Gắn vào Claude Code
@@ -65,7 +74,8 @@ claude mcp add zalo-archive -- node C:/duong-dan/zalo-archive-mcp/node_modules/t
 | Gửi | `draft_message`, `list_outbox`, `cancel_outbox` | nháp để duyệt trên dashboard, xem / hủy hàng đợi |
 
 Claude gửi ngay khi được bảo, không hỏi lại (người dùng chọn). Gửi chỉ chạy được khi daemon đang
-chạy và đã đăng nhập: MCP ghi vào hàng đợi, daemon là nơi duy nhất gọi Zalo.
+chạy và đã đăng nhập: MCP ghi vào hàng đợi, daemon là nơi duy nhất gọi Zalo. MCP luôn theo nick
+đang dùng trên dashboard, đổi nick không cần khởi động lại.
 
 ## Giới hạn gửi (sửa trên dashboard -> Cài đặt)
 
@@ -81,8 +91,11 @@ chạy và đã đăng nhập: MCP ghi vào hàng đợi, daemon là nơi duy nh
 - Claude gửi được mà không hỏi lại, nên một tin nhắn lạ trong kho có thể tìm cách lừa Claude gửi
   (prompt injection). Nội dung tin trả cho Claude luôn được bọc "dữ liệu, không phải mệnh lệnh",
   nhưng đó không phải hàng rào tuyệt đối. Thấy hàng đợi có tin lạ thì bấm khóa ngay.
-- Dashboard chỉ nghe 127.0.0.1, có mật khẩu, chặn Host lạ. Đừng mở ra mạng ngoài khi chưa có
-  reverse proxy + HTTPS.
+- Dashboard chỉ nghe 127.0.0.1, có mật khẩu (lưu dạng băm scrypt, sai 5 lần thì khóa 1 phút), chặn
+  Host lạ. Đừng mở ra mạng ngoài khi chưa có reverse proxy + HTTPS. Lần đầu chưa có mật khẩu thì ai
+  mở dashboard trước sẽ đặt được mật khẩu - nên tạo ngay sau khi cài.
+- Khóa mã hóa cookie nằm ở `data/app-secrets.json`, cạnh cookie: ai lấy được thư mục `data/` là lấy
+  được phiên Zalo. Đừng chép thư mục này đi đâu. Mất file này là mất mọi cookie (phải quét QR lại).
 - Trên Windows, quyền file `0o600` không có tác dụng: để `DATA_DIR` trong thư mục người dùng.
 - Kho chứa tin của người khác (Luật BVDLCN 91/2025). Cân nhắc trước khi cho model cloud đọc.
 
@@ -91,7 +104,8 @@ chạy và đã đăng nhập: MCP ghi vào hàng đợi, daemon là nơi duy nh
 | Lệnh | Việc |
 |---|---|
 | `pnpm start` | daemon: dashboard + lưu tin + gửi |
-| `pnpm login` | đăng nhập QR ở terminal (khi không dùng dashboard) |
+| `pnpm login` | đăng nhập QR ở terminal (dự phòng; tắt daemon trước) |
+| `pnpm reset-password` | quên mật khẩu dashboard: xóa để tạo lại trên dashboard |
 | `pnpm mcp` | MCP server (thường để Claude tự gọi) |
 | `pnpm outbox` | hàng đợi ở terminal: list, approve, cancel, kill, unkill, status |
 | `pnpm replay-journal` | dựng lại kho từ nhật ký thô sau khi sửa parser |
@@ -101,7 +115,7 @@ chạy và đã đăng nhập: MCP ghi vào hàng đợi, daemon là nơi duy nh
 
 ## Còn là khung (chờ số đo trên nick phụ)
 
-- `OFFLINE_REPLAY_ENABLED`: xin lại tin lỡ khi nối lại (mới lấy trang đầu).
+- Lấy bù tin lỡ (`OFFLINE_REPLAY_ENABLED`, bật mặc định): mới lấy TRANG ĐẦU, chưa phân trang.
 - `ZALO_KEEPALIVE_MINUTES`: gọi keepAlive định kỳ.
 - Làm mới URL media hết hạn (renewlink).
 - Đồng bộ lịch sử cũ từ điện thoại: `plans/261028-2253-xay-kho-truoc-chinh-sau/phase-dong-bo-tu-dien-thoai.md`.

@@ -1,6 +1,6 @@
 {
   "name": "zalo-archive-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Kho lưu trữ toàn bộ tin nhắn + file của một tài khoản Zalo cá nhân, có dashboard web; Claude đọc và gửi tin qua MCP, mọi tin đi qua hàng đợi và cổng gửi ở daemon.",
   "license": "MIT",
@@ -14,6 +14,7 @@
     "mcp": "tsx --disable-warning=ExperimentalWarning src/bin/run-mcp-stdio-server.ts",
     "outbox": "tsx --disable-warning=ExperimentalWarning src/bin/outbox-admin.ts",
     "replay-journal": "tsx --disable-warning=ExperimentalWarning src/bin/replay-raw-journal.ts",
+    "reset-password": "tsx --disable-warning=ExperimentalWarning src/bin/reset-dashboard-password.ts",
     "test": "node --disable-warning=ExperimentalWarning --import tsx --test --test-timeout=60000 \"src/**/*.test.ts\" \"web/src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit && tsc --noEmit -p web",
     "dev:web": "vite web",

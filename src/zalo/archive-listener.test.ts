@@ -32,7 +32,7 @@ function setup(giveUpAfterFlaps = 3) {
     journalDir,
     log: createSilentLogger(),
     reconnect: { baseDelayMs: 1000, maxDelayMs: 4000, duplicateWaitMs: 60_000, giveUpAfterFlaps },
-    offlineReplay: false,
+    offlineReplay: null,
     onGaveUp: () => {
       gaveUp = true;
     },

@@ -8,7 +8,7 @@ import { enqueueOutboxItem, getOutboxItem } from "../storage/outbox-store.js";
 import { getKillSwitch } from "../storage/send-control-store.js";
 import { runOutboxAdminCommand } from "./outbox-admin-commands.js";
 
-const env = parseEnv({ ZALO_ACCOUNT_ID: "test" });
+const env = parseEnv({});
 
 function setup(text = "x") {
   const db = openArchiveDatabase(":memory:");

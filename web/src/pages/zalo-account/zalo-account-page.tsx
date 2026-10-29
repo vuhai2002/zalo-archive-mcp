@@ -1,23 +1,33 @@
-import { useState } from "react";
-import type { SessionStatus } from "../../archive-api-types";
+import { useCallback, useEffect, useState } from "react";
+import type { AccountSummary, SessionStatus } from "../../archive-api-types";
 import { api, errorText } from "../../dashboard-api-client";
 import { useDashboardShell } from "../../layout/dashboard-shell-context";
 import { PageHeader } from "../../layout/page-header";
-import { IconPlay, IconQr, IconStop } from "../../shared/action-and-media-icons";
+import { IconQr } from "../../shared/action-and-media-icons";
 import { useConfirmDialog } from "../../shared/confirm-dialog";
-import { IconLogout, IconSignal } from "../../shared/dashboard-icons";
-import { formatDateTime } from "../../shared/format-archive-time";
-import { SESSION_STATE_LABEL, sessionTone } from "../../shared/session-state-labels";
-import { Badge, BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY, ErrorNote, InfoTile, LoadingText, SectionCard } from "../../shared/ui-bits";
+import { IconSignal } from "../../shared/dashboard-icons";
+import { BTN_PRIMARY, ErrorNote, SectionCard } from "../../shared/ui-bits";
+import { nickLabel, ZaloNickListCard } from "./zalo-nick-list-card";
 import { ZaloQrLoginPanel } from "./zalo-qr-login-panel";
+import { ZaloSessionStatusCard, type SessionAction } from "./zalo-session-status-card";
 
-type Action = "qr" | "start" | "stop" | "logout";
+type Action = SessionAction | "switch";
 
 export function ZaloAccountPage() {
   const { session, applySession, me } = useDashboardShell();
   const [busy, setBusy] = useState<Action | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<AccountSummary[] | null>(null);
   const { confirm, confirmDialog } = useConfirmDialog();
+
+  const loadAccounts = useCallback(() => {
+    api
+      .accounts()
+      .then((r) => setAccounts(r.accounts))
+      .catch((err: unknown) => setError(errorText(err)));
+  }, []);
+  // Tải lại danh sách khi nick đang dùng hoặc trạng thái đổi (vừa quét QR xong, vừa đăng xuất...)
+  useEffect(loadAccounts, [loadAccounts, session?.account?.id, session?.state]);
 
   async function run(action: Action, call: () => Promise<SessionStatus>) {
     setBusy(action);
@@ -31,108 +41,76 @@ export function ZaloAccountPage() {
     }
   }
 
-  async function stop() {
+  async function addNick() {
+    if (session?.state === "running" || session?.state === "logging_in") {
+      const ok = await confirm({
+        title: "Thêm nick khác?",
+        message:
+          "Nick đang dùng sẽ dừng nghe tin trong lúc quét QR (cookie vẫn giữ, chuyển lại không cần quét). Quét nick nào thì kho chuyển sang nick đó.",
+        confirmLabel: "Tạo mã QR",
+        tone: "normal",
+      });
+      if (!ok) return;
+    }
+    await run("qr", api.sessionLoginQr);
+  }
+
+  async function switchTo(target: AccountSummary) {
+    const current = accounts?.find((a) => a.active);
     const ok = await confirm({
-      title: "Dừng nghe tin?",
-      message: "Trong lúc dừng, tin nhắn mới sẽ KHÔNG vào kho. Cookie đăng nhập vẫn giữ, bấm Chạy là nghe lại.",
-      confirmLabel: "Dừng",
+      title: `Chuyển sang ${nickLabel(target)}?`,
+      message:
+        `${current ? `Nick ${nickLabel(current)} sẽ dừng nghe tin, dữ liệu vẫn giữ nguyên. ` : ""}` +
+        "Khi quay lại một nick, tin đến trong lúc nick đó không chạy chỉ lấy bù được khoảng 2 tuần gần nhất." +
+        (target.hasCredentials ? "" : " Nick này cần quét QR lại sau khi chuyển."),
+      confirmLabel: "Chuyển",
       tone: "normal",
     });
-    if (ok) await run("stop", api.sessionStop);
+    if (ok) await run("switch", () => api.activateAccount(target.id));
   }
 
-  async function logout() {
-    const ok = await confirm({
-      title: "Đăng xuất tài khoản Zalo?",
-      message:
-        "Dừng nghe tin và XÓA cookie đăng nhập đã lưu trên máy chủ. Muốn chạy lại phải quét QR bằng điện thoại. Tin nhắn đã lưu trong kho vẫn giữ nguyên.",
-      confirmLabel: "Đăng xuất",
-    });
-    if (ok) await run("logout", api.sessionLogout);
-  }
-
-  if (!session) return <LoadingText />;
-
-  const s = session;
-  const needsRelogin = s.state === "gave_up" || s.state === "error";
-  const canQr = s.state === "logged_out" || s.state === "stopped" || needsRelogin;
-  const canStart = s.state === "stopped" || needsRelogin;
-  const canStop = s.state === "running" || s.state === "logging_in";
-  const canLogout = s.state !== "logged_out" && s.state !== "qr_pending";
+  if (!session) return null;
+  const qrPending = session.state === "qr_pending";
 
   return (
     <div className="space-y-5">
-      <PageHeader icon={IconSignal} title="Tài khoản Zalo" subtitle="Đăng nhập và trạng thái phiên nghe tin" />
+      <PageHeader icon={IconSignal} title="Tài khoản Zalo" subtitle="Đăng nhập, đổi nick và trạng thái nghe tin" />
 
       {error && <ErrorNote message={error} />}
 
-      <SectionCard
-        title="Trạng thái phiên"
-        subtitle="Tự cập nhật mỗi 15 giây, mỗi 2 giây khi đang đăng nhập"
-        aside={<Badge tone={sessionTone(s)}>{SESSION_STATE_LABEL[s.state]}</Badge>}
-      >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <InfoTile label="Tên hiển thị" value={s.displayName ?? "-"} />
-          <InfoTile label="UID" value={<span className="font-mono text-[13px]">{s.selfUid ?? "-"}</span>} />
-          <InfoTile
-            label="Listener"
-            value={s.listenerConnected ? "Đang kết nối" : "Không kết nối"}
-            hint={s.listenerConnected ? "Tin mới đang vào kho" : "Tin mới chưa vào kho"}
-          />
-          <InfoTile label="Nhịp gần nhất" value={formatDateTime(s.lastHeartbeatAt, me.timeZone)} />
-        </div>
-
-        {needsRelogin && (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] leading-relaxed text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
-            {s.state === "gave_up"
-              ? "Listener rớt kết nối liên tục nên đã ngừng thử lại - phiên đăng nhập có thể đã hết hạn (đăng xuất từ điện thoại, Zalo đá phiên...). "
-              : "Đăng nhập không thành công. "}
-            Hãy bấm <b>Đăng nhập bằng QR</b> và quét lại bằng điện thoại. Có thể thử <b>Chạy</b> trước nếu chỉ là lỗi mạng
-            thoáng qua.
-          </div>
-        )}
-        {s.lastError && (
-          <p className="mt-3 break-words text-[12px] text-ink-soft">
-            Lỗi gần nhất: <span className="font-mono text-red-600 dark:text-red-400">{s.lastError}</span>
-          </p>
-        )}
-
-        <div className="mt-5 flex flex-wrap gap-2">
-          {canQr && (
+      {session.account ? (
+        <ZaloSessionStatusCard session={session} busy={busy} timeZone={me.timeZone} onRun={run} confirm={confirm} />
+      ) : (
+        !qrPending && (
+          <SectionCard title="Chưa có nick Zalo nào" subtitle="Đăng nhập một lần bằng QR, sau đó kho tự chạy mỗi khi mở máy chủ">
+            <p className="mb-4 text-[14px] leading-relaxed text-ink-soft">
+              Bấm nút dưới, mở app Zalo trên điện thoại, chọn quét mã QR và quét mã hiện ra. Nên thử trên nick phụ trước.
+            </p>
             <button type="button" className={BTN_PRIMARY} disabled={busy !== null} onClick={() => run("qr", api.sessionLoginQr)}>
               <IconQr size={16} /> {busy === "qr" ? "Đang tạo mã..." : "Đăng nhập bằng QR"}
             </button>
-          )}
-          {canStart && (
-            <button type="button" className={BTN_SECONDARY} disabled={busy !== null} onClick={() => run("start", api.sessionStart)}>
-              <IconPlay size={16} /> {busy === "start" ? "Đang chạy..." : "Chạy"}
-            </button>
-          )}
-          {canStop && (
-            <button type="button" className={BTN_SECONDARY} disabled={busy !== null} onClick={stop}>
-              <IconStop size={16} /> {busy === "stop" ? "Đang dừng..." : "Dừng"}
-            </button>
-          )}
-          {canLogout && (
-            <button type="button" className={BTN_DANGER} disabled={busy !== null} onClick={logout}>
-              <IconLogout size={16} /> {busy === "logout" ? "Đang đăng xuất..." : "Đăng xuất"}
-            </button>
-          )}
-        </div>
-        {s.state === "stopped" && (
-          <p className="mt-3 text-[12px] text-ink-soft">
-            Đã có cookie đăng nhập: bấm <b>Chạy</b> để nghe tin lại mà không cần quét QR.
-          </p>
-        )}
-      </SectionCard>
+          </SectionCard>
+        )
+      )}
 
-      {s.state === "qr_pending" && (
+      {qrPending && (
         <ZaloQrLoginPanel
-          session={s}
+          session={session}
           busy={busy !== null}
           // Máy chủ chỉ tạo luồng QR mới khi không còn luồng nào đang chờ: hủy luồng cũ trước
           onRegenerate={() => run("qr", async () => (await api.sessionStop(), api.sessionLoginQr()))}
           onCancel={() => run("stop", api.sessionStop)}
+        />
+      )}
+
+      {(accounts?.length ?? 0) > 0 && (
+        <ZaloNickListCard
+          accounts={accounts}
+          busy={busy !== null || qrPending}
+          canAdd={!qrPending}
+          timeZone={me.timeZone}
+          onSwitch={switchTo}
+          onAdd={addNick}
         />
       )}
 

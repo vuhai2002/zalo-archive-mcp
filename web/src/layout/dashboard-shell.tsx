@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import type { MeResponse } from "../archive-api-types";
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import type { MeResponse, SessionStatus } from "../archive-api-types";
 import { api, ApiError, errorText, loginPath } from "../dashboard-api-client";
 import { anhNen } from "../shared/background-image";
 import { IconArchive, IconMenu } from "../shared/dashboard-icons";
@@ -9,6 +9,18 @@ import { useTheme } from "../shared/use-theme";
 import { DashboardShellContext, type DashboardShellValue } from "./dashboard-shell-context";
 import { SidebarNav } from "./sidebar-nav";
 import { useShellStatusPolling } from "./use-shell-status-polling";
+
+/**
+ * Nội dung các trang theo NICK ĐANG DÙNG:
+ * - chưa có nick nào thì đưa thẳng tới trang Tài khoản Zalo để quét QR;
+ * - đổi nick thì dựng lại trang (key theo nick) để không còn dữ liệu nick cũ trên màn hình.
+ */
+function AccountGate({ session, children }: { session: SessionStatus | null; children: ReactNode }) {
+  const location = useLocation();
+  if (!session) return <LoadingText />;
+  if (!session.account && location.pathname !== "/zalo") return <Navigate to="/zalo" replace />;
+  return <Fragment key={session.account?.id ?? "no-account"}>{children}</Fragment>;
+}
 
 /**
  * Khung sau đăng nhập + cổng xác thực: hỏi `/api/auth/me` một lần lúc vào;
@@ -98,7 +110,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             className="min-w-0 flex-1 bg-canvas bg-cover bg-fixed bg-center px-4 py-5 sm:px-6 lg:overflow-y-auto lg:px-8 lg:py-7"
             style={{ backgroundImage: `url(${anhNen(theme)})` }}
           >
-            {children}
+            <AccountGate session={session}>{children}</AccountGate>
           </main>
         </div>
       </div>

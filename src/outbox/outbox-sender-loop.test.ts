@@ -8,7 +8,7 @@ import { getKillSwitch, setKillSwitch } from "../storage/send-control-store.js";
 import { replaceFriendDirectory } from "../storage/thread-directory-store.js";
 import { OutboxSender, type SendTextFn, type TypingFn } from "./outbox-sender-loop.js";
 
-const env = parseEnv({ ZALO_ACCOUNT_ID: "test" });
+const env = parseEnv({});
 // 10:00 giờ VN
 const AT_10AM = new Date("2026-10-28T03:00:00.000Z");
 

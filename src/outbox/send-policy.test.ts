@@ -4,7 +4,7 @@ import { parseEnv } from "../config/env-schema.js";
 import { defaultSendSettings } from "../storage/send-settings-store.js";
 import { evaluateSendPolicy, randomGapMs, type SendPolicyInput } from "./send-policy.js";
 
-const settings = defaultSendSettings(parseEnv({ ZALO_ACCOUNT_ID: "test" }));
+const settings = defaultSendSettings(parseEnv({}));
 const NOW = new Date("2026-10-28T03:00:00.000Z");
 
 const base = (o: Partial<SendPolicyInput> = {}): SendPolicyInput => ({

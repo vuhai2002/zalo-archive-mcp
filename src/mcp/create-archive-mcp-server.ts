@@ -14,7 +14,7 @@ const dateField = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Ngày YYYY-M
  * làm trên dashboard.
  */
 export function createArchiveMcpServer(ctx: ReadToolContext): McpServer {
-  const server = new McpServer({ name: "zalo-archive", version: "0.2.0" });
+  const server = new McpServer({ name: "zalo-archive", version: "0.3.0" });
 
   server.registerTool(
     "list_threads",
@@ -77,6 +77,7 @@ export function createArchiveMcpServer(ctx: ReadToolContext): McpServer {
     safeToolHandler(() => syncStatusTool(ctx)),
   );
 
-  registerSendTools(server, { db: ctx.db, env: ctx.env });
+  // Truyền nguyên ngữ cảnh (không chép `db` ra): bản chạy thật đọc nick đang dùng mỗi lần gọi
+  registerSendTools(server, ctx);
   return server;
 }

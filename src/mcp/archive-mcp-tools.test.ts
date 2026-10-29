@@ -9,7 +9,7 @@ import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { replaceFriendDirectory } from "../storage/thread-directory-store.js";
 import { createArchiveMcpServer } from "./create-archive-mcp-server.js";
 
-const env = parseEnv({ ZALO_ACCOUNT_ID: "test" });
+const env = parseEnv({});
 const live = { source: "live" as const, receivedAt: "2026-10-28T03:00:00.000Z" };
 
 function seededDb() {
@@ -21,7 +21,7 @@ function seededDb() {
 }
 
 async function connectClient(db = seededDb()) {
-  const server = createArchiveMcpServer({ db, env, mediaRoot: "/media" });
+  const server = createArchiveMcpServer({ db, env, mediaRoot: "/media", accountId: "test" });
   const [clientT, serverT] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "0" });
   await Promise.all([server.connect(serverT), client.connect(clientT)]);
