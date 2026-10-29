@@ -1,4 +1,4 @@
-import type { ArchivedMessage } from "../../archive-api-types";
+import type { ArchivedMessage, TextStyleSpan } from "../../archive-api-types";
 import { sourceLabel } from "../../shared/archive-status-labels";
 import { ContactAvatar } from "../../shared/contact-avatar";
 import { formatClock, formatDateTime } from "../../shared/format-archive-time";
@@ -8,6 +8,13 @@ import { isSystemMessage } from "./message-grouping";
 import { RichMessageText } from "./rich-message-text";
 
 const VISUAL_KINDS = new Set(["photo", "gif", "sticker"]);
+
+/** Thẻ thông báo của Zalo (vd đăng nhập trên máy tính): dòng đầu là tiêu đề, in đậm như trên Zalo */
+function textStylesOf(msg: ArchivedMessage): TextStyleSpan[] {
+  if (msg.msgType !== "chat.list.action") return msg.textStyles;
+  const end = msg.text.indexOf("\n");
+  return [{ start: 0, end: end === -1 ? msg.text.length : end, bold: true, italic: false, underline: false, strike: false, color: null, size: null }];
+}
 
 /**
  * Một tin trong khung chat, trình bày như Zalo:
@@ -126,7 +133,7 @@ export function MessageBubble({
                 ))}
               </div>
             )}
-            {hasText && <RichMessageText text={msg.text} styles={msg.textStyles} />}
+            {hasText && <RichMessageText text={msg.text} styles={textStylesOf(msg)} />}
             {showMeta && meta}
           </div>
         )}

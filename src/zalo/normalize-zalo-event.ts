@@ -30,9 +30,25 @@ export function isRecallPayload(data: Record<string, unknown>): boolean {
   return !!c && typeof c === "object" && !Array.isArray(c) && "deleteMsg" in c;
 }
 
+/**
+ * Thẻ thông báo của Zalo (vd `chat.list.action` "Đăng nhập Zalo trên máy tính thành công"):
+ * `content` là MẢNG thẻ - thẻ đầu có tiêu đề + mô tả, các thẻ sau là nút bấm chỉ dùng được
+ * trong app (vd "Mở lịch sử đăng nhập") nên không lấy.
+ */
+function cardListText(msgType: string, cards: unknown[]): string {
+  for (const card of cards) {
+    if (!card || typeof card !== "object") continue;
+    const c = card as Record<string, unknown>;
+    const text = [str(c.title), str(c.description)].filter(Boolean).join("\n");
+    if (text) return text;
+  }
+  return `[${msgType}]`;
+}
+
 /** Chữ hiển thị cho tin: chữ thật, caption, hoặc mô tả ngắn cho tin không có chữ */
 function messageText(msgType: string, content: unknown): string {
   if (typeof content === "string") return content;
+  if (Array.isArray(content)) return cardListText(msgType, content);
   if (!content || typeof content !== "object") return `[${msgType}]`;
   const c = content as Record<string, unknown>;
   const title = str(c.title);

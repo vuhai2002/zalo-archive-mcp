@@ -5,7 +5,8 @@ Kho lưu trữ TOÀN BỘ tin nhắn + file của tài khoản Zalo CÁ NHÂN CH
 để gửi thay người dùng: gửi từng người, hẹn giờ, gửi nhiều người có nhịp như người thật.
 KHÔNG phải chatbot tự trả lời (việc đó là của dự án anh em `..\zalo-agent`).
 
-**Trạng thái (2026-10-29): đã chạy trên nick phụ (v0.3.0). Thiết lập hoàn toàn trên dashboard (mật khẩu
+**Trạng thái (2026-10-29): đã chạy trên nick phụ (v0.4.0: cảm xúc, lấy bù nhiều trang, đồng bộ từ điện
+thoại, xin lại link media). Thiết lập hoàn toàn trên dashboard (mật khẩu
 lần đầu, thêm / đổi nick bằng QR), không cần `.env`: `plans/261029-1134-thiet-lap-tren-dashboard-va-doi-nick/plan.md`.
 Trước đó: `plans/261028-2253-xay-kho-truoc-chinh-sau/plan.md`.**
 

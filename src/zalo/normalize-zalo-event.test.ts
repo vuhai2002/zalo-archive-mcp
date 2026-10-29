@@ -78,6 +78,21 @@ describe("normalizeMessage", () => {
   it("thiếu msgId thì bỏ (không khử trùng được)", () => {
     assert.equal(normalizeMessage(raw({ msgId: undefined, content: "x" }), receivedAt), null);
   });
+
+  it("thẻ thông báo của Zalo (content là mảng thẻ): lấy tiêu đề + mô tả thẻ đầu, bỏ thẻ nút bấm", () => {
+    const content = [
+      {
+        type: "l.a.header.only",
+        action: "action.open.logindevices",
+        title: "Đăng nhập Zalo trên máy tính thành công",
+        description: "Bạn đã đăng nhập Zalo Web trên Windows 10/11\n- Bằng: Mã QR\n",
+      },
+      { type: "l.a.child.full", action: "action.open.logindevices", title: "Mở lịch sử đăng nhập" },
+    ];
+    const m = normalizeMessage(raw({ msgType: "chat.list.action", content }), receivedAt)!;
+    assert.equal(m.text, "Đăng nhập Zalo trên máy tính thành công\nBạn đã đăng nhập Zalo Web trên Windows 10/11\n- Bằng: Mã QR");
+    assert.equal(normalizeMessage(raw({ msgType: "chat.list.action", content: [{ type: "x" }] }), receivedAt)!.text, "[chat.list.action]");
+  });
 });
 
 describe("thu hồi", () => {
