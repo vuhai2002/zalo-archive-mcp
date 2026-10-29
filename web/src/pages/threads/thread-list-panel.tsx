@@ -2,9 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ThreadListItem } from "../../archive-api-types";
 import { api, errorText } from "../../dashboard-api-client";
 import { useArchiveTimeZone } from "../../layout/dashboard-shell-context";
-import { IconRefresh } from "../../shared/action-and-media-icons";
 import { IconSearch } from "../../shared/dashboard-icons";
-import { BTN_ICON, EmptyState, ErrorNote, formatNumber, LoadingText } from "../../shared/ui-bits";
+import { EmptyState, ErrorNote, formatNumber, LoadingText } from "../../shared/ui-bits";
 import { useDebouncedValue } from "../../shared/use-debounced-value";
 import { useLoadMoreWhenVisible } from "../../shared/use-load-more-when-visible";
 import { ThreadListRow } from "./thread-list-row";
@@ -115,9 +114,6 @@ export function ThreadListPanel({
             <h1 className="text-[16px] font-semibold text-ink">
               Hội thoại <span className="text-[13px] font-medium text-ink-soft">({formatNumber(total)})</span>
             </h1>
-            <button type="button" onClick={() => void load(0)} title="Tải lại" aria-label="Tải lại danh sách" className={BTN_ICON}>
-              <IconRefresh size={17} />
-            </button>
           </div>
         )}
         <div className={`flex items-center gap-2 ${searching ? "" : "pb-3"}`}>

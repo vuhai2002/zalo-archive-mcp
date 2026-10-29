@@ -96,7 +96,6 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
         threadId={threadId}
         thread={t.thread}
         onBack={onBack}
-        onRefresh={refreshToBottom}
         infoOpen={infoOpen}
         onToggleInfo={toggleInfo}
       />

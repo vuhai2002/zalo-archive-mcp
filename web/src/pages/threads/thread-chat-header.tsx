@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import type { ThreadMessagesResponse } from "../../archive-api-types";
-import { IconRefresh } from "../../shared/action-and-media-icons";
 import { ContactAvatar } from "../../shared/contact-avatar";
 import { IconArrowLeft, IconPanelRight, IconSearch } from "../../shared/dashboard-icons";
 import { MemberAvatarStack } from "../../shared/member-avatar-stack";
@@ -30,19 +29,17 @@ export function ThreadAvatar({ thread, size = "lg" }: { thread: ChatThread; size
   );
 }
 
-/** Đầu khung chat kiểu Zalo PC: avatar, tên to, dòng phụ; nút tìm, tải tin mới, bật/tắt bảng thông tin */
+/** Đầu khung chat kiểu Zalo PC: avatar, tên to, dòng phụ; nút tìm, bật/tắt bảng thông tin (tin mới tự hiện qua SSE, không cần nút tải lại) */
 export function ThreadChatHeader({
   threadId,
   thread,
   onBack,
-  onRefresh,
   infoOpen,
   onToggleInfo,
 }: {
   threadId: string;
   thread: ChatThread | null;
   onBack: () => void;
-  onRefresh: () => void;
   infoOpen: boolean;
   onToggleInfo: () => void;
 }) {
@@ -59,9 +56,6 @@ export function ThreadChatHeader({
       <Link to={`/threads/${encodeURIComponent(threadId)}?find=1`} title="Tìm trong hội thoại này" aria-label="Tìm trong hội thoại này" className={BTN_ICON}>
         <IconSearch size={20} />
       </Link>
-      <button type="button" onClick={onRefresh} title="Tải tin mới" aria-label="Tải tin mới" className={BTN_ICON}>
-        <IconRefresh size={20} />
-      </button>
       <button
         type="button"
         onClick={onToggleInfo}
