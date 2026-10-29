@@ -78,6 +78,9 @@ Chạy trong tiến trình daemon (`src/dashboard`), phục vụ `web/dist`. H�
   chạy trước; quét xong mới biết uid -> uid đã có thì nối tiếp thư mục cũ, chưa có thì thêm nick
   (id = uid). Mỗi nick một `ZaloSessionManager` (cookie, chạy/dừng/đăng xuất), trạng thái ghi
   `meta.daemon_session_state` trong DB nick đó để MCP biết daemon gửi được không.
+- Tự cập nhật: `GET /api/events` (SSE). Khi có tab mở, `archive-change-feed.ts` dò kho mỗi giây theo mốc
+  (`archive-change-cursor.ts`: id tin, rowid cảm xúc / thu hồi, `fetched_at` của file) rồi gửi `change { threadIds }`;
+  trình duyệt chỉ tải lại phần đổi. Không tab nào mở thì không dò.
 - Route kho / gửi / cài đặt / media dựng riêng cho từng nick (một lần), mỗi yêu cầu đi vào bộ route
   của nick đang dùng; chưa có nick thì 409.
 

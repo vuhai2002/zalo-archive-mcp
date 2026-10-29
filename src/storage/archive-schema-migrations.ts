@@ -293,4 +293,8 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE threads ADD COLUMN pinned_at TEXT;
   `,
+  // 14: dashboard tự cập nhật (SSE) dò "file nào vừa tải xong" mỗi giây theo mốc fetched_at
+  `
+  CREATE INDEX attachments_fetched ON attachments (fetched_at);
+  `,
 ];

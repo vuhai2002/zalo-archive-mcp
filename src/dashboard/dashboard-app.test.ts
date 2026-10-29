@@ -124,6 +124,31 @@ describe("dashboard API", () => {
     assert.equal((await s.call("/api/threads/khong-co/shared", { cookie })).status, 404);
   });
 
+  it("tự cập nhật (SSE): báo sẵn sàng, có tin mới thì gửi sự kiện change kèm hội thoại", async () => {
+    const s = await setup();
+    const cookie = await login(s);
+    const res = await s.call("/api/events", { cookie });
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type") ?? "", /text\/event-stream/);
+    const reader = res.body!.getReader();
+    const dec = new TextDecoder();
+    let seen = "";
+    const readUntil = async (needle: string) => {
+      const deadline = Date.now() + 4_000;
+      while (!seen.includes(needle) && Date.now() < deadline) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        seen += dec.decode(value);
+      }
+      return seen.includes(needle);
+    };
+    assert.ok(await readUntil("event: ready"));
+    upsertMessage(s.db, sampleMessage({ msgId: "9", threadId: "u-binh", senderId: "u-binh" }), { source: "live", receivedAt: "2026-10-30T01:00:00.000Z" });
+    assert.ok(await readUntil("event: change"), "có tin mới thì báo");
+    assert.match(seen, /"threadIds":\["u-binh"\]/);
+    await reader.cancel();
+  });
+
   it("ghim hội thoại: lên đầu danh sách, có cờ pinned; sai kiểu 400, hội thoại lạ 404", async () => {
     const s = await setup();
     const cookie = await login(s);

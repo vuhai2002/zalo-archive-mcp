@@ -96,6 +96,8 @@ export const envSchema = z
     // Dashboard web (chạy cùng daemon). Mật khẩu tạo trên dashboard ở lần mở đầu tiên.
     DASHBOARD_HOST: z.string().min(1).default("127.0.0.1"),
     DASHBOARD_PORT: int(3210, 1, 65535),
+    // Dashboard tự cập nhật (SSE): khi có tab đang mở, dò kho tìm tin / cảm xúc / file mới mỗi chừng này ms
+    DASHBOARD_LIVE_CHECK_MS: int(1000, 200, 60_000),
   })
   .refine((e) => e.SEND_BATCH_MIN_GAP_SECONDS <= e.SEND_BATCH_MAX_GAP_SECONDS, {
     message: "SEND_BATCH_MIN_GAP_SECONDS phải <= SEND_BATCH_MAX_GAP_SECONDS",

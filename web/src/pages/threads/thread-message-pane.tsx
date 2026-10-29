@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useArchiveTimeZone, useDashboardShell } from "../../layout/dashboard-shell-context";
 import { EmptyState, ErrorNote, LoadingText } from "../../shared/ui-bits";
+import { useArchiveLiveChanges } from "../../shared/use-archive-live-changes";
 import { useLoadMoreWhenVisible } from "../../shared/use-load-more-when-visible";
 import { MessageBubble } from "./message-bubble";
 import { MessageComposer } from "./message-composer";
@@ -57,6 +58,12 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
     intent.current = stickToBottom.current ? { kind: "bottom" } : null;
     void refreshLatest();
   }, [refreshLatest]);
+
+  // Tin mới / cảm xúc / ảnh vừa tải xong của hội thoại này (SSE): tải lại phần mới nhất; đang ở
+  // đáy thì kéo theo xuống, đang đọc tin cũ thì giữ nguyên chỗ
+  useArchiveLiveChanges((change) => {
+    if (change === "all" || change.includes(threadId)) refreshToBottom();
+  });
 
   // Tin daemon vừa gửi phải chờ listener ghi lại mới có trong kho - hỏi lại sau một nhịp
   const afterSent = useCallback(() => {

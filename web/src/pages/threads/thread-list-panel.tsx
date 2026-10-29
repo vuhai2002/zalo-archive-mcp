@@ -10,6 +10,7 @@ import { useLoadMoreWhenVisible } from "../../shared/use-load-more-when-visible"
 import { ThreadListRow } from "./thread-list-row";
 import { SEARCH_TABS, ThreadSearchResults, type SearchTab } from "./thread-search-results";
 import { setThreadPinned, useOnThreadsChanged } from "./thread-pin-actions";
+import { useThreadListLiveRefresh } from "./use-thread-list-live-refresh";
 
 const PAGE_SIZE = 50;
 
@@ -69,6 +70,18 @@ export function ThreadListPanel({
   // Ghim / bỏ ghim (ở dòng này hay ở bảng thông tin) thì tải lại thứ tự từ đầu
   const reload = useCallback(() => void load(0), [load]);
   useOnThreadsChanged(reload);
+
+  // Tin mới tới (SSE): tải lại lặng lẽ phần đầu danh sách (đang tìm kiếm thì thôi)
+  useThreadListLiveRefresh({
+    query: debounced,
+    shown: threads.length,
+    paused: searching,
+    seq,
+    apply: (r) => {
+      setThreads(r.threads);
+      setTotal(r.total);
+    },
+  });
   // Mở từ nút tìm của khung chat: vào thẳng ô tìm, tab Tin nhắn
   useEffect(() => {
     if (!scopeThreadId) return;
