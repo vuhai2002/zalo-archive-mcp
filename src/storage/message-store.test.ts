@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { sampleMessage } from "./archive-store-test-helpers.js";
+import { recordAttachmentRenewed } from "./attachment-renewal-store.js";
 import { findThread, listThreads, readThread, searchMessages } from "./message-read-queries.js";
 import { recordRecall, upsertMessage } from "./message-write-store.js";
 import { openArchiveDatabase } from "./open-archive-database.js";
@@ -88,6 +89,32 @@ describe("message store", () => {
     assert.equal(row!.attachments.length, 1);
     assert.equal(row!.attachments[0]!.status, "pending");
     assert.equal(searchMessages(db, { query: "hop dong", limit: 5 }).length, 1);
+  });
+
+  it("tin đã có ảnh tới lại với link khác của cùng ảnh (bản sao lưu điện thoại ghi .jxl) thì không thêm đính kèm", () => {
+    const db = openArchiveDatabase(":memory:");
+    const photo = (remoteUrl: string) =>
+      sampleMessage({ msgType: "chat.photo", attachments: [{ kind: "photo", remoteUrl, fileName: null, declaredSize: null }] });
+    upsertMessage(db, photo("https://f119-zpc.zdn.vn/jpg/71/4f83.jpg"), live);
+    upsertMessage(db, photo("https://f119-zpc.zdn.vn/jxl/71/4f83.jxl"), {
+      source: "mobile_sync",
+      receivedAt: "2026-10-29T08:00:00.000Z",
+    });
+    const rows = db.prepare("SELECT remote_url FROM attachments").all() as Array<{ remote_url: string }>;
+    assert.deepEqual(rows.map((r) => r.remote_url), ["https://f119-zpc.zdn.vn/jpg/71/4f83.jpg"]);
+  });
+
+  it("đính kèm đã được cấp link mới: tin tới lại mang link gốc không sinh dòng thứ hai", () => {
+    const db = openArchiveDatabase(":memory:");
+    const msg = sampleMessage({
+      attachments: [{ kind: "file", remoteUrl: "https://f1.zdn.vn/goc.pdf", fileName: "a.pdf", declaredSize: 10 }],
+    });
+    upsertMessage(db, msg, live);
+    const { id } = db.prepare("SELECT id FROM attachments").get() as { id: number };
+    recordAttachmentRenewed(db, id, "https://f1.zdn.vn/moi.pdf", "2026-10-29T09:00:00.000Z");
+    upsertMessage(db, msg, { source: "old_messages", receivedAt: "2026-10-29T09:30:00.000Z" });
+    const rows = db.prepare("SELECT id, remote_url FROM attachments").all() as Array<{ id: number; remote_url: string }>;
+    assert.deepEqual(rows.map((r) => [r.id, r.remote_url]), [[id, "https://f1.zdn.vn/moi.pdf"]]);
   });
 
   it("tên hội thoại: tên danh bạ đè tên lấy từ tin; danh sách bạn rỗng bị bỏ qua", () => {

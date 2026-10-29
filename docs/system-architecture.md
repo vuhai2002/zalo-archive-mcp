@@ -29,8 +29,9 @@ dùng ghi ở `data/accounts.json`); daemon, MCP và lệnh CLI đều theo nick
 1. zca-js phát sự kiện (`message`, `undo`, `old_messages`; `selfListen: true` để có cả tin tự gửi).
 2. `archive-listener.ts` ghi NGUYÊN VĂN vào `raw-events/<ngày>.jsonl`.
 3. `archive-event-ingestor.ts` chuẩn hóa (`normalize-zalo-event.ts`) rồi `upsertMessage`:
-   khử trùng theo `msg_id`, cập nhật FTS (chữ đã bỏ dấu), thêm đính kèm `pending`, áp lệnh thu
-   hồi tới trước, cập nhật hội thoại.
+   khử trùng theo `msg_id`, cập nhật FTS (chữ đã bỏ dấu), thêm đính kèm `pending` (mỗi tin tối đa
+   một đính kèm mỗi loại: cùng ảnh tới lại với link khác thì không thêm), áp lệnh thu hồi tới trước,
+   cập nhật hội thoại.
 4. `media-download-worker.ts` tải từng đính kèm (chỉ host CDN Zalo, kiểm mỗi bước redirect),
    lưu theo sha256.
 5. Link hết hạn (403/404/410, hoặc CDN trả 200 kèm trang báo hết hạn): `media-link-renewer.ts`

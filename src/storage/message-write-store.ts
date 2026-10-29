@@ -66,12 +66,23 @@ export function upsertMessage(
     db.prepare("DELETE FROM messages_fts WHERE rowid = ?").run(id);
     db.prepare("INSERT INTO messages_fts (rowid, body) VALUES (?, ?)").run(id, searchBody(msg));
 
+    // Mỗi tin Zalo mang tối đa một tệp mỗi loại, nên khử trùng theo (tin, loại) chứ không theo
+    // link: cùng một ảnh có thể tới lại với link khác (bản sao lưu điện thoại ghi bản .jxl gốc,
+    // hoặc đính kèm đã được cấp link mới mà tin lấy bù vẫn mang link cũ)
     const insertAttachment = db.prepare(
       `INSERT OR IGNORE INTO attachments (msg_id, kind, remote_url, file_name, declared_size, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       SELECT :msgId, :kind, :remoteUrl, :fileName, :declaredSize, :createdAt
+       WHERE NOT EXISTS (SELECT 1 FROM attachments WHERE msg_id = :msgId AND kind = :kind)`,
     );
     for (const a of msg.attachments) {
-      insertAttachment.run(msg.msgId, a.kind, a.remoteUrl, a.fileName, a.declaredSize, meta.receivedAt);
+      insertAttachment.run({
+        msgId: msg.msgId,
+        kind: a.kind,
+        remoteUrl: a.remoteUrl,
+        fileName: a.fileName,
+        declaredSize: a.declaredSize,
+        createdAt: meta.receivedAt,
+      });
     }
 
     // Lệnh thu hồi có thể đã tới trước tin gốc
