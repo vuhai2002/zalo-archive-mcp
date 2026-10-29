@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ThreadKind } from "../archive/archived-message-types.js";
 import { buildFtsMatchExpression } from "../shared/fold-vietnamese-for-search.js";
+import { parseTextStyles, type TextStyleSpan } from "./message-text-styles.js";
 
 // Danh sách hội thoại tách sang thread-list-queries.ts; xuất lại để chỗ gọi cũ giữ nguyên
 export { findThread, listThreads, listThreadsPage, type ThreadSummary } from "./thread-list-queries.js";
@@ -31,11 +32,15 @@ export type MessageRow = {
   sentAt: string;
   recalledAt: string | null;
   source: string;
+  /** Định dạng chữ (đậm, màu...) của tin rtf; rỗng với tin chữ thường */
+  textStyles: TextStyleSpan[];
   attachments: AttachmentRow[];
 };
 
 const MESSAGE_COLUMNS = `m.id, m.msg_id, m.thread_id, m.thread_type, m.sender_id, m.sender_name, m.is_self,
-  m.msg_type, m.text, m.quote_msg_id, m.sent_at, m.recalled_at, m.source, c.avatar_url AS sender_avatar_url`;
+  m.msg_type, m.text, m.quote_msg_id, m.sent_at, m.recalled_at, m.source, c.avatar_url AS sender_avatar_url,
+  CASE WHEN m.msg_type = 'webchat' AND json_valid(m.raw_json) AND json_extract(m.raw_json, '$.content.action') = 'rtf'
+    THEN json_extract(m.raw_json, '$.content.params') END AS rtf_params`;
 /** Avatar người gửi lấy từ danh bạ người */
 const SENDER_JOIN = "LEFT JOIN contacts c ON c.user_id = m.sender_id";
 
@@ -113,6 +118,7 @@ function toMessageRow(r: Record<string, unknown>): MessageRow {
     sentAt: String(r.sent_at),
     recalledAt: (r.recalled_at as string | null) ?? null,
     source: String(r.source),
+    textStyles: parseTextStyles(r.rtf_params as string | null, String(r.text).length),
     attachments: [],
   };
 }

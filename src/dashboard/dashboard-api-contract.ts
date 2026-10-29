@@ -106,7 +106,21 @@ export type ArchivedMessage = {
   sentAt: string;
   recalledAt: string | null;
   source: string;
+  /** Định dạng chữ kiểu Zalo trên `text` (vị trí theo UTF-16); rỗng với tin chữ thường */
+  textStyles: TextStyleSpan[];
   attachments: AttachmentInfo[];
+};
+
+/** Một đoạn chữ có định dạng: đậm / nghiêng / gạch / màu "#rrggbb" / cỡ chữ (đã lọc ở máy chủ) */
+export type TextStyleSpan = {
+  start: number;
+  end: number;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  strike: boolean;
+  color: string | null;
+  size: "small" | "big" | null;
 };
 
 // GET /api/threads/:threadId/messages?beforeId=&limit=50

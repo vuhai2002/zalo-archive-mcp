@@ -1,16 +1,15 @@
 import { Fragment, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
-import type { ArchivedMessage } from "../../archive-api-types";
 import { useArchiveTimeZone } from "../../layout/dashboard-shell-context";
 import { IconRefresh } from "../../shared/action-and-media-icons";
 import { IconArrowLeft, IconSearch } from "../../shared/dashboard-icons";
-import { dayKey, formatDayHeading } from "../../shared/format-archive-time";
 import { ContactAvatar } from "../../shared/contact-avatar";
 import { MemberAvatarStack } from "../../shared/member-avatar-stack";
 import { threadDisplayName } from "../../shared/thread-kind-badge";
 import { BTN_ICON, EmptyState, ErrorNote, formatNumber, LoadingText } from "../../shared/ui-bits";
 import { MessageBubble } from "./message-bubble";
 import { MessageComposer } from "./message-composer";
+import { layoutMessages } from "./message-grouping";
 import { useThreadMessages } from "./use-thread-messages";
 
 /** Cách đáy dưới ngần này coi như "đang đọc tin mới nhất" - ảnh tải xong thì kéo theo xuống đáy */
@@ -63,6 +62,7 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
 
   const byMsgId = useMemo(() => new Map(t.messages.map((m) => [m.msgId, m] as const)), [t.messages]);
   const isGroup = t.thread?.threadType === "group";
+  const layouts = useMemo(() => layoutMessages(t.messages, tz), [t.messages, tz]);
 
   return (
     <div className="gc-card flex h-full min-h-0 flex-col overflow-hidden">
@@ -104,7 +104,7 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
           const el = e.currentTarget;
           stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_PX;
         }}
-        className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-3 sm:px-4"
+        className="min-h-0 flex-1 overflow-y-auto bg-chat px-3 pb-4 pt-3 sm:px-4"
       >
         {t.loading && <LoadingText />}
         {t.error && <ErrorNote message={t.error} onRetry={() => void t.reload()} />}
@@ -126,10 +126,10 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
 
         {t.messages.map((m, i) => (
           <Fragment key={m.id}>
-            {startsNewDay(t.messages[i - 1], m, tz) && (
-              <div className="flex justify-center py-1">
-                <span className="rounded-full bg-tile px-3 py-0.5 text-[11px] font-medium text-ink-soft">
-                  {formatDayHeading(m.sentAt, tz)}
+            {layouts[i]!.dayLabel && (
+              <div className="mb-1 mt-4 flex justify-center first:mt-1">
+                <span className="rounded-full bg-black/25 px-3 py-1 text-[12px] font-medium text-white dark:bg-white/15">
+                  {layouts[i]!.dayLabel}
                 </span>
               </div>
             )}
@@ -138,6 +138,8 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
               isGroup={isGroup}
               quoted={m.quoteMsgId ? byMsgId.get(m.quoteMsgId) : undefined}
               timeZone={tz}
+              first={layouts[i]!.firstInGroup}
+              last={layouts[i]!.lastInGroup}
               onMediaLoad={onMediaLoad}
             />
           </Fragment>
@@ -147,8 +149,4 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
       <MessageComposer threadId={threadId} onSent={afterSent} />
     </div>
   );
-}
-
-function startsNewDay(prev: ArchivedMessage | undefined, cur: ArchivedMessage, tz: string): boolean {
-  return !prev || dayKey(prev.sentAt, tz) !== dayKey(cur.sentAt, tz);
 }

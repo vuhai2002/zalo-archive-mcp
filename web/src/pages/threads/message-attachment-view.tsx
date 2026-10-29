@@ -53,7 +53,7 @@ export function MessageAttachmentView({ att, onMediaLoad }: { att: AttachmentInf
 
   if (!url) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-dashed border-line bg-tile/50 px-3 py-2 text-[13px] text-ink-soft">
+      <div className="flex items-center gap-2 rounded-lg border border-dashed border-black/15 bg-bubble px-3 py-2 text-[13px] text-chat-time dark:border-white/15">
         {isImageKind(att.kind) ? <IconImage size={16} /> : <IconFileText size={16} />}
         <span className="min-w-0 truncate">{name}</span>
         <span className="shrink-0 text-[12px]">· {mediaStatusLabel(att.status)}</span>
@@ -73,7 +73,7 @@ export function MessageAttachmentView({ att, onMediaLoad }: { att: AttachmentInf
         alt={name}
         loading="lazy"
         onLoad={onMediaLoad}
-        className="max-h-72 max-w-full rounded-lg border border-line bg-tile object-contain"
+        className="max-h-[360px] max-w-full rounded-lg border border-black/10 bg-bubble object-contain dark:border-white/10"
       />
     );
     return canOpenInNewTab(att.mime) ? (
@@ -99,7 +99,7 @@ export function MessageAttachmentView({ att, onMediaLoad }: { att: AttachmentInf
     <a
       href={url}
       download={att.fileName ?? true}
-      className="flex items-center gap-2.5 rounded-lg border border-line bg-surface px-3 py-2 text-ink hover:bg-tile"
+      className="flex items-center gap-2.5 rounded-md border border-black/10 bg-surface/80 px-3 py-2 text-chat-ink hover:bg-surface dark:border-white/10"
       title="Tải file về máy"
     >
       <IconFileText size={20} className="shrink-0 text-zalo-500" />

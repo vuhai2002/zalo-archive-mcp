@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { Logger } from "pino";
 import type { AppEnv } from "../config/env-schema.js";
 import { isAllowedMediaHost } from "../media/media-file-naming.js";
-import { requeueNowAllowedAttachments, resetStuckDownloads } from "../storage/attachment-queue-store.js";
+import { requeueJxlRecoverablePhotos, requeueNowAllowedAttachments, resetStuckDownloads } from "../storage/attachment-queue-store.js";
 import { closeDanglingConnection } from "../storage/connection-event-store.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { failStuckSending } from "../storage/outbox-store.js";
@@ -20,6 +20,8 @@ export function openAccountDatabaseForDaemon(databaseFile: string, env: AppEnv, 
   if (resetMedia > 0) log.info({ resetMedia }, "Đưa media tải dở về hàng đợi");
   const requeued = requeueNowAllowedAttachments(db, (url) => isAllowedMediaHost(url, env.MEDIA_ALLOWED_HOST_SUFFIXES));
   if (requeued > 0) log.info({ requeued }, "Tải lại file từng bị chặn vì host (nay đã được phép)");
+  const jxlRetry = requeueJxlRecoverablePhotos(db);
+  if (jxlRetry > 0) log.info({ jxlRetry }, "Tải lại ảnh hỏng, lần này thử cả bản JXL gốc");
   const failedSends = failStuckSending(db);
   if (failedSends > 0) log.warn({ failedSends }, "Có tin đang gửi dở từ lần trước - đánh failed, KHÔNG tự gửi lại");
   return db;
