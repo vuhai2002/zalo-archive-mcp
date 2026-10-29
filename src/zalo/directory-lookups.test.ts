@@ -8,7 +8,7 @@ import { findThread, listThreads, readThread } from "../storage/message-read-que
 import { upsertMessage } from "../storage/message-write-store.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { replaceFriendDirectory } from "../storage/thread-directory-store.js";
-import { resolveMissingGroupInfo, resolveUnknownContacts } from "./contact-directory-sync.js";
+import { rateLimitPauseMs, resolveMissingGroupInfo, resolveUnknownContacts } from "./contact-directory-sync.js";
 import { applyFriendEvent, applyGroupEvent } from "./directory-event-handlers.js";
 import { resolveStickerImages } from "./sticker-image-resolver.js";
 
@@ -161,5 +161,34 @@ describe("thành viên nhóm thật cho ảnh ghép", () => {
     applyGroupEvent(db, { act: "leave", data: { groupId: "g-1", totalMembers: 3, updateMembers: [{ id: "1002" }] } });
     const after = groupMemberAvatars(db, "g-1", 4);
     assert.deepEqual([after.memberAvatars.map((m) => m.userId), after.memberCount], [["1001", "1003", "1004"], 3]);
+  });
+});
+
+describe("hỏi hồ sơ không dồn dập", () => {
+  const groupOf = (members: string[]) =>
+    ({ getGroupInfo: async () => ({ gridInfoMap: { "g-1": { name: "Nhóm đông", avt: "", memVerList: members.map((m) => `${m}_0`) } } }) }) as unknown as API;
+
+  it("chỉ hỏi người đã nhắn và vài thành viên đầu cho ảnh ghép nhóm, không hỏi cả nhóm", async () => {
+    const db = seeded();
+    await resolveMissingGroupInfo(groupOf(["2001", "2002", "2003", "2004", "2005", "2006"]), db, log);
+    const asked = contactsNeedingLookup(db, 50, "2000-01-01T00:00:00.000Z").sort();
+    assert.deepEqual(asked, ["2001", "2002", "2003", "2004", "u-lan", "u-minh"]);
+  });
+
+  it("Zalo báo hỏi quá nhiều (mã 221): lượt đó không tính là đã hỏi, báo về để vòng hỏi tạm nghỉ", async () => {
+    const db = seeded();
+    const tooMany = Object.assign(new Error("Vượt quá số request cho phép"), { code: 221 });
+    const api = { getUserInfo: async () => Promise.reject(tooMany) } as unknown as API;
+    assert.equal(await resolveUnknownContacts(api, db, log), "rate_limited");
+    assert.deepEqual(contactsNeedingLookup(db, 10, "2000-01-01T00:00:00.000Z").sort(), ["u-lan", "u-minh"]);
+    // Lỗi khác thì vẫn chờ một ngày như cũ, không hỏi lại liên tục
+    const broken = { getUserInfo: async () => Promise.reject(new Error("mạng hỏng")) } as unknown as API;
+    assert.equal(await resolveUnknownContacts(broken, db, log), "done");
+    assert.deepEqual(contactsNeedingLookup(db, 10, "2000-01-01T00:00:00.000Z"), []);
+  });
+
+  it("thời gian nghỉ khi bị chặn tăng gấp đôi mỗi lần, tối đa 6 tiếng", () => {
+    const base = 30 * 60_000;
+    assert.deepEqual([0, 1, 2, 3, 4, 9].map((n) => rateLimitPauseMs(n, base) / 60_000), [30, 60, 120, 240, 360, 360]);
   });
 });

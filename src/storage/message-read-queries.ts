@@ -3,6 +3,7 @@ import type { ThreadKind } from "../archive/archived-message-types.js";
 import { callNoticeOf } from "../archive/zalo-call-message-text.js";
 import { withZaloEmoticons } from "../archive/zalo-emoticon-emoji.js";
 import { buildFtsMatchExpression } from "../shared/fold-vietnamese-for-search.js";
+import { withGroupEventMemberNames } from "./group-event-member-names.js";
 import { reactionSummaries, type ReactionSummary } from "./message-reaction-store.js";
 import { parseTextStyles, type TextStyleSpan } from "./message-text-styles.js";
 import { getMeta } from "./thread-directory-store.js";
@@ -49,7 +50,9 @@ export type MessageRow = {
   attachments: AttachmentRow[];
 };
 
-const MESSAGE_COLUMNS = `m.id, m.msg_id, m.thread_id, m.thread_type, m.sender_id, m.sender_name, m.is_self,
+// Tin từ bản sao lưu điện thoại không kèm tên người gửi: lấy tên trong danh bạ người
+const MESSAGE_COLUMNS = `m.id, m.msg_id, m.thread_id, m.thread_type, m.sender_id,
+  COALESCE(m.sender_name, c.display_name) AS sender_name, m.is_self,
   m.msg_type, m.text, m.quote_msg_id, m.sent_at, m.recalled_at, m.source, c.avatar_url AS sender_avatar_url,
   CASE WHEN m.msg_type = 'webchat' AND json_valid(m.raw_json) AND json_extract(m.raw_json, '$.content.action') = 'rtf'
     THEN json_extract(m.raw_json, '$.content.params') END AS rtf_params,
@@ -148,7 +151,10 @@ function toMessageRow(r: Record<string, unknown>): MessageRow {
 function withAttachments(db: DatabaseSync, messages: MessageRow[]): MessageRow[] {
   if (messages.length === 0) return messages;
   const reactions = reactionSummaries(db, messages.map((m) => m.msgId), getMeta(db, "self_uid"));
-  for (const m of messages) m.reactions = reactions.get(m.msgId) ?? [];
+  for (const m of messages) {
+    m.reactions = reactions.get(m.msgId) ?? [];
+    m.text = withGroupEventMemberNames(db, m.msgType, m.text);
+  }
   const stmt = db.prepare(
     `SELECT id, msg_id, kind, status, file_name, local_path, size_bytes, mime, needs_renew, renewed_at
      FROM attachments WHERE msg_id = ? ORDER BY id`,

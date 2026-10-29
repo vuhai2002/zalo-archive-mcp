@@ -8,6 +8,9 @@ import { inTransaction } from "../shared/db-transaction.js";
  */
 export type ContactEntry = { userId: string; displayName: string | null; avatarUrl: string | null };
 
+/** Số thành viên đầu nhóm dùng để ghép ảnh cho nhóm không có ảnh riêng (danh sách hội thoại) */
+export const GROUP_MOSAIC_MEMBERS = 4;
+
 /** Ghi thông tin lấy từ Zalo (danh sách bạn, hồ sơ): giá trị mới đè giá trị cũ khi có */
 export function upsertContacts(db: DatabaseSync, entries: ContactEntry[]): void {
   if (entries.length === 0) return;
@@ -35,14 +38,24 @@ export function noteContactSeen(db: DatabaseSync, userId: string, displayName: s
   ).run(userId, displayName, new Date().toISOString());
 }
 
-/** Người chưa có avatar và chưa hỏi gần đây (trước `retryBeforeIso`) - để hỏi Zalo theo lô */
+/**
+ * Người chưa có avatar và chưa hỏi gần đây (trước `retryBeforeIso`) - để hỏi Zalo theo lô. Chỉ
+ * những người kho thật sự cần hiện: đã gửi tin, người kia của hội thoại 1-1, và vài thành viên
+ * đầu của nhóm chưa có ảnh (dashboard ghép ảnh nhóm từ họ). Thành viên khác của nhóm đông thì
+ * không hỏi: hỏi cả nhóm là hàng nghìn người, Zalo chặn ngay (mã 221).
+ */
 export function contactsNeedingLookup(db: DatabaseSync, limit: number, retryBeforeIso: string): string[] {
   const rows = db
     .prepare(
-      `SELECT user_id FROM contacts WHERE avatar_url IS NULL AND (lookup_at IS NULL OR lookup_at < ?)
-       ORDER BY updated_at DESC LIMIT ?`,
+      `SELECT c.user_id FROM contacts c
+       WHERE c.avatar_url IS NULL AND (c.lookup_at IS NULL OR c.lookup_at < :retryBefore)
+         AND (EXISTS (SELECT 1 FROM messages m WHERE m.sender_id = c.user_id)
+           OR EXISTS (SELECT 1 FROM threads t WHERE t.thread_type = 'user' AND t.thread_id = c.user_id)
+           OR EXISTS (SELECT 1 FROM group_members gm JOIN threads g ON g.thread_id = gm.group_id AND g.thread_type = 'group'
+                      WHERE gm.user_id = c.user_id AND gm.position < :mosaic AND g.avatar_url IS NULL))
+       ORDER BY c.updated_at DESC LIMIT :limit`,
     )
-    .all(retryBeforeIso, limit) as Array<{ user_id: string }>;
+    .all({ retryBefore: retryBeforeIso, mosaic: GROUP_MOSAIC_MEMBERS, limit }) as Array<{ user_id: string }>;
   return rows.map((r) => r.user_id);
 }
 

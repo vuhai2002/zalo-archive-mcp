@@ -85,6 +85,15 @@ Khóa mã hóa cookie tự sinh (`data/app-secrets.json`); máy chạy bản cũ
 `CREDENTIALS_ENCRYPTION_KEY` trong `.env` một lần. Danh sách nick dựng từ các thư mục
 `data/accounts/*` có sẵn nếu chưa có `accounts.json`.
 
+## Danh bạ (tên, avatar)
+
+`directory-lookup-loop.ts` hỏi Zalo những gì tin không mang theo: tên + avatar nhóm, hồ sơ người nhắn,
+ảnh sticker, danh sách bạn bè. Hồ sơ chỉ hỏi cho người kho thật sự hiện (đã gửi tin, người kia của hội
+thoại 1-1, 4 thành viên đầu nhóm chưa có ảnh) - hỏi cả nhóm đông là hàng nghìn người, Zalo chặn ngay
+(mã 221). Mỗi lượt 50 người, cách nhau tối thiểu `DIRECTORY_CONTACT_LOOKUP_GAP_SECONDS`; bị chặn thì
+lượt đó không tính là đã hỏi và cả vòng nghỉ `DIRECTORY_RATE_LIMIT_PAUSE_MINUTES`, gấp đôi mỗi lần bị
+lại, tối đa 6 tiếng. Lúc đọc, tin không kèm tên người gửi (bản sao lưu điện thoại) lấy tên trong danh bạ.
+
 ## Lấy bù tin lỡ
 
 Mỗi lần listener kết nối: xin Zalo gửi bù tin 1-1 (cmd 510), 2-5 giây sau tin nhóm (511). Nối lại

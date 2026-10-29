@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { isRecallPayload, normalizeMessage, normalizeRecall, type RawListenerMessage } from "./normalize-zalo-event.js";
+import { isLocalDeletePayload, isRecallPayload, normalizeMessage, normalizeRecall, type RawListenerMessage } from "./normalize-zalo-event.js";
 import { zaloTimestampToIso } from "./zalo-message-timestamp.js";
 
 const receivedAt = new Date("2026-10-28T03:00:05.000Z");
@@ -59,6 +59,34 @@ describe("normalizeMessage", () => {
     const url = "https://www.facebook.com/share/p/ExampleId1/";
     const content = { title: url, href: url, description: url, action: "recommened.link" };
     assert.equal(normalizeMessage(raw({ msgType: "chat.recommended", content }), receivedAt)!.text, url);
+  });
+
+  it("danh thiếp: hiện tên người được giới thiệu, không in JSON (số điện thoại, mã QR) ra chữ", () => {
+    const content = {
+      title: "Diệp Thư",
+      href: "www.zaloapp.com",
+      description: JSON.stringify({ phone: "0900000000", qrCodeUrl: "https://qr-talk.zdn.vn/x", gUid: "AB" }),
+      action: "recommened.user",
+      params: "1234567890",
+    };
+    assert.equal(normalizeMessage(raw({ msgType: "chat.recommended", content }), receivedAt)!.text, "Danh thiếp\nDiệp Thư");
+  });
+
+  it("bài của tài khoản OA (chat.webcontent): tiêu đề + mô tả bài; bản v2 lấy câu tiếng Việt", () => {
+    const post = { title: "Ưu đãi tháng này", description: "Áp dụng toàn quốc" };
+    const v1 = { title: "", description: "", href: "", params: JSON.stringify({ item: { bundle_data: JSON.stringify({ post }) } }) };
+    assert.equal(normalizeMessage(raw({ msgType: "chat.webcontent", content: v1 }), receivedAt)!.text, "Ưu đãi tháng này\nÁp dụng toàn quốc");
+    const v2 = { zinstant_msg: JSON.stringify({ customMsg: { msg: { en: "Hello", vi: " ƯU ĐÃI MẪU?\nXin chào" } } }), action: "" };
+    assert.equal(normalizeMessage(raw({ msgType: "chat.webcontent.v2", content: v2 }), receivedAt)!.text, "ƯU ĐÃI MẪU?\nXin chào");
+    assert.equal(normalizeMessage(raw({ msgType: "chat.webcontent", content: { params: "{hỏng" } }), receivedAt)!.text, "[chat.webcontent]");
+  });
+
+  it("lệnh 'xóa ở phía tôi' (chat.delete) không phải tin nhắn: không ghi thành tin", () => {
+    const content = [{ type: 1, actionType: 0, uidFrom: "u-me", clientDelMsgId: 1, globalDelMsgId: 8400003000110 }];
+    const data = { msgType: "chat.delete", content };
+    assert.equal(isLocalDeletePayload(data), true);
+    assert.equal(normalizeMessage(raw(data), receivedAt), null);
+    assert.equal(isLocalDeletePayload({ msgType: "webchat", content: "xóa giúp mình" }), false);
   });
 
   it("tin cuộc gọi: dựng câu như Zalo thay cho chữ giữ chỗ 'sendBubbleMessage'", () => {

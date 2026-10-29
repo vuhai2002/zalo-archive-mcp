@@ -8,6 +8,8 @@ describe("parseEnv", () => {
     assert.equal(env.OFFLINE_REPLAY_ENABLED, true);
     assert.equal(env.OFFLINE_REPLAY_MIN_INTERVAL_MINUTES, 10);
     assert.equal(env.ZALO_LOGIN_COOLDOWN_SECONDS, 30);
+    assert.equal(env.DIRECTORY_CONTACT_LOOKUP_GAP_SECONDS, 60);
+    assert.equal(env.DIRECTORY_RATE_LIMIT_PAUSE_MINUTES, 30);
     assert.equal(env.SEND_SINGLE_MIN_GAP_SECONDS, 3);
     assert.equal(env.SEND_BATCH_MIN_GAP_SECONDS, 45);
     assert.equal(env.DASHBOARD_HOST, "127.0.0.1");

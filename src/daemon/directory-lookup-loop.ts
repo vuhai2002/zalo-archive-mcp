@@ -1,7 +1,12 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { Logger } from "pino";
 import type { API } from "zca-js";
-import { resolveMissingGroupInfo, resolveUnknownContacts, syncFriendDirectory } from "../zalo/contact-directory-sync.js";
+import {
+  rateLimitPauseMs,
+  resolveMissingGroupInfo,
+  resolveUnknownContacts,
+  syncFriendDirectory,
+} from "../zalo/contact-directory-sync.js";
 import { resolveStickerImages } from "../zalo/sticker-image-resolver.js";
 
 const LOOKUP_INTERVAL_MS = 20_000;
@@ -14,6 +19,10 @@ const FRIEND_SYNC_DEBOUNCE_MS = 5_000;
  * còn thiếu (các truy vấn "còn thiếu gì" rẻ), nên chạy dày được: nhóm mới / sticker
  * mới hiện đủ sau vài chục giây thay vì chờ lâu.
  *
+ * Hồ sơ người nhắn hỏi thưa hơn (`contactLookupGapMs` giữa hai lượt): sau khi đồng bộ từ
+ * điện thoại có thể có vài trăm người cần hỏi. Zalo báo hỏi quá nhiều (mã 221) thì nghỉ cả
+ * vòng `rateLimitPauseMs`, bị lại thì gấp đôi, hỏi được một lượt thì về mức đầu.
+ *
  * Các bước chạy NỐI TIẾP, lượt sau không chồng lượt trước.
  */
 export function startDirectoryLookupLoop(o: {
@@ -21,15 +30,26 @@ export function startDirectoryLookupLoop(o: {
   db: DatabaseSync;
   log: Logger;
   friendSyncEveryMs: number;
+  contactLookupGapMs: number;
+  rateLimitPauseMs: number;
 }): { stop: () => void; requestFriendSync: () => void } {
   let stopped = false;
   let running = false;
   let friendSyncDue = true;
   let lastFriendSync = 0;
+  let lastContactLookup = 0;
+  let pausedUntil = 0;
+  let rateLimitedTimes = 0;
   let debounce: ReturnType<typeof setTimeout> | null = null;
 
+  const pause = () => {
+    const ms = rateLimitPauseMs(rateLimitedTimes++, o.rateLimitPauseMs);
+    pausedUntil = Date.now() + ms;
+    o.log.warn({ minutes: Math.round(ms / 60_000) }, "Zalo báo hỏi quá nhiều - tạm nghỉ hỏi danh bạ");
+  };
+
   const runOnce = async () => {
-    if (stopped || running) return;
+    if (stopped || running || Date.now() < pausedUntil) return;
     running = true;
     try {
       const periodic = o.friendSyncEveryMs > 0 && Date.now() - lastFriendSync > o.friendSyncEveryMs;
@@ -38,8 +58,14 @@ export function startDirectoryLookupLoop(o: {
         lastFriendSync = Date.now();
         await syncFriendDirectory(o.api, o.db, o.log);
       }
-      await resolveMissingGroupInfo(o.api, o.db, o.log);
-      await resolveUnknownContacts(o.api, o.db, o.log);
+      const groups = await resolveMissingGroupInfo(o.api, o.db, o.log);
+      if (groups === "rate_limited") return pause();
+      if (Date.now() - lastContactLookup >= o.contactLookupGapMs) {
+        const contacts = await resolveUnknownContacts(o.api, o.db, o.log);
+        if (contacts === "rate_limited") return pause();
+        if (contacts === "done") lastContactLookup = Date.now();
+        if (contacts === "done" || groups === "done") rateLimitedTimes = 0;
+      }
       await resolveStickerImages(o.api, o.db, o.log);
     } catch (err) {
       o.log.warn({ err }, "Vòng hỏi danh bạ gặp lỗi");

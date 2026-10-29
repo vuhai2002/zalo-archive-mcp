@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { startOfLocalDayDaysAgoUtc, startOfLocalDayUtc, startOfNextLocalDayUtc, startOfTodayUtc } from "../../shared/local-date-range.js";
 import { listenerGaps, recentConnectionEvents } from "../../storage/connection-event-store.js";
+import { GROUP_MOSAIC_MEMBERS } from "../../storage/contact-store.js";
 import { HEARTBEAT_STALE_MS } from "../../storage/daemon-liveness.js";
 import { findThread, listThreadsPage, readThread, searchMessages } from "../../storage/message-read-queries.js";
 import { archiveTotals, countBy, dailyMessageCounts, topThreadsSince } from "../../storage/overview-stats-queries.js";
@@ -22,7 +23,7 @@ export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
   const tz = env.ARCHIVE_TIMEZONE;
   /** Nhóm không có ảnh riêng: 4 thành viên đầu để ghép avatar như Zalo */
   const groupAvatarParts = (type: string, id: string, avatarUrl: string | null) =>
-    type === "group" && !avatarUrl ? groupMemberAvatars(db, id, 4) : { memberAvatars: [], memberCount: null };
+    type === "group" && !avatarUrl ? groupMemberAvatars(db, id, GROUP_MOSAIC_MEMBERS) : { memberAvatars: [], memberCount: null };
 
   app.get("/overview", (c) => {
     const days = clampInt(c.req.query("days"), 30, 1, 365);

@@ -283,4 +283,10 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   ALTER TABLE attachments ADD COLUMN renewed_at TEXT;
   ALTER TABLE attachments ADD COLUMN original_url TEXT;
   `,
+  // 12: chỉ hỏi hồ sơ người đã nhắn tin / vài thành viên đầu nhóm (không hỏi cả nhóm đông) -
+  // cần tra nhanh "người này đã gửi tin chưa" và "người này ở nhóm nào"
+  `
+  CREATE INDEX messages_sender ON messages (sender_id);
+  CREATE INDEX group_members_user ON group_members (user_id, position);
+  `,
 ];

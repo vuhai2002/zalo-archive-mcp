@@ -1,6 +1,7 @@
 import type { NormalizedMessage, NormalizedRecall, ThreadKind } from "../archive/archived-message-types.js";
 import { attachmentKindOf, extractMessageAttachments } from "./extract-message-attachments.js";
 import { callNoticeOf } from "../archive/zalo-call-message-text.js";
+import { webContentText } from "./zalo-web-content-text.js";
 import { zaloTimestampToIso } from "./zalo-message-timestamp.js";
 
 /**
@@ -23,6 +24,14 @@ function str(value: unknown): string | null {
   if (value === null || value === undefined) return null;
   const s = String(value).trim();
   return s === "" ? null : s;
+}
+
+/**
+ * Lệnh "xóa ở phía tôi" (`chat.delete`, nội dung là danh sách `globalDelMsgId`) Zalo đồng bộ giữa
+ * các máy của mình: không phải tin nhắn, không ghi thành tin. Kho lưu trữ vẫn giữ tin gốc nếu có.
+ */
+export function isLocalDeletePayload(data: Record<string, unknown>): boolean {
+  return data.msgType === "chat.delete";
 }
 
 /** Tin này thực chất là lệnh thu hồi (có trong `old_messages`, lib không tách ra như tin live) */
@@ -58,11 +67,14 @@ function messageText(msgType: string, content: unknown): string {
   if (LINK_TYPES.has(msgType)) {
     const call = callNoticeOf(c.action, c.params);
     if (call) return `${call.title}\n${call.detail}`;
+    // Danh thiếp: mô tả là JSON (số điện thoại, mã QR) - chỉ hiện tên, dữ liệu gốc vẫn ở raw_json
+    if (c.action === "recommened.user") return title ? `Danh thiếp\n${title}` : "Danh thiếp";
     // Chỉ dán URL thì Zalo đặt cùng URL vào cả tiêu đề, link lẫn mô tả: mỗi phần chỉ hiện một lần
     const parts = [title, str(c.href), description].filter((p): p is string => !!p);
     return [...new Set(parts)].join("\n") || `[${msgType}]`;
   }
   if (msgType === "chat.sticker") return "[sticker]";
+  if (msgType.startsWith("chat.webcontent")) return webContentText(msgType, c) ?? `[${msgType}]`;
   if (attachmentKindOf(msgType) === "file") return ""; // tên file nằm ở đính kèm
   return [title, description].filter(Boolean).join("\n") || (attachmentKindOf(msgType) ? "" : `[${msgType}]`);
 }
@@ -72,7 +84,7 @@ export function normalizeMessage(raw: RawListenerMessage, receivedAt: Date): Nor
   const d = raw.data;
   const msgId = str(d.msgId);
   const threadId = str(raw.threadId);
-  if (!msgId || !threadId) return null;
+  if (!msgId || !threadId || isLocalDeletePayload(d)) return null;
   const msgType = str(d.msgType) ?? "unknown";
   const quote = d.quote && typeof d.quote === "object" ? (d.quote as Record<string, unknown>) : null;
   const attachments = extractMessageAttachments(msgType, d.content);

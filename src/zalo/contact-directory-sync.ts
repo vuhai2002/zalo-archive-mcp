@@ -15,6 +15,21 @@ const GROUP_BATCH = 50;
 const CONTACT_BATCH = 50;
 /** Hỏi rồi mà không ra tên/avatar thì một ngày sau mới hỏi lại */
 const RETRY_MS = 24 * 3_600_000;
+/** Mã lỗi Zalo "Vượt quá số request cho phép" */
+const ZALO_RATE_LIMIT_CODE = 221;
+const MAX_RATE_LIMIT_PAUSE_MS = 6 * 3_600_000;
+
+/** Kết quả một lượt hỏi: không có gì để hỏi / đã hỏi (được hay hỏng) / Zalo báo hỏi quá nhiều */
+export type LookupOutcome = "idle" | "done" | "rate_limited";
+
+export function isZaloRateLimit(err: unknown): boolean {
+  return (err as { code?: unknown } | null)?.code === ZALO_RATE_LIMIT_CODE;
+}
+
+/** Bị Zalo chặn lần thứ `times` liên tiếp (tính từ 0): nghỉ gấp đôi mỗi lần, tối đa 6 tiếng */
+export function rateLimitPauseMs(times: number, baseMs: number): number {
+  return Math.min(baseMs * 2 ** Math.max(0, times), MAX_RATE_LIMIT_PAUSE_MS);
+}
 
 const nonEmpty = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
 
@@ -48,14 +63,14 @@ export async function syncFriendDirectory(api: API, db: DatabaseSync, log: Logge
  * Hỏi tên + avatar cho các nhóm ĐÃ có tin trong kho mà còn thiếu. Không quét mọi
  * nhóm của tài khoản: chỉ nhóm thật sự có hoạt động mới cần.
  */
-export async function resolveMissingGroupInfo(api: API, db: DatabaseSync, log: Logger): Promise<void> {
+export async function resolveMissingGroupInfo(api: API, db: DatabaseSync, log: Logger): Promise<LookupOutcome> {
   const now = Date.now();
   const ids = groupsMissingName(db, GROUP_BATCH, new Date(now - RETRY_MS).toISOString());
-  if (ids.length === 0) return;
-  // Đánh dấu đã hỏi TRƯỚC khi gọi: hỏng hay không ra tên thì cũng chờ một ngày mới hỏi lại
-  markGroupNameLookup(db, ids, new Date(now).toISOString());
+  if (ids.length === 0) return "idle";
   try {
     const res = await api.getGroupInfo(ids);
+    // Hỏi được thì dù không ra tên cũng chờ một ngày mới hỏi lại
+    markGroupNameLookup(db, ids, new Date(now).toISOString());
     const entries = Object.entries(res.gridInfoMap ?? {});
     upsertGroupNames(
       db,
@@ -68,8 +83,12 @@ export async function resolveMissingGroupInfo(api: API, db: DatabaseSync, log: L
     for (const [id, info] of entries) storeGroupMembers(db, id, info);
     log.info({ asked: ids.length, found: entries.length }, "Đã cập nhật tên, avatar, thành viên nhóm");
   } catch (err) {
+    // Zalo báo hỏi quá nhiều: không tính là đã hỏi, vòng hỏi tạm nghỉ rồi hỏi lại
+    if (isZaloRateLimit(err)) return "rate_limited";
+    markGroupNameLookup(db, ids, new Date(now).toISOString());
     log.warn({ err, count: ids.length }, "Không lấy được thông tin nhóm");
   }
+  return "done";
 }
 
 /**
@@ -107,13 +126,13 @@ function storeGroupMembers(db: DatabaseSync, groupId: string, info: unknown): vo
 }
 
 /** Hỏi tên + avatar cho người đã nhắn (người lạ, thành viên nhóm) mà kho chưa có avatar */
-export async function resolveUnknownContacts(api: API, db: DatabaseSync, log: Logger): Promise<void> {
+export async function resolveUnknownContacts(api: API, db: DatabaseSync, log: Logger): Promise<LookupOutcome> {
   const now = Date.now();
   const ids = contactsNeedingLookup(db, CONTACT_BATCH, new Date(now - RETRY_MS).toISOString());
-  if (ids.length === 0) return;
-  markContactLookup(db, ids, new Date(now).toISOString());
+  if (ids.length === 0) return "idle";
   try {
     const res = await api.getUserInfo(ids);
+    markContactLookup(db, ids, new Date(now).toISOString());
     // Khóa trả về dạng "<uid>_0"; lấy uid từ chính hồ sơ cho chắc
     const entries = Object.entries(res.changed_profiles ?? {}).map(([key, p]) => ({
       userId: nonEmpty(p?.userId) ?? key.replace(/_\d+$/, ""),
@@ -123,6 +142,10 @@ export async function resolveUnknownContacts(api: API, db: DatabaseSync, log: Lo
     upsertContacts(db, entries);
     log.info({ asked: ids.length, found: entries.length }, "Đã cập nhật hồ sơ người nhắn");
   } catch (err) {
+    // Zalo báo hỏi quá nhiều: không tính là đã hỏi, vòng hỏi tạm nghỉ rồi hỏi lại
+    if (isZaloRateLimit(err)) return "rate_limited";
+    markContactLookup(db, ids, new Date(now).toISOString());
     log.warn({ err, count: ids.length }, "Không lấy được hồ sơ người nhắn");
   }
+  return "done";
 }

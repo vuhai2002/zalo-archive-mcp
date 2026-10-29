@@ -57,6 +57,8 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
     db,
     log: log.child({ part: "directory" }),
     friendSyncEveryMs: env.DIRECTORY_SYNC_HOURS * 3_600_000,
+    contactLookupGapMs: env.DIRECTORY_CONTACT_LOOKUP_GAP_SECONDS * 1000,
+    rateLimitPauseMs: env.DIRECTORY_RATE_LIMIT_PAUSE_MINUTES * 60_000,
   });
   stops.push(directory.stop);
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { sampleMessage } from "./archive-store-test-helpers.js";
 import { recordAttachmentRenewed } from "./attachment-renewal-store.js";
+import { upsertContacts } from "./contact-store.js";
 import { findThread, listThreads, readThread, searchMessages } from "./message-read-queries.js";
 import { recordRecall, upsertMessage } from "./message-write-store.js";
 import { openArchiveDatabase } from "./open-archive-database.js";
@@ -127,6 +128,14 @@ describe("message store", () => {
     assert.equal(text!.call, null);
     assert.deepEqual(missed!.call, { missedIncoming: true });
     assert.equal((db.prepare("SELECT text FROM messages WHERE msg_id = '1'").get() as { text: string }).text, "Q xem :d rồi :d");
+  });
+
+  it("tin nhóm từ điện thoại không kèm tên người gửi: lấy tên trong danh bạ", () => {
+    const db = openArchiveDatabase(":memory:");
+    const inGroup = { threadId: "g-1", threadType: "group" as const, senderId: "u-binh" };
+    upsertMessage(db, sampleMessage({ ...inGroup, msgId: "1", senderName: null }), { source: "mobile_sync", receivedAt: live.receivedAt });
+    upsertContacts(db, [{ userId: "u-binh", displayName: "Bình", avatarUrl: null }]);
+    assert.equal(readThread(db, { threadId: "g-1", threadType: "group", limit: 5 })[0]!.senderName, "Bình");
   });
 
   it("tên hội thoại: tên danh bạ đè tên lấy từ tin; danh sách bạn rỗng bị bỏ qua", () => {

@@ -5,6 +5,7 @@ import { recordRecall, upsertMessage } from "../storage/message-write-store.js";
 import { getMeta } from "../storage/thread-directory-store.js";
 import { groupEventNotice, normalizeReaction } from "../zalo/normalize-reaction-and-group-event.js";
 import {
+  isLocalDeletePayload,
   isRecallPayload,
   normalizeMessage,
   normalizeRecall,
@@ -59,6 +60,8 @@ export function ingestArchiveEvent(
         } else stats.skipped++;
         return;
       }
+      // Lệnh "xóa ở phía tôi": không phải tin, bỏ qua (vẫn còn trong nhật ký thô)
+      if (isLocalDeletePayload(raw.data)) return void stats.skipped++;
       const msg = normalizeMessage(raw, receivedAt);
       if (!msg) {
         stats.skipped++;
