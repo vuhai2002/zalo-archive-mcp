@@ -1,5 +1,6 @@
 import type { NormalizedMessage, NormalizedRecall, ThreadKind } from "../archive/archived-message-types.js";
 import { attachmentKindOf, extractMessageAttachments } from "./extract-message-attachments.js";
+import { callNoticeOf } from "../archive/zalo-call-message-text.js";
 import { zaloTimestampToIso } from "./zalo-message-timestamp.js";
 
 /**
@@ -55,7 +56,11 @@ function messageText(msgType: string, content: unknown): string {
   const description = str(c.description);
 
   if (LINK_TYPES.has(msgType)) {
-    return [title, str(c.href), description].filter(Boolean).join("\n") || `[${msgType}]`;
+    const call = callNoticeOf(c.action, c.params);
+    if (call) return `${call.title}\n${call.detail}`;
+    // Chỉ dán URL thì Zalo đặt cùng URL vào cả tiêu đề, link lẫn mô tả: mỗi phần chỉ hiện một lần
+    const parts = [title, str(c.href), description].filter((p): p is string => !!p);
+    return [...new Set(parts)].join("\n") || `[${msgType}]`;
   }
   if (msgType === "chat.sticker") return "[sticker]";
   if (attachmentKindOf(msgType) === "file") return ""; // tên file nằm ở đính kèm

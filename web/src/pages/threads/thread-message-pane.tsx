@@ -134,10 +134,10 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
 
         {t.messages.map((m, i) => (
           <Fragment key={m.id}>
-            {layouts[i]!.dayLabel && (
+            {layouts[i]!.separatorLabel && (
               <div className="mb-1 mt-4 flex justify-center first:mt-1">
                 <span className="rounded-full bg-black/25 px-3 py-1 text-[12px] font-medium text-white dark:bg-white/15">
-                  {layouts[i]!.dayLabel}
+                  {layouts[i]!.separatorLabel}
                 </span>
               </div>
             )}

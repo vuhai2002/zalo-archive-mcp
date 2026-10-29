@@ -117,6 +117,18 @@ describe("message store", () => {
     assert.deepEqual(rows.map((r) => [r.id, r.remote_url]), [[id, "https://f1.zdn.vn/moi.pdf"]]);
   });
 
+  it("đọc tin: mã biểu cảm hiện thành emoji (DB giữ mã gốc), tin cuộc gọi nhỡ được đánh dấu", () => {
+    const db = openArchiveDatabase(":memory:");
+    upsertMessage(db, sampleMessage({ msgId: "1", text: "Q xem :d rồi :d" }), live);
+    const call = { action: "recommened.misscall", params: JSON.stringify({ reason: 1, isCaller: 0, calltype: 0 }) };
+    upsertMessage(db, sampleMessage({ msgId: "2", msgType: "chat.recommended", text: "Bạn bị nhỡ\nCuộc gọi thoại", rawJson: JSON.stringify({ content: call }) }), live);
+    const [text, missed] = readThread(db, { threadId: "u-lan", threadType: "user", limit: 10 });
+    assert.equal(text!.text, "Q xem 😁 rồi 😁");
+    assert.equal(text!.call, null);
+    assert.deepEqual(missed!.call, { missedIncoming: true });
+    assert.equal((db.prepare("SELECT text FROM messages WHERE msg_id = '1'").get() as { text: string }).text, "Q xem :d rồi :d");
+  });
+
   it("tên hội thoại: tên danh bạ đè tên lấy từ tin; danh sách bạn rỗng bị bỏ qua", () => {
     const db = openArchiveDatabase(":memory:");
     upsertMessage(db, sampleMessage({ senderName: "Lan tên hiển thị" }), live);

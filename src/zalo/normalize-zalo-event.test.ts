@@ -55,6 +55,24 @@ describe("normalizeMessage", () => {
     assert.equal(m.text, "Bài viết\nhttp://127.0.0.1/admin\nmô tả");
   });
 
+  it("link chỉ dán URL (Zalo đặt cùng URL vào tiêu đề, link, mô tả): URL hiện một lần", () => {
+    const url = "https://www.facebook.com/share/p/ExampleId1/";
+    const content = { title: url, href: url, description: url, action: "recommened.link" };
+    assert.equal(normalizeMessage(raw({ msgType: "chat.recommended", content }), receivedAt)!.text, url);
+  });
+
+  it("tin cuộc gọi: dựng câu như Zalo thay cho chữ giữ chỗ 'sendBubbleMessage'", () => {
+    const content = {
+      title: "sendBubbleMessage",
+      description: "Cuộc gọi",
+      href: "",
+      action: "recommened.calltime",
+      params: JSON.stringify({ callId: 1, duration: 2519, isCaller: 0, calltype: 1 }),
+    };
+    const m = normalizeMessage(raw({ msgType: "chat.recommended", content }), receivedAt)!;
+    assert.equal(m.text, "Cuộc gọi video đến\n41 phút 59 giây");
+  });
+
   it("params hỏng hoặc thiếu URL không làm văng, vẫn để lại dấu vết", () => {
     const m = normalizeMessage(raw({ msgType: "chat.photo", content: { params: "{hỏng" } }), receivedAt)!;
     assert.deepEqual(m.attachments, []);

@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ThreadKind } from "../archive/archived-message-types.js";
+import { withZaloEmoticons } from "../archive/zalo-emoticon-emoji.js";
 
 /**
  * Phần thêm cho danh sách hội thoại kiểu Zalo trên dashboard: tin cuối (để hiện
@@ -33,8 +34,8 @@ export function lastMessagePreview(db: DatabaseSync, threadId: string, threadTyp
     isSelf: row.is_self === 1,
     senderName: (row.sender_name as string | null) ?? null,
     msgType: String(row.msg_type),
-    // Chữ dài chỉ cần đoạn đầu cho dòng xem trước
-    text: String(row.text).slice(0, 200),
+    // Chữ dài chỉ cần đoạn đầu cho dòng xem trước; mã biểu cảm (":d") hiện thành emoji như khung chat
+    text: withZaloEmoticons(String(row.text).slice(0, 200)).text,
     attachmentKind: (row.att_kind as string | null) ?? null,
     attachmentName: (row.att_name as string | null) ?? null,
     recalled: row.recalled_at !== null,

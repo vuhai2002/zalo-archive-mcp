@@ -1,5 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ThreadKind } from "../archive/archived-message-types.js";
+import { callNoticeOf } from "../archive/zalo-call-message-text.js";
+import { withZaloEmoticons } from "../archive/zalo-emoticon-emoji.js";
 import { buildFtsMatchExpression } from "../shared/fold-vietnamese-for-search.js";
 import { reactionSummaries, type ReactionSummary } from "./message-reaction-store.js";
 import { parseTextStyles, type TextStyleSpan } from "./message-text-styles.js";
@@ -40,6 +42,8 @@ export type MessageRow = {
   source: string;
   /** Định dạng chữ (đậm, màu...) của tin rtf; rỗng với tin chữ thường */
   textStyles: TextStyleSpan[];
+  /** Tin cuộc gọi (chữ đã dựng sẵn "tiêu đề\nthời lượng"); null với tin khác */
+  call: { missedIncoming: boolean } | null;
   /** Cảm xúc trên tin, gộp theo loại */
   reactions: ReactionSummary[];
   attachments: AttachmentRow[];
@@ -48,7 +52,11 @@ export type MessageRow = {
 const MESSAGE_COLUMNS = `m.id, m.msg_id, m.thread_id, m.thread_type, m.sender_id, m.sender_name, m.is_self,
   m.msg_type, m.text, m.quote_msg_id, m.sent_at, m.recalled_at, m.source, c.avatar_url AS sender_avatar_url,
   CASE WHEN m.msg_type = 'webchat' AND json_valid(m.raw_json) AND json_extract(m.raw_json, '$.content.action') = 'rtf'
-    THEN json_extract(m.raw_json, '$.content.params') END AS rtf_params`;
+    THEN json_extract(m.raw_json, '$.content.params') END AS rtf_params,
+  CASE WHEN m.msg_type = 'chat.recommended' AND json_valid(m.raw_json)
+    THEN json_extract(m.raw_json, '$.content.action') END AS rec_action,
+  CASE WHEN m.msg_type = 'chat.recommended' AND json_valid(m.raw_json)
+    THEN json_extract(m.raw_json, '$.content.params') END AS rec_params`;
 /** Avatar người gửi lấy từ danh bạ người */
 const SENDER_JOIN = "LEFT JOIN contacts c ON c.user_id = m.sender_id";
 
@@ -111,6 +119,9 @@ export function searchMessages(
 }
 
 function toMessageRow(r: Record<string, unknown>): MessageRow {
+  // Mã biểu cảm (":d") đổi sang emoji lúc đọc, định dạng chữ dời theo; DB giữ chữ gốc
+  const shown = withZaloEmoticons(String(r.text), parseTextStyles(r.rtf_params as string | null, String(r.text).length));
+  const call = callNoticeOf(r.rec_action, r.rec_params);
   return {
     id: Number(r.id),
     msgId: String(r.msg_id),
@@ -121,12 +132,13 @@ function toMessageRow(r: Record<string, unknown>): MessageRow {
     senderAvatarUrl: (r.sender_avatar_url as string | null) ?? null,
     isSelf: r.is_self === 1,
     msgType: String(r.msg_type),
-    text: String(r.text),
+    text: shown.text,
     quoteMsgId: (r.quote_msg_id as string | null) ?? null,
     sentAt: String(r.sent_at),
     recalledAt: (r.recalled_at as string | null) ?? null,
     source: String(r.source),
-    textStyles: parseTextStyles(r.rtf_params as string | null, String(r.text).length),
+    textStyles: shown.spans,
+    call: call ? { missedIncoming: call.missedIncoming } : null,
     reactions: [],
     attachments: [],
   };

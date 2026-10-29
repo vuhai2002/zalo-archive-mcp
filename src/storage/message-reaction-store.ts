@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ThreadKind } from "../archive/archived-message-types.js";
-import { emojiForReaction } from "../archive/zalo-reaction-icons.js";
+import { emojiForZaloCode } from "../archive/zalo-emoticon-emoji.js";
 
 /** Một lần bấm cảm xúc (hoặc gỡ cảm xúc), đã chuẩn hóa từ sự kiện zca-js */
 export type ReactionInput = {
@@ -58,7 +58,7 @@ export function reactionSummaries(db: DatabaseSync, msgIds: string[], selfUid: s
     const list = out.get(row.msg_id) ?? [];
     let s = list.find((x) => x.icon === row.icon);
     if (!s) {
-      s = { icon: row.icon, emoji: emojiForReaction(row.icon), count: 0, mine: false, names: [] };
+      s = { icon: row.icon, emoji: emojiForZaloCode(row.icon), count: 0, mine: false, names: [] };
       list.push(s);
     }
     const mine = selfUid !== null && row.reactor_id === selfUid;

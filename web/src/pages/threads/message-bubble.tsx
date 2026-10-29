@@ -9,11 +9,18 @@ import { RichMessageText } from "./rich-message-text";
 
 const VISUAL_KINDS = new Set(["photo", "gif", "sticker"]);
 
-/** Thẻ thông báo của Zalo (vd đăng nhập trên máy tính): dòng đầu là tiêu đề, in đậm như trên Zalo */
+/** Màu tiêu đề cuộc gọi bị nhỡ, gần màu đỏ Zalo dùng */
+const MISSED_CALL_COLOR = "#e5484d";
+
+/**
+ * Thẻ thông báo của Zalo (vd đăng nhập trên máy tính) và tin cuộc gọi: dòng đầu là tiêu đề,
+ * in đậm như trên Zalo; cuộc gọi tới mình mà không nghe thì tiêu đề màu đỏ.
+ */
 function textStylesOf(msg: ArchivedMessage): TextStyleSpan[] {
-  if (msg.msgType !== "chat.list.action") return msg.textStyles;
+  if (msg.msgType !== "chat.list.action" && !msg.call) return msg.textStyles;
   const end = msg.text.indexOf("\n");
-  return [{ start: 0, end: end === -1 ? msg.text.length : end, bold: true, italic: false, underline: false, strike: false, color: null, size: null }];
+  const color = msg.call?.missedIncoming ? MISSED_CALL_COLOR : null;
+  return [{ start: 0, end: end === -1 ? msg.text.length : end, bold: true, italic: false, underline: false, strike: false, color, size: null }];
 }
 
 /**

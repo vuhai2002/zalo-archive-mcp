@@ -23,6 +23,7 @@ const msg = (sentAt: string, who: "me" | "lan", msgType = "webchat"): ArchivedMe
   recalledAt: null,
   source: "live",
   textStyles: [],
+  call: null,
   reactions: [],
   attachments: [],
 });
@@ -58,8 +59,21 @@ describe("bố cục khung chat kiểu Zalo", () => {
       ],
     );
     assert.deepEqual(
-      l.map((x) => x.dayLabel),
-      ["Hôm nay", null, null, null, null, null],
+      l.map((x) => x.separatorLabel),
+      ["10:28 Hôm nay", null, null, null, null, null],
+    );
+  });
+
+  it("vạch giờ như Zalo: giờ + ngày ở tin đầu, sang ngày mới, hoặc sau khi ngắt quãng từ 1 giờ", () => {
+    const list = [
+      msg("2037-10-28T09:25:00.000Z", "lan"), // 16:25 hôm qua
+      msg("2037-10-29T09:00:00.000Z", "lan"), // 16:00 hôm nay: sang ngày mới
+      msg("2037-10-29T09:59:00.000Z", "me"), // cách 59 phút: không vạch
+      msg("2037-10-29T14:03:00.000Z", "lan"), // 21:03, cách hơn 4 giờ: có vạch
+    ];
+    assert.deepEqual(
+      layoutMessages(list, TZ, new Date("2037-10-29T15:00:00.000Z")).map((x) => x.separatorLabel),
+      ["16:25 Hôm qua", "16:00 Hôm nay", null, "21:03 Hôm nay"],
     );
   });
 });

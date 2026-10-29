@@ -5,7 +5,7 @@
 | `src/bin/` | điểm vào: `login-with-qr`, `run-archive-daemon`, `run-mcp-stdio-server`, `outbox-admin`, `replay-raw-journal`, `seed-demo-archive` |
 | `src/config/` | `env-schema.ts` (zod, mọi núm chỉnh + mặc định an toàn), `env.ts` (nạp `.env` từ gốc project), `account-paths.ts` (thư mục mỗi nick), `app-secrets-store.ts` (khóa tự sinh) |
 | `src/accounts/` | `zalo-account-registry.ts` (danh sách nick + nick đang dùng, `data/accounts.json`), `load-or-import-account-registry.ts` (nhận thư mục bản cũ), `active-account-for-cli.ts` |
-| `src/archive/` | kiểu dữ liệu chung, nhật ký JSONL thô, `archive-event-ingestor.ts` (đường ghi dùng chung cho live và replay) |
+| `src/archive/` | kiểu dữ liệu chung, nhật ký JSONL thô, `archive-event-ingestor.ts` (đường ghi dùng chung cho live và replay); kiến thức thuần về Zalo: `zalo-emoticon-emoji.ts` (mã biểu cảm / cảm xúc -> emoji, đổi lúc đọc), `zalo-call-message-text.ts` (câu hiển thị của tin cuộc gọi) |
 | `src/zalo/` | đăng nhập + credential mã hóa, chuẩn hóa sự kiện zca-js, listener + kế hoạch nối lại, đồng bộ danh bạ, khung offline replay / keepAlive; `mobile-sync/` (đồng bộ lịch sử từ điện thoại); `zca-renew-media-link-api.ts` + `renew-link-control-listener.ts` (xin lại link media, nhận link trả sau qua WS) |
 | `src/storage/` | mở DB + migration, ghi/đọc tin, FTS, đính kèm, sự kiện kết nối, outbox, cài đặt gửi, kill switch, trạng thái daemon |
 | `src/media/` | tải media: kiểm host, giới hạn cỡ, sha256, thử lại; ảnh JXL sang PNG; xin lại link hết hạn (`media-link-renewer.ts`, lịch giãn nhịp `media-link-renew-schedule.ts`, dựng / đọc lời gọi `media-link-renewal-request.ts`) |

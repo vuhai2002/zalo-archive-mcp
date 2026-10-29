@@ -1,19 +1,22 @@
 import type { ArchivedMessage } from "../../archive-api-types";
-import { dayKey, formatDayHeading } from "../../shared/format-archive-time";
+import { dayKey, formatClock, formatDayHeading } from "../../shared/format-archive-time";
 
 /**
  * Bố cục khung chat kiểu Zalo: tin liên tiếp của CÙNG một người, cách nhau không quá
  * vài phút, gộp thành một cụm - avatar (và tên trong nhóm) chỉ ở tin đầu cụm, giờ chỉ
- * ở tin cuối cụm. Sang ngày mới thì có dải "Hôm nay" / "Hôm qua" / "Thứ Năm, 12/03/2026".
+ * ở tin cuối cụm. Vạch giờ "21:03 Hôm nay" / "09:15 Thứ Năm, 12/03/2026" đặt ở tin đầu,
+ * khi sang ngày mới, và sau mỗi lần ngắt quãng lâu (như Zalo).
  */
 export const GROUP_GAP_MS = 5 * 60_000;
+/** Hai tin cách nhau từ chừng này trở lên thì chèn vạch giờ mới (ngưỡng tự chọn, Zalo không công bố) */
+export const SEPARATOR_GAP_MS = 60 * 60_000;
 
 /** Tin hệ thống ("X đã đồng ý kết bạn", "X đã thêm Y vào nhóm"): hiện giữa khung, không thuộc cụm nào */
 export const isSystemMessage = (m: Pick<ArchivedMessage, "msgType">) => m.msgType === "chat.ecard" || m.msgType === "group_event";
 
 export type MessageLayout = {
-  /** Dải ngày đặt TRƯỚC tin này; null nếu cùng ngày với tin trước */
-  dayLabel: string | null;
+  /** Vạch giờ đặt TRƯỚC tin này ("21:03 Hôm nay"); null nếu cùng ngày và gần tin trước */
+  separatorLabel: string | null;
   firstInGroup: boolean;
   lastInGroup: boolean;
 };
@@ -38,8 +41,12 @@ export function layoutMessages(messages: ArchivedMessage[], tz: string, now: Dat
   return messages.map((m, i) => {
     const prev = messages[i - 1];
     const next = messages[i + 1];
+    const separator =
+      !prev ||
+      dayKey(prev.sentAt, tz) !== dayKey(m.sentAt, tz) ||
+      Date.parse(m.sentAt) - Date.parse(prev.sentAt) >= SEPARATOR_GAP_MS;
     return {
-      dayLabel: !prev || dayKey(prev.sentAt, tz) !== dayKey(m.sentAt, tz) ? chatDayLabel(m.sentAt, tz, now) : null,
+      separatorLabel: separator ? `${formatClock(m.sentAt, tz)} ${chatDayLabel(m.sentAt, tz, now)}` : null,
       firstInGroup: !sameGroup(prev, m, tz),
       lastInGroup: !sameGroup(m, next, tz),
     };
