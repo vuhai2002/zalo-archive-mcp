@@ -158,3 +158,18 @@ export const IconEyeOff = (p: IconProps) => (
     <path d="M5.5 3.5l13 17" />
   </svg>
 );
+
+/** Bật/tắt bảng thông tin bên phải khung chat (như nút của Zalo PC) */
+export const IconPanelRight = (p: IconProps) => (
+  <svg {...iconBase(p)}>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="2.2" />
+    <path d="M14.5 4.5v15" />
+  </svg>
+);
+
+/** Ghim hội thoại (đinh ghim như Zalo) */
+export const IconPin = (p: IconProps) => (
+  <svg {...iconBase(p)}>
+    <path d="M14.5 3.5 20.5 9.5l-2.2 1-3.9 3.9-.6 4.1-1.3 1.3-3.2-3.2L5 20.9l-1-1 4.3-4.3-3.2-3.2 1.3-1.3 4.1-.6 3.9-3.9 1.1-2.1Z" />
+  </svg>
+);

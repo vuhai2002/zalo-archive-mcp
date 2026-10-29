@@ -6,6 +6,7 @@ import { HEARTBEAT_STALE_MS } from "../../storage/daemon-liveness.js";
 import { findThread, listThreadsPage, readThread, searchMessages } from "../../storage/message-read-queries.js";
 import { archiveTotals, countBy, dailyMessageCounts, topThreadsSince } from "../../storage/overview-stats-queries.js";
 import { groupMemberAvatars, lastMessagePreview } from "../../storage/thread-list-extras.js";
+import { setThreadPinned } from "../../storage/thread-pin-store.js";
 import { getMeta, threadLabel } from "../../storage/thread-directory-store.js";
 import type { OverviewResponse, SearchResponse, ThreadListResponse, ThreadMessagesResponse } from "../dashboard-api-contract.js";
 import type { DashboardContext } from "../dashboard-context.js";
@@ -53,6 +54,7 @@ export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
       query: c.req.query("query"),
       limit: clampInt(c.req.query("limit"), 50, 1, 200),
       offset: clampInt(c.req.query("offset"), 0, 0, 1_000_000),
+      pinnedFirst: true,
     });
     const threads = page.threads.map((t) => ({
       ...t,
@@ -72,10 +74,28 @@ export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
       beforeId: beforeId || undefined,
       limit: clampInt(c.req.query("limit"), 50, 1, 200),
     });
+    const parts = groupAvatarParts(thread.threadType, thread.threadId, thread.avatarUrl);
+    // Đầu khung chat ghi "Nhóm · N thành viên" cho mọi nhóm, kể cả nhóm có ảnh riêng
+    const memberCount =
+      parts.memberCount ??
+      (thread.threadType === "group"
+        ? ((db.prepare("SELECT member_count FROM threads WHERE thread_id = ? AND thread_type = 'group'").get(thread.threadId) as
+            | { member_count: number | null }
+            | undefined)?.member_count ?? null)
+        : null);
     return c.json({
-      thread: { ...thread, ...groupAvatarParts(thread.threadType, thread.threadId, thread.avatarUrl) },
+      thread: { ...thread, ...parts, memberCount },
       messages: messages.map(toArchivedMessage),
     } satisfies ThreadMessagesResponse);
+  });
+
+  app.post("/threads/:threadId/pin", async (c) => {
+    const body = (await c.req.json().catch(() => null)) as { pinned?: unknown } | null;
+    if (typeof body?.pinned !== "boolean") return c.json({ error: "pinned phải là true/false" }, 400);
+    if (!setThreadPinned(db, c.req.param("threadId"), body.pinned, new Date().toISOString())) {
+      return c.json({ error: "Không có hội thoại này" }, 404);
+    }
+    return c.json({ pinned: body.pinned });
   });
 
   app.get("/search", (c) => {
@@ -95,7 +115,13 @@ export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
     });
     const results = messages.map((m) => {
       const label = threadLabel(db, m.threadId);
-      return { ...toArchivedMessage(m), threadName: label?.name ?? null, threadIsFriend: label?.isFriend ?? false };
+      const thread = findThread(db, m.threadId);
+      return {
+        ...toArchivedMessage(m),
+        threadName: label?.name ?? thread?.name ?? null,
+        threadIsFriend: label?.isFriend ?? false,
+        threadAvatarUrl: thread?.avatarUrl ?? null,
+      };
     });
     return c.json({ messages: results } satisfies SearchResponse);
   });

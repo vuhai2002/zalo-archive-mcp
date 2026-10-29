@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import type { MeResponse, SessionStatus } from "../archive-api-types";
 import { api, ApiError, errorText, loginPath } from "../dashboard-api-client";
 import { anhNen } from "../shared/background-image";
-import { IconArchive, IconMenu } from "../shared/dashboard-icons";
+import { IconArchive, IconLogout, IconMoon, IconSun } from "../shared/dashboard-icons";
 import { ErrorNote, LoadingText } from "../shared/ui-bits";
 import { useTheme } from "../shared/use-theme";
 import { DashboardShellContext, type DashboardShellValue } from "./dashboard-shell-context";
@@ -32,8 +32,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [me, setMe] = useState<MeResponse | null>(null);
   const [gateError, setGateError] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const { theme } = useTheme();
+  const { theme, toggle } = useTheme();
+  const fullBleed = useLocation().pathname.startsWith("/threads");
   const { session, killSwitch, applySession, applyKillSwitch } = useShellStatusPolling(me !== null);
 
   const checkAuth = useCallback(() => {
@@ -76,39 +76,35 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
   return (
     <DashboardShellContext.Provider value={ctx}>
-      <div className="flex min-h-[100dvh] bg-canvas">
-        <SidebarNav
-          session={session}
-          killSwitch={killSwitch}
-          onLogout={logout}
-          mobileOpen={menuOpen}
-          onCloseMobile={() => setMenuOpen(false)}
-        />
+      <div className="flex min-h-[100dvh] bg-canvas pb-14 lg:pb-0">
+        <SidebarNav session={session} killSwitch={killSwitch} onLogout={logout} />
 
         <div className="flex min-w-0 flex-1 flex-col lg:h-screen lg:overflow-hidden">
-          {/* Topbar chỉ ở mobile - desktop đã có sidebar cố định */}
+          {/* Topbar chỉ ở mobile - desktop đã có cột icon cố định */}
           <header className="sticky top-0 z-30 flex h-[53px] items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur lg:hidden">
-            <button
-              type="button"
-              onClick={() => setMenuOpen(true)}
-              aria-label="Mở menu"
-              className="rounded-lg p-1.5 text-ink-soft hover:bg-tile hover:text-ink"
-            >
-              <IconMenu size={20} />
-            </button>
-            <Link to="/" className="flex items-center gap-2" title="Về trang chính">
+            <Link to="/" className="flex min-w-0 flex-1 items-center gap-2" title="Về trang chính">
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-zalo-500 text-white">
                 <IconArchive size={16} />
               </span>
               <span className="truncate text-[15px] font-semibold text-ink">Kho Zalo</span>
             </Link>
+            <button type="button" onClick={toggle} aria-label="Đổi giao diện sáng/tối" className="rounded-lg p-1.5 text-ink-soft hover:bg-tile hover:text-ink">
+              {theme === "dark" ? <IconSun size={18} /> : <IconMoon size={18} />}
+            </button>
+            <button type="button" onClick={logout} aria-label="Đăng xuất khỏi dashboard" className="rounded-lg p-1.5 text-ink-soft hover:bg-tile hover:text-ink">
+              <IconLogout size={18} />
+            </button>
           </header>
 
-          {/* Ảnh nền phủ vùng nội dung, không phủ sidebar. `bg-canvas` làm màu lót
-              khi ảnh chưa tải xong để trang không nháy trắng. */}
+          {/* Trang Hội thoại chiếm sát mép như Zalo PC; trang khác có ảnh nền + khoảng đệm.
+              `bg-canvas` làm màu lót khi ảnh chưa tải xong để trang không nháy trắng. */}
           <main
-            className="min-w-0 flex-1 bg-canvas bg-cover bg-fixed bg-center px-4 py-5 sm:px-6 lg:overflow-y-auto lg:px-8 lg:py-7"
-            style={{ backgroundImage: `url(${anhNen(theme)})` }}
+            className={
+              fullBleed
+                ? "min-w-0 flex-1 bg-surface lg:overflow-hidden"
+                : "min-w-0 flex-1 bg-canvas bg-cover bg-fixed bg-center px-4 py-5 sm:px-6 lg:overflow-y-auto lg:px-8 lg:py-7"
+            }
+            style={fullBleed ? undefined : { backgroundImage: `url(${anhNen(theme)})` }}
           >
             <AccountGate session={session}>{children}</AccountGate>
           </main>

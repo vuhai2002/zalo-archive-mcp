@@ -110,4 +110,28 @@ describe("dashboard API", () => {
     assert.equal((await retry(1)).status, 200);
     assert.deepEqual(await thread().then((a) => [a.status, a.renewState]), ["pending", "waiting"]);
   });
+
+  it("ảnh/file của hội thoại cho bảng thông tin: ảnh có giờ gửi; hội thoại lạ 404", async () => {
+    const s = await setup();
+    const cookie = await login(s);
+    const visual = (await (await s.call("/api/threads/u-lan/shared?kind=visual", { cookie })).json()) as {
+      items: Array<{ kind: string; sentAt: string }>;
+      total: number;
+    };
+    assert.deepEqual([visual.total, visual.items[0]!.kind, visual.items[0]!.sentAt], [1, "photo", "2026-10-28T03:00:00.000Z"]);
+    const files = (await (await s.call("/api/threads/u-lan/shared?kind=file", { cookie })).json()) as { total: number };
+    assert.equal(files.total, 0);
+    assert.equal((await s.call("/api/threads/khong-co/shared", { cookie })).status, 404);
+  });
+
+  it("ghim hội thoại: lên đầu danh sách, có cờ pinned; sai kiểu 400, hội thoại lạ 404", async () => {
+    const s = await setup();
+    const cookie = await login(s);
+    const pin = (id: string, body: unknown) => s.call(`/api/threads/${id}/pin`, { ...s.json(body), cookie });
+    assert.equal((await pin("u-lan", { pinned: "có" })).status, 400);
+    assert.equal((await pin("khong-co", { pinned: true })).status, 404);
+    assert.equal((await pin("u-lan", { pinned: true })).status, 200);
+    const list = (await (await s.call("/api/threads", { cookie })).json()) as { threads: Array<{ threadId: string; pinned: boolean }> };
+    assert.deepEqual(list.threads.map((t) => [t.threadId, t.pinned]), [["u-lan", true]]);
+  });
 });

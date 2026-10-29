@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { ThreadKind } from "../archive/archived-message-types.js";
 import { callNoticeOf } from "../archive/zalo-call-message-text.js";
 import { withZaloEmoticons } from "../archive/zalo-emoticon-emoji.js";
+import { linkPreviewOf, type LinkPreview } from "../archive/zalo-link-preview.js";
 import { photoAlbumOf, type PhotoAlbum } from "../archive/zalo-photo-album.js";
 import { buildFtsMatchExpression } from "../shared/fold-vietnamese-for-search.js";
 import { withGroupEventMemberNames } from "./group-event-member-names.js";
@@ -48,6 +49,8 @@ export type MessageRow = {
   call: { missedIncoming: boolean } | null;
   /** Ảnh thuộc album (nhiều ảnh gửi cùng lúc) - dashboard gộp thành khung lưới; null với tin khác */
   album: PhotoAlbum | null;
+  /** Thẻ link (recommened.link): URL, tiêu đề, mô tả, tên miền; null với tin khác */
+  link: LinkPreview | null;
   /** Cảm xúc trên tin, gộp theo loại */
   reactions: ReactionSummary[];
   attachments: AttachmentRow[];
@@ -60,9 +63,7 @@ const MESSAGE_COLUMNS = `m.id, m.msg_id, m.thread_id, m.thread_type, m.sender_id
   CASE WHEN m.msg_type = 'webchat' AND json_valid(m.raw_json) AND json_extract(m.raw_json, '$.content.action') = 'rtf'
     THEN json_extract(m.raw_json, '$.content.params') END AS rtf_params,
   CASE WHEN m.msg_type = 'chat.recommended' AND json_valid(m.raw_json)
-    THEN json_extract(m.raw_json, '$.content.action') END AS rec_action,
-  CASE WHEN m.msg_type = 'chat.recommended' AND json_valid(m.raw_json)
-    THEN json_extract(m.raw_json, '$.content.params') END AS rec_params,
+    THEN json_extract(m.raw_json, '$.content') END AS rec_content,
   CASE WHEN m.msg_type = 'chat.photo' AND json_valid(m.raw_json)
     THEN json_extract(m.raw_json, '$.content.params') END AS photo_params`;
 /** Avatar người gửi lấy từ danh bạ người */
@@ -129,7 +130,9 @@ export function searchMessages(
 function toMessageRow(r: Record<string, unknown>): MessageRow {
   // Mã biểu cảm (":d") đổi sang emoji lúc đọc, định dạng chữ dời theo; DB giữ chữ gốc
   const shown = withZaloEmoticons(String(r.text), parseTextStyles(r.rtf_params as string | null, String(r.text).length));
-  const call = callNoticeOf(r.rec_action, r.rec_params);
+  // Tin chat.recommended: cuộc gọi (câu đã dựng sẵn ở text) hoặc thẻ link
+  const rec = parseRecommendedContent(r.rec_content);
+  const call = callNoticeOf(rec?.action, rec?.params);
   return {
     id: Number(r.id),
     msgId: String(r.msg_id),
@@ -148,6 +151,7 @@ function toMessageRow(r: Record<string, unknown>): MessageRow {
     textStyles: shown.spans,
     call: call ? { missedIncoming: call.missedIncoming } : null,
     album: photoAlbumOf(r.photo_params),
+    link: linkPreviewOf(rec),
     reactions: [],
     attachments: [],
   };
@@ -179,4 +183,14 @@ function withAttachments(db: DatabaseSync, messages: MessageRow[]): MessageRow[]
     }));
   }
   return messages;
+}
+
+function parseRecommendedContent(raw: unknown): Record<string, unknown> | null {
+  if (typeof raw !== "string") return null;
+  try {
+    const v: unknown = JSON.parse(raw);
+    return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
 }

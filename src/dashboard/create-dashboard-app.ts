@@ -9,6 +9,7 @@ import { attachmentRetryRoute } from "./routes/attachment-retry-route.js";
 import { dashboardPasswordRoutes } from "./routes/dashboard-password-routes.js";
 import { mobileSyncRoutes } from "./routes/mobile-sync-routes.js";
 import { mediaFileRoute } from "./routes/media-file-route.js";
+import { threadSharedMediaRoute } from "./routes/thread-shared-media-route.js";
 import { outboxAndSettingsRoutes } from "./routes/outbox-and-settings-routes.js";
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -29,6 +30,7 @@ function accountScopedApi(ctx: DashboardContext): Hono {
   api.route("/", archiveBrowseRoutes(ctx));
   api.route("/", outboxAndSettingsRoutes(ctx));
   api.route("/", mediaFileRoute(ctx));
+  api.route("/", threadSharedMediaRoute(ctx));
   api.route("/", attachmentRetryRoute(ctx));
   // Route /api lạ phải 404 JSON, không rơi xuống trang SPA bên dưới
   api.all("*", (c) => c.json({ error: "Không có route này" }, 404));

@@ -10,6 +10,8 @@ export type ThreadSummary = {
   isFriend: boolean;
   lastMessageAt: string | null;
   messageCount: number;
+  /** Đã ghim lên đầu danh sách trên dashboard */
+  pinned: boolean;
 };
 
 /**
@@ -17,7 +19,7 @@ export type ThreadSummary = {
  * bạ người `contacts`; nhóm: lấy từ chính dòng `threads`.
  */
 const THREAD_SELECT = `SELECT t.thread_id, t.thread_type, COALESCE(t.name, c.display_name) AS name,
-    COALESCE(t.avatar_url, c.avatar_url) AS avatar_url, t.is_friend, t.last_message_at
+    COALESCE(t.avatar_url, c.avatar_url) AS avatar_url, t.is_friend, t.last_message_at, t.pinned_at
   FROM threads t LEFT JOIN contacts c ON t.thread_type = 'user' AND c.user_id = t.thread_id`;
 
 /** Danh sách hội thoại, mới nhất trước. `query` lọc theo tên (bỏ dấu) hoặc đúng id. */
@@ -26,21 +28,22 @@ export function listThreads(db: DatabaseSync, opts: { query?: string; limit: num
 }
 
 /**
- * Như `listThreads` nhưng có phân trang và tổng số (cho dashboard).
+ * Như `listThreads` nhưng có phân trang và tổng số (cho dashboard). `pinnedFirst`: hội thoại đã ghim
+ * lên đầu (ghim sau đứng trước) như danh sách Zalo - chỉ dashboard dùng, MCP vẫn mới nhất trước.
  *
  * Không có `query`: chỉ hội thoại ĐÃ có tin - bạn bè chưa từng nhắn (có hàng trăm
  * trên nick chính) không làm ngập danh sách. Có `query`: tìm cả họ, để gửi tin mới.
  */
 export function listThreadsPage(
   db: DatabaseSync,
-  opts: { query?: string; limit: number; offset: number },
+  opts: { query?: string; limit: number; offset: number; pinnedFirst?: boolean },
 ): { threads: ThreadSummary[]; total: number } {
   const raw = opts.query?.trim() ?? "";
   // Lọc tên bằng JS vì cần bỏ dấu cả hai phía; vài nghìn hội thoại vẫn nhanh.
   const rows = db
     .prepare(
       `${THREAD_SELECT} ${raw ? "" : "WHERE t.last_message_at IS NOT NULL"}
-       ORDER BY t.last_message_at IS NULL, t.last_message_at DESC`,
+       ORDER BY ${opts.pinnedFirst ? "t.pinned_at IS NULL, t.pinned_at DESC," : ""} t.last_message_at IS NULL, t.last_message_at DESC`,
     )
     .all() as Array<Record<string, unknown>>;
 
@@ -72,5 +75,6 @@ function toThreadSummary(db: DatabaseSync, r: Record<string, unknown>): ThreadSu
     isFriend: r.is_friend === 1,
     lastMessageAt: (r.last_message_at as string | null) ?? null,
     messageCount: Number(count.n),
+    pinned: r.pinned_at !== null && r.pinned_at !== undefined,
   };
 }

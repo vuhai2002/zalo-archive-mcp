@@ -58,7 +58,11 @@ export type ThreadSummary = {
   isFriend: boolean;
   lastMessageAt: string | null;
   messageCount: number;
+  /** Đã ghim lên đầu danh sách (ghim trong kho, không phải trên Zalo) */
+  pinned: boolean;
 };
+// POST /api/threads/:threadId/pin  { pinned: boolean } -> { pinned }  (404 nếu không có hội thoại)
+
 /** Tin cuối của hội thoại, để hiện dòng xem trước kiểu Zalo ("Bạn: 📎 file.mp4") */
 export type LastMessagePreview = {
   isSelf: boolean;
@@ -114,6 +118,8 @@ export type ArchivedMessage = {
   call: { missedIncoming: boolean } | null;
   /** Ảnh thuộc album (nhiều ảnh gửi cùng lúc): cùng `id` thì gộp một khung lưới, xếp theo `index` */
   album: { id: string; index: number; total: number } | null;
+  /** Thẻ link như Zalo (chỉ link http(s)): hiện thay cho chữ ghép "tiêu đề / link / mô tả" */
+  link: { url: string; title: string | null; description: string | null; domain: string } | null;
   /** Cảm xúc trên tin như Zalo, gộp theo loại; `emoji` null = mã Zalo chưa biết (hiện `icon`) */
   reactions: Array<{ icon: string; emoji: string | null; count: number; mine: boolean; names: string[] }>;
   attachments: AttachmentInfo[];
@@ -139,8 +145,13 @@ export type ThreadMessagesResponse = {
 };
 
 // GET /api/search?q=&threadId=&fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD&limit=50  (mới nhất trước)
-export type SearchResult = ArchivedMessage & { threadName: string | null; threadIsFriend: boolean };
+export type SearchResult = ArchivedMessage & { threadName: string | null; threadIsFriend: boolean; threadAvatarUrl: string | null };
 export type SearchResponse = { messages: SearchResult[] };
+
+// GET /api/threads/:threadId/shared?kind=visual|file&limit=8&offset=0  (mới nhất trước)
+// Ảnh/video (visual) hoặc file đã gửi trong hội thoại - bảng "Thông tin hội thoại" kiểu Zalo PC
+export type SharedAttachment = AttachmentInfo & { sentAt: string };
+export type ThreadSharedMediaResponse = { items: SharedAttachment[]; total: number };
 
 // GET /api/media/:attachmentId  -> nội dung file (Content-Type đúng), 404 nếu chưa tải
 

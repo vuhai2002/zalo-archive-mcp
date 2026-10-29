@@ -140,12 +140,13 @@ export function InfoTile({ label, value, hint }: { label: string; value: ReactNo
   );
 }
 
-export type AvatarSize = "xs" | "sm" | "md" | "lg";
+export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
 export const AVATAR_SIZE_CLASS: Record<AvatarSize, string> = {
   xs: "h-7 w-7 text-[10px]",
   sm: "h-7 w-7 text-[11px]",
   md: "h-9 w-9 text-[13px]",
   lg: "h-12 w-12 text-[16px]",
+  xl: "h-20 w-20 text-[26px]",
 };
 
 /** Hai chữ cái đầu như Zalo: "Khúc Mẫn" -> "KM", "Lan" -> "L"; bỏ từ không có chữ/số ("Tôi (demo)" -> "TD") */

@@ -22,6 +22,7 @@ const photo = (sender: string, album: { id: string; index: number } | null, reac
   textStyles: [],
   call: null,
   album: album ? { ...album, total: 3 } : null,
+  link: null,
   reactions,
   attachments: [],
 });

@@ -1,16 +1,13 @@
-import { Fragment, useCallback, useLayoutEffect, useMemo, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Fragment, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useArchiveTimeZone, useDashboardShell } from "../../layout/dashboard-shell-context";
-import { IconRefresh } from "../../shared/action-and-media-icons";
-import { IconArrowLeft, IconSearch } from "../../shared/dashboard-icons";
-import { ContactAvatar } from "../../shared/contact-avatar";
-import { MemberAvatarStack } from "../../shared/member-avatar-stack";
-import { threadDisplayName } from "../../shared/thread-kind-badge";
-import { BTN_ICON, EmptyState, ErrorNote, formatNumber, LoadingText } from "../../shared/ui-bits";
+import { EmptyState, ErrorNote, LoadingText } from "../../shared/ui-bits";
+import { useLoadMoreWhenVisible } from "../../shared/use-load-more-when-visible";
 import { MessageBubble } from "./message-bubble";
 import { MessageComposer } from "./message-composer";
 import { layoutMessages } from "./message-grouping";
 import { collapseAlbums } from "./photo-album-grouping";
+import { ThreadChatHeader } from "./thread-chat-header";
+import { ThreadInfoPanel } from "./thread-info-panel";
 import { useThreadMessages } from "./use-thread-messages";
 
 /** Cách đáy dưới ngần này coi như "đang đọc tin mới nhất" - ảnh tải xong thì kéo theo xuống đáy */
@@ -26,6 +23,7 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
   const scrollRef = useRef<HTMLDivElement>(null);
   const intent = useRef<ScrollIntent | null>({ kind: "bottom" });
   const stickToBottom = useRef(true);
+  const [infoOpen, toggleInfo] = useInfoPanelOpen();
 
   // Áp ý định cuộn NGAY sau khi DOM đổi, trước khi trình duyệt vẽ: tải tin cũ
   // chèn lên đầu mà không bù scrollTop thì khung nhảy mất chỗ đang đọc.
@@ -43,6 +41,15 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
     if (el) intent.current = { kind: "keep", prevHeight: el.scrollHeight, prevTop: el.scrollTop };
     void t.loadOlder();
   };
+
+  const olderRef = useRef<HTMLDivElement>(null);
+  useLoadMoreWhenVisible({
+    sentinel: olderRef,
+    root: scrollRef,
+    enabled: t.hasOlder && !t.olderError && t.messages.length > 0,
+    busy: t.loadingOlder,
+    onLoadMore: loadOlder,
+  });
 
   const { refreshLatest } = t;
   const refreshToBottom = useCallback(() => {
@@ -76,38 +83,16 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
   const layouts = useMemo(() => layoutMessages(items.map((x) => x.msg), tz), [items, tz]);
 
   return (
-    <div className="gc-card flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
-        <button type="button" onClick={onBack} aria-label="Quay lại danh sách" className={`${BTN_ICON} lg:hidden`}>
-          <IconArrowLeft size={18} />
-        </button>
-        {t.thread &&
-          (t.thread.threadType === "group" && !t.thread.avatarUrl && t.thread.memberAvatars.length > 0 ? (
-            <MemberAvatarStack members={t.thread.memberAvatars} memberCount={t.thread.memberCount} seed={t.thread.threadId} />
-          ) : (
-            <ContactAvatar name={threadDisplayName(t.thread.name)} seed={t.thread.threadId} url={t.thread.avatarUrl} size="lg" />
-          ))}
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-2">
-            <h2 className="truncate text-[15px] font-semibold text-ink">{threadDisplayName(t.thread?.name)}</h2>
-          </div>
-          <div className="truncate text-[12px] text-ink-soft">
-            {t.thread ? `${formatNumber(t.thread.messageCount)} tin · ` : ""}
-            <span className="font-mono">{threadId}</span>
-          </div>
-        </div>
-        <Link
-          to={`/search?threadId=${encodeURIComponent(threadId)}`}
-          title="Tìm trong hội thoại này"
-          aria-label="Tìm trong hội thoại này"
-          className={BTN_ICON}
-        >
-          <IconSearch size={18} />
-        </Link>
-        <button type="button" onClick={refreshToBottom} title="Tải tin mới" aria-label="Tải tin mới" className={BTN_ICON}>
-          <IconRefresh size={18} />
-        </button>
-      </div>
+    <div className="relative flex h-full min-h-0 overflow-hidden bg-surface">
+    <div className="flex min-w-0 flex-1 flex-col">
+      <ThreadChatHeader
+        threadId={threadId}
+        thread={t.thread}
+        onBack={onBack}
+        onRefresh={refreshToBottom}
+        infoOpen={infoOpen}
+        onToggleInfo={toggleInfo}
+      />
 
       <div
         ref={scrollRef}
@@ -115,25 +100,23 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
           const el = e.currentTarget;
           stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_PX;
         }}
-        className="min-h-0 flex-1 overflow-y-auto bg-chat px-3 pb-4 pt-3 sm:px-4"
+        className="min-h-0 flex-1 overflow-y-auto bg-chat px-3 pb-4 pt-3 sm:px-6"
       >
         {t.loading && <LoadingText />}
         {t.error && <ErrorNote message={t.error} onRetry={() => void t.reload()} />}
         {!t.loading && !t.error && t.messages.length === 0 && <EmptyState text="Hội thoại này chưa có tin nào trong kho." />}
 
-        {t.hasOlder && (
-          <div className="flex justify-center pb-1">
-            <button
-              type="button"
-              onClick={loadOlder}
-              disabled={t.loadingOlder}
-              className="rounded-full border border-line bg-surface px-3 py-1 text-[12px] font-medium text-ink-soft hover:bg-tile hover:text-ink disabled:opacity-60"
-            >
-              {t.loadingOlder ? "Đang tải..." : "Tải tin cũ hơn"}
+        {/* Cuộn gần lên đầu là tự tải tin cũ hơn, như Zalo; hỏng thì có nút thử lại */}
+        <div ref={olderRef} aria-hidden="true" className="h-px" />
+        {t.loadingOlder && <p className="pb-1 text-center text-[12px] text-chat-time">Đang tải tin cũ hơn...</p>}
+        {t.olderError && (
+          <p className="text-center text-[12px] text-red-600 dark:text-red-400">
+            {t.olderError}{" "}
+            <button type="button" onClick={loadOlder} className="font-medium underline">
+              Thử lại
             </button>
-          </div>
+          </p>
         )}
-        {t.olderError && <p className="text-center text-[12px] text-red-600 dark:text-red-400">{t.olderError}</p>}
 
         {items.map(({ msg: m, album }, i) => (
           <Fragment key={m.id}>
@@ -167,5 +150,34 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
         <MessageComposer threadId={threadId} onSent={afterSent} />
       )}
     </div>
+    {infoOpen && t.thread && <ThreadInfoPanel thread={t.thread} timeZone={tz} onClose={toggleInfo} />}
+    </div>
   );
+}
+
+const INFO_PANEL_KEY = "zalo-archive.thread-info-open";
+
+/**
+ * Bảng thông tin bên phải mở hay đóng - nhớ theo trình duyệt (chỉ là tiện ích, hỏng thì mặc định đóng).
+ * Chỉ tự mở lại trên màn hình rộng (xl), nơi bảng là một cột riêng; màn hẹp bảng phủ lên khung chat.
+ */
+function useInfoPanelOpen(): [boolean, () => void] {
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem(INFO_PANEL_KEY) === "1" && window.matchMedia("(min-width: 1280px)").matches;
+    } catch {
+      return false;
+    }
+  });
+  const toggle = useCallback(() => {
+    setOpen((v) => {
+      try {
+        localStorage.setItem(INFO_PANEL_KEY, v ? "0" : "1");
+      } catch {
+        // Trình duyệt chặn lưu: vẫn bật/tắt được trong lần mở này
+      }
+      return !v;
+    });
+  }, []);
+  return [open, toggle];
 }

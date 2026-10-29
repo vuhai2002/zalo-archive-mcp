@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import type { MessageRow } from "../storage/message-read-queries.js";
+import type { AttachmentRow, MessageRow } from "../storage/message-read-queries.js";
 import type { OutboxItem as StoredOutboxItem } from "../storage/outbox-store.js";
 import { threadLabel } from "../storage/thread-directory-store.js";
 import type { ArchivedMessage, AttachmentInfo, OutboxItem } from "./dashboard-api-contract.js";
@@ -25,19 +25,22 @@ export function toArchivedMessage(m: MessageRow): ArchivedMessage {
     textStyles: m.textStyles,
     call: m.call,
     album: m.album,
+    link: m.link,
     reactions: m.reactions,
-    attachments: m.attachments.map(
-      (a): AttachmentInfo => ({
-        id: a.id,
-        kind: a.kind as AttachmentInfo["kind"],
-        status: a.status as AttachmentInfo["status"],
-        fileName: a.fileName,
-        sizeBytes: a.sizeBytes,
-        url: a.status === "done" ? `/api/media/${a.id}` : null,
-        mime: a.mime,
-        renewState: a.renewPending ? "waiting" : a.renewed && a.status === "failed" ? "gave_up" : null,
-      }),
-    ),
+    attachments: m.attachments.map(toAttachmentInfo),
+  };
+}
+
+export function toAttachmentInfo(a: AttachmentRow): AttachmentInfo {
+  return {
+    id: a.id,
+    kind: a.kind as AttachmentInfo["kind"],
+    status: a.status as AttachmentInfo["status"],
+    fileName: a.fileName,
+    sizeBytes: a.sizeBytes,
+    url: a.status === "done" ? `/api/media/${a.id}` : null,
+    mime: a.mime,
+    renewState: a.renewPending ? "waiting" : a.renewed && a.status === "failed" ? "gave_up" : null,
   };
 }
 

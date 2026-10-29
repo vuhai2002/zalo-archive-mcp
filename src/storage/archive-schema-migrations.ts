@@ -289,4 +289,8 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   CREATE INDEX messages_sender ON messages (sender_id);
   CREATE INDEX group_members_user ON group_members (user_id, position);
   `,
+  // 13: ghim hội thoại lên đầu danh sách trên dashboard (chỉ lưu trong kho, không gọi Zalo)
+  `
+  ALTER TABLE threads ADD COLUMN pinned_at TEXT;
+  `,
 ];

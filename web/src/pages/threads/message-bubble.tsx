@@ -4,6 +4,7 @@ import { ContactAvatar } from "../../shared/contact-avatar";
 import { formatClock, formatDateTime } from "../../shared/format-archive-time";
 import { MessageAlbumGrid } from "./message-album-grid";
 import { MessageAttachmentView } from "./message-attachment-view";
+import { MessageLinkCard } from "./message-link-card";
 import { MessageReactionPill } from "./message-reaction-pill";
 import { isSystemMessage } from "./message-grouping";
 import { mergeAlbumReactions } from "./photo-album-grouping";
@@ -105,7 +106,7 @@ export function MessageBubble({
         </div>
       )}
 
-      <div className={`flex min-w-0 max-w-[85%] flex-col sm:max-w-[68%] ${self ? "items-end" : "items-start"}`}>
+      <div className={`flex min-w-0 max-w-[85%] flex-col lg:max-w-[78%] ${self ? "items-end" : "items-start"}`}>
         {bare ? (
           <>
             {showName && <div className="mb-1 px-1 text-[12px] text-chat-time">{name}</div>}
@@ -133,7 +134,7 @@ export function MessageBubble({
           </>
         ) : (
           <div
-            className={`min-w-0 max-w-full rounded-lg px-3 py-2 text-[14.5px] leading-[1.45] text-chat-ink ${
+            className={`min-w-0 max-w-full rounded-lg px-3.5 py-2.5 text-[15px] leading-[1.5] text-chat-ink ${
               self ? "border border-bubble-self-line bg-bubble-self" : "border border-black/5 bg-bubble shadow-[0_1px_1px_rgba(0,0,0,0.05)] dark:border-white/5"
             } ${recalled ? "opacity-75" : ""}`}
           >
@@ -157,7 +158,7 @@ export function MessageBubble({
                 ))}
               </div>
             )}
-            {hasText && <RichMessageText text={msg.text} styles={textStylesOf(msg)} />}
+            {msg.link ? <MessageLinkCard link={msg.link} /> : hasText && <RichMessageText text={msg.text} styles={textStylesOf(msg)} />}
             {showMeta && meta}
           </div>
         )}

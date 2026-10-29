@@ -9,12 +9,12 @@
  * radius 12, nền off-white, không shadow) nhưng đổi hệ màu: neutral warm ->
  * cool, primary cam -> xanh Zalo #0068FF.
  *
- * Font Plus Jakarta Sans: dáng tròn, hình học, chữ số cao đều - gọn và hiện
- * đại hơn Be Vietnam Pro dùng trước đây ở dashboard này. Có đủ dấu tiếng Việt
- * (Latin Extended) nên không phải lo chữ có dấu rơi về font hệ thống.
+ * Font: bộ font hệ thống giống hệt Zalo PC/Web (bundle chat.zalo.me khai báo chữ tin nhắn là
+ * "14px / 21px SegoeuiPc, Segoe UI, San Francisco, Helvetica Neue...") - Windows ra Segoe UI, Mac ra
+ * San Francisco. Chữ hẹp, đậm vừa nên nhìn gọn; không phải tải font ngoài, đủ dấu tiếng Việt.
  */
 @theme {
-  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-sans: "Segoe UI", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Roboto, Arial, sans-serif;
 
   --color-zalo-50: #eaf2ff;
   --color-zalo-100: #d6e6ff;
@@ -74,10 +74,8 @@
 body {
   @apply bg-canvas font-sans text-ink antialiased;
   font-size: 15px;
-  /* Plus Jakarta Sans ở weight 400 mảnh hơn Be Vietnam Pro dùng trước đây -
-     nâng nền lên 500 để chữ thường không bị mỏng, các chỗ đặt font-medium/
-     semibold tường minh vẫn đè lên được */
-  font-weight: 500;
+  /* Chữ thường đậm 400 như Zalo; tiêu đề / tên đặt font-medium, font-semibold tường minh */
+  font-weight: 400;
 }
 
 /*

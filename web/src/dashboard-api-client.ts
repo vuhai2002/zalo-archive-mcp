@@ -20,6 +20,7 @@ import type {
   SettingsResponse,
   ThreadListResponse,
   ThreadMessagesResponse,
+  ThreadSharedMediaResponse,
 } from "./archive-api-types";
 
 export class ApiError extends Error {
@@ -105,6 +106,9 @@ export const api = {
     request<ThreadListResponse>(withQuery("/api/threads", p)),
   threadMessages: (threadId: string, p: { beforeId?: number; limit: number }) =>
     request<ThreadMessagesResponse>(withQuery(`/api/threads/${enc(threadId)}/messages`, p)),
+  setThreadPinned: (threadId: string, pinned: boolean) => post<{ pinned: boolean }>(`/api/threads/${enc(threadId)}/pin`, { pinned }),
+  threadShared: (threadId: string, p: { kind: "visual" | "file"; limit: number; offset: number }) =>
+    request<ThreadSharedMediaResponse>(withQuery(`/api/threads/${enc(threadId)}/shared`, p)),
   search: (p: { q: string; threadId?: string; fromDate?: string; toDate?: string; limit: number }) =>
     request<SearchResponse>(withQuery("/api/search", p)),
 
