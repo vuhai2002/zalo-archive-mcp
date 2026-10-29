@@ -100,7 +100,7 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
           const el = e.currentTarget;
           stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_PX;
         }}
-        className="min-h-0 flex-1 overflow-y-auto bg-chat px-3 pb-4 pt-3 sm:px-6"
+        className="scrollbar-stable min-h-0 flex-1 overflow-y-auto bg-chat px-3 pb-4 pt-3 sm:px-6"
       >
         {t.loading && <LoadingText />}
         {t.error && <ErrorNote message={t.error} onRetry={() => void t.reload()} />}

@@ -87,6 +87,51 @@ body {
   color-scheme: dark;
 }
 
+/*
+ * Scrollbar mảnh như Zalo PC (skill scroll-and-scrollbar-architecture). Dashboard là app-shell: trang
+ * Hội thoại cuộn trong từng cột (danh sách, khung chat, bảng thông tin), không cuộn cả trang.
+ * Màu theo theme; Chromium dùng ::-webkit-scrollbar (thumb ~6px nổi giữa rãnh trong suốt). Firefox
+ * dùng scrollbar-width/color - CHỈ đặt khi trình duyệt không có ::-webkit-scrollbar, vì Chrome 121+
+ * thấy hai thuộc tính đó là bỏ luôn kiểu ::-webkit-scrollbar bên dưới.
+ */
+:root {
+  --scrollbar-thumb: rgba(8, 28, 54, 0.22);
+  --scrollbar-thumb-hover: rgba(8, 28, 54, 0.4);
+}
+.dark {
+  --scrollbar-thumb: rgba(232, 237, 245, 0.18);
+  --scrollbar-thumb-hover: rgba(232, 237, 245, 0.34);
+}
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+/* Vùng cuộn chính giữ sẵn chỗ cho scrollbar: nội dung không xô ngang khi scrollbar hiện/ẩn
+   (Windows dùng scrollbar cổ điển chiếm chỗ; macOS/điện thoại scrollbar nổi nên không đổi gì) */
+@utility scrollbar-stable {
+  scrollbar-gutter: stable;
+}
+
 button:not(:disabled),
 select:not(:disabled),
 summary,

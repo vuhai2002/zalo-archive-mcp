@@ -102,7 +102,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             className={
               fullBleed
                 ? "min-w-0 flex-1 bg-surface lg:overflow-hidden"
-                : "min-w-0 flex-1 bg-canvas bg-cover bg-fixed bg-center px-4 py-5 sm:px-6 lg:overflow-y-auto lg:px-8 lg:py-7"
+                : "min-w-0 flex-1 bg-canvas bg-cover bg-fixed bg-center px-4 py-5 sm:px-6 lg:overflow-y-auto lg:px-8 lg:py-7 lg:scrollbar-stable"
             }
             style={fullBleed ? undefined : { backgroundImage: `url(${anhNen(theme)})` }}
           >

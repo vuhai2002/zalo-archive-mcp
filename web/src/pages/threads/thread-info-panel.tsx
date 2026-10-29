@@ -38,7 +38,7 @@ export function ThreadInfoPanel({
           <IconClose size={18} />
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="scrollbar-stable min-h-0 flex-1 overflow-y-auto">
         <div className="flex flex-col items-center gap-2 border-b-8 border-tile px-4 pb-5 pt-5 text-center">
           <ThreadAvatar thread={thread} size="xl" />
           <div className="mt-1 text-[17px] font-semibold text-ink">{threadDisplayName(thread.name)}</div>

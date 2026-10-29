@@ -145,7 +145,7 @@ export function ThreadListPanel({
         )}
       </div>
 
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="scrollbar-stable min-h-0 flex-1 overflow-y-auto">
         {searching ? (
           <ThreadSearchResults
             query={debounced}
