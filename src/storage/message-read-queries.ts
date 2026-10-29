@@ -1,7 +1,9 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ThreadKind } from "../archive/archived-message-types.js";
 import { buildFtsMatchExpression } from "../shared/fold-vietnamese-for-search.js";
+import { reactionSummaries, type ReactionSummary } from "./message-reaction-store.js";
 import { parseTextStyles, type TextStyleSpan } from "./message-text-styles.js";
+import { getMeta } from "./thread-directory-store.js";
 
 // Danh sách hội thoại tách sang thread-list-queries.ts; xuất lại để chỗ gọi cũ giữ nguyên
 export { findThread, listThreads, listThreadsPage, type ThreadSummary } from "./thread-list-queries.js";
@@ -34,6 +36,8 @@ export type MessageRow = {
   source: string;
   /** Định dạng chữ (đậm, màu...) của tin rtf; rỗng với tin chữ thường */
   textStyles: TextStyleSpan[];
+  /** Cảm xúc trên tin, gộp theo loại */
+  reactions: ReactionSummary[];
   attachments: AttachmentRow[];
 };
 
@@ -119,12 +123,16 @@ function toMessageRow(r: Record<string, unknown>): MessageRow {
     recalledAt: (r.recalled_at as string | null) ?? null,
     source: String(r.source),
     textStyles: parseTextStyles(r.rtf_params as string | null, String(r.text).length),
+    reactions: [],
     attachments: [],
   };
 }
 
+/** Gắn đính kèm + cảm xúc cho các tin vừa đọc */
 function withAttachments(db: DatabaseSync, messages: MessageRow[]): MessageRow[] {
   if (messages.length === 0) return messages;
+  const reactions = reactionSummaries(db, messages.map((m) => m.msgId), getMeta(db, "self_uid"));
+  for (const m of messages) m.reactions = reactions.get(m.msgId) ?? [];
   const stmt = db.prepare(
     "SELECT id, msg_id, kind, status, file_name, local_path, size_bytes, mime FROM attachments WHERE msg_id = ? ORDER BY id",
   );

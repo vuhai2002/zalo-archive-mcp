@@ -10,6 +10,17 @@ import { openArchiveDatabase } from "../storage/open-archive-database.js";
 
 const ARCHIVE_EVENT_KINDS = new Set(["message", "undo", "old_messages"]);
 
+/** Cảm xúc / sự kiện nhóm được ghi nhật ký ở dạng payload nguyên văn của zca-js: bọc lại thành ArchiveEvent */
+function rawEventToArchiveEvent(event: string, payload: unknown): ArchiveEvent | null {
+  if (event === "reaction") return { kind: "reaction", reaction: payload };
+  if (event === "old_reactions") {
+    const reactions = (payload as { reactions?: unknown } | null)?.reactions;
+    return Array.isArray(reactions) ? { kind: "old_reactions", reactions } : null;
+  }
+  if (event === "group_event") return { kind: "group_event", event: payload };
+  return null;
+}
+
 const env = getEnv();
 const { paths } = activeAccountForCli(env);
 const log = createLogger({ name: "replay-journal", level: env.LOG_LEVEL });
@@ -21,22 +32,24 @@ if (files.length === 0) {
   process.exit(0);
 }
 
-const total = { events: 0, stored: 0, recalls: 0, skipped: 0, badLines: 0 };
+const total = { events: 0, stored: 0, recalls: 0, reactions: 0, skipped: 0, badLines: 0 };
 for (const file of files) {
   for await (const record of readJournalFile(file, (lineNo) => {
     total.badLines++;
     log.warn({ file, lineNo }, "Dòng nhật ký hỏng, bỏ qua");
   })) {
-    if (!ARCHIVE_EVENT_KINDS.has(record.event)) continue;
+    const event = ARCHIVE_EVENT_KINDS.has(record.event) ? (record.payload as ArchiveEvent) : rawEventToArchiveEvent(record.event, record.payload);
+    if (!event) continue;
     total.events++;
-    const stats = ingestArchiveEvent(db, record.payload as ArchiveEvent, new Date(record.at), log, "journal_replay");
+    const stats = ingestArchiveEvent(db, event, new Date(record.at), log, "journal_replay");
     total.stored += stats.stored;
     total.recalls += stats.recalls;
+    total.reactions += stats.reactions;
     total.skipped += stats.skipped;
   }
 }
 db.close();
 console.log(
   `Xong ${files.length} file: ${total.events} sự kiện, ${total.stored} tin, ${total.recalls} thu hồi, ` +
-    `${total.skipped} bỏ qua, ${total.badLines} dòng hỏng.`,
+    `${total.reactions} cảm xúc, ${total.skipped} bỏ qua, ${total.badLines} dòng hỏng.`,
 );

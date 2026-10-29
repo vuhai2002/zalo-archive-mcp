@@ -3,6 +3,7 @@ import { sourceLabel } from "../../shared/archive-status-labels";
 import { ContactAvatar } from "../../shared/contact-avatar";
 import { formatClock, formatDateTime } from "../../shared/format-archive-time";
 import { MessageAttachmentView } from "./message-attachment-view";
+import { MessageReactionPill } from "./message-reaction-pill";
 import { isSystemMessage } from "./message-grouping";
 import { RichMessageText } from "./rich-message-text";
 
@@ -88,6 +89,7 @@ export function MessageBubble({
                 <MessageAttachmentView key={att.id} att={att} onMediaLoad={onMediaLoad} />
               ))}
             </div>
+            <MessageReactionPill reactions={msg.reactions} />
             {last && (
               <span title={timeTitle} className="mt-1 rounded-full bg-black/25 px-2 py-0.5 text-[11px] tabular-nums text-white dark:bg-white/15">
                 {formatClock(msg.sentAt, timeZone)}
@@ -125,6 +127,7 @@ export function MessageBubble({
             {showMeta && meta}
           </div>
         )}
+        {!bare && <MessageReactionPill reactions={msg.reactions} />}
       </div>
     </div>
   );

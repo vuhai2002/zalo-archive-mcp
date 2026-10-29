@@ -8,8 +8,8 @@ import { dayKey, formatDayHeading } from "../../shared/format-archive-time";
  */
 export const GROUP_GAP_MS = 5 * 60_000;
 
-/** Tin hệ thống (vd "X đã đồng ý kết bạn"): hiện giữa khung, không thuộc cụm nào */
-export const isSystemMessage = (m: ArchivedMessage) => m.msgType === "chat.ecard";
+/** Tin hệ thống ("X đã đồng ý kết bạn", "X đã thêm Y vào nhóm"): hiện giữa khung, không thuộc cụm nào */
+export const isSystemMessage = (m: Pick<ArchivedMessage, "msgType">) => m.msgType === "chat.ecard" || m.msgType === "group_event";
 
 export type MessageLayout = {
   /** Dải ngày đặt TRƯỚC tin này; null nếu cùng ngày với tin trước */

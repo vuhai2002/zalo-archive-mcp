@@ -23,6 +23,7 @@ export function toArchivedMessage(m: MessageRow): ArchivedMessage {
     recalledAt: m.recalledAt,
     source: m.source,
     textStyles: m.textStyles,
+    reactions: m.reactions,
     attachments: m.attachments.map(
       (a): AttachmentInfo => ({
         id: a.id,

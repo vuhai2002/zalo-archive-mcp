@@ -244,4 +244,21 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   ALTER TABLE threads ADD COLUMN member_count INTEGER;
   UPDATE threads SET name_lookup_at = NULL WHERE thread_type = 'group';
   `,
+  // 8: cảm xúc (reaction) trên tin: ghi TỪNG lần bấm như Zalo đếm (bấm tim 3 lần = ❤️ 3).
+  // Mỗi lần bấm là một sự kiện có id riêng (khóa khử trùng); icon '' = người đó gỡ hết cảm
+  // xúc của mình trên tin, các lần bấm trước mốc đó không tính nữa. Sự kiện nhóm (thêm / rời /
+  // đổi tên...) không cần bảng riêng: vào bảng messages với msg_type 'group_event'.
+  `
+  CREATE TABLE message_reaction_taps (
+    msg_id      TEXT NOT NULL,
+    action_id   TEXT NOT NULL,
+    reactor_id  TEXT NOT NULL,
+    icon        TEXT NOT NULL,
+    reacted_at  TEXT NOT NULL,
+    thread_id   TEXT NOT NULL,
+    thread_type TEXT NOT NULL CHECK (thread_type IN ('user', 'group')),
+    PRIMARY KEY (msg_id, action_id)
+  );
+  CREATE INDEX message_reaction_taps_reactor ON message_reaction_taps (msg_id, reactor_id, reacted_at);
+  `,
 ];

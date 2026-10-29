@@ -24,7 +24,14 @@ function formatAttachment(a: AttachmentRow): string {
   return `  - đính kèm #${a.id} ${a.kind}${name}: ${status}`;
 }
 
+function formatReactions(m: MessageRow): string[] {
+  if (m.reactions.length === 0) return [];
+  return [`  - cảm xúc: ${m.reactions.map((r) => `${r.emoji ?? r.icon} x${r.count} (${r.names.join(", ")})`).join("; ")}`];
+}
+
 export function formatMessage(m: MessageRow, timeZone: string): string {
+  // Sự kiện nhóm ("X đã thêm Y vào nhóm") đã là câu đầy đủ, không gắn người gửi
+  if (m.msgType === "group_event") return `[#${m.id} ${formatLocalTime(m.sentAt, timeZone)}] (thông báo nhóm) ${m.text}`;
   const who = m.isSelf ? "Tôi" : `${m.senderName ?? "?"} (${m.senderId})`;
   const flags = [
     m.recalledAt ? "ĐÃ THU HỒI" : null,
@@ -33,7 +40,7 @@ export function formatMessage(m: MessageRow, timeZone: string): string {
   ].filter(Boolean);
   const head = `[#${m.id} ${formatLocalTime(m.sentAt, timeZone)}] ${who}${flags.length ? ` (${flags.join(", ")})` : ""}:`;
   const body = m.text ? ` ${m.text}` : "";
-  return [head + body, ...m.attachments.map(formatAttachment)].join("\n");
+  return [head + body, ...m.attachments.map(formatAttachment), ...formatReactions(m)].join("\n");
 }
 
 export function formatMessages(messages: MessageRow[], timeZone: string): string {

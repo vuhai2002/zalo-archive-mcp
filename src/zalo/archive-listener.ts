@@ -76,12 +76,21 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
   listener.on("message", (m) => handle({ kind: "message", message: messageToRaw(m) }));
   listener.on("undo", (u) => handle({ kind: "undo", undo: undoToRaw(u) }));
   listener.on("old_messages", (msgs) => handle({ kind: "old_messages", messages: msgs.map(messageToRaw) }));
-  // Chưa đưa vào DB nhưng giữ nguyên văn để đắp sau (reaction, sự kiện nhóm, bạn bè)
-  listener.on("reaction", (r) => journal("reaction", r));
-  listener.on("old_reactions", (rs, isGroup) => journal("old_reactions", { isGroup, reactions: rs }));
-  // Sự kiện nhóm / bạn bè: giữ nguyên văn, và cập nhật danh bạ ngay (tên nhóm, cờ bạn bè)
+  // Cảm xúc + sự kiện nhóm: nhật ký ghi payload nguyên văn (như trước), rồi vào kho
+  const ingestRaw = (event: ArchiveEvent) => ingestArchiveEvent(db, event, new Date(), log);
+  listener.on("reaction", (r) => {
+    journal("reaction", r);
+    safely("reaction", () => ingestRaw({ kind: "reaction", reaction: r }));
+  });
+  listener.on("old_reactions", (rs, isGroup) => {
+    journal("old_reactions", { isGroup, reactions: rs });
+    safely("old_reactions", () => ingestRaw({ kind: "old_reactions", reactions: rs }));
+  });
+  // Sự kiện nhóm: thành tin hệ thống giữa dòng chat, rồi cập nhật danh bạ (tên nhóm, thành viên).
+  // Ghi tin TRƯỚC khi đổi tên nhóm trong danh bạ: cần tên cũ để nhận ra đổi tên.
   listener.on("group_event", (e) => {
     journal("group_event", e);
+    safely("group_event", () => ingestRaw({ kind: "group_event", event: e }));
     safely("group_event", () => applyGroupEvent(db, e));
   });
   listener.on("friend_event", (e) => {

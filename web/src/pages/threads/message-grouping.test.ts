@@ -23,6 +23,7 @@ const msg = (sentAt: string, who: "me" | "lan", msgType = "webchat"): ArchivedMe
   recalledAt: null,
   source: "live",
   textStyles: [],
+  reactions: [],
   attachments: [],
 });
 
