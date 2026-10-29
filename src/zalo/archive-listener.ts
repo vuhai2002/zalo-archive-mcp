@@ -76,6 +76,11 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
   listener.on("message", (m) => handle({ kind: "message", message: messageToRaw(m) }));
   listener.on("undo", (u) => handle({ kind: "undo", undo: undoToRaw(u) }));
   listener.on("old_messages", (msgs) => handle({ kind: "old_messages", messages: msgs.map(messageToRaw) }));
+  // Phần còn lại của phản hồi lấy bù (mã trang tiếp theo...), có nhờ bản vá zca-js - xem offline-message-replay.ts
+  (listener as unknown as NodeJS.EventEmitter).on("old_messages_meta", (page: unknown) => {
+    journal("old_messages_meta", page);
+    safely("old_messages_meta", () => missed?.onPage(page));
+  });
   // Cảm xúc + sự kiện nhóm: nhật ký ghi payload nguyên văn (như trước), rồi vào kho
   const ingestRaw = (event: ArchiveEvent) => ingestArchiveEvent(db, event, new Date(), log);
   listener.on("reaction", (r) => {

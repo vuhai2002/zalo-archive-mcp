@@ -64,7 +64,10 @@ describe("cảm xúc trên tin", () => {
   it("sự kiện tới trễ (lấy bù, phát lại nhật ký) không đè được trạng thái mới hơn; mã lạ giữ nguyên mã", () => {
     const { db, reactionsOf } = setup();
     ingestArchiveEvent(db, { kind: "reaction", reaction: reaction({ from: LAN, icon: "/-strong", ts: 1_793_244_700_000 }) }, at, log);
-    ingestArchiveEvent(db, { kind: "old_reactions", reactions: [reaction({ from: LAN, icon: "/-heart", ts: 1_793_244_600_000 })] }, at, log);
+    // Cảm xúc lấy bù tới với content là CHUỖI JSON (đúng như Zalo trả về cho cmd 610/611)
+    const old = reaction({ from: LAN, icon: "/-heart", ts: 1_793_244_600_000 });
+    ingestArchiveEvent(db, { kind: "old_reactions", reactions: [{ ...old, data: { ...old.data, content: JSON.stringify(old.data.content) } }] }, at, log);
+    assert.deepEqual(reactionsOf().map((r) => r.emoji), ["❤️", "👍"], "cảm xúc lấy bù (content chuỗi) vào kho");
     ingestArchiveEvent(db, { kind: "reaction", reaction: reaction({ from: LAN, icon: "", ts: 1_793_244_650_000 }) }, at, log);
     assert.deepEqual(reactionsOf().map((r) => r.emoji), ["👍"]);
 

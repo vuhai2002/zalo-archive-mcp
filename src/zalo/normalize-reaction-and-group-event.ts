@@ -17,7 +17,16 @@ const msToIso = (v: unknown, fallback: Date) => {
 export function normalizeReaction(raw: unknown, receivedAt: Date): ReactionInput | null {
   const r = raw as { data?: Record<string, unknown>; threadId?: unknown; isGroup?: unknown } | null;
   const d = r?.data;
-  const content = d?.content as { rMsg?: unknown; rIcon?: unknown } | undefined;
+  // Cảm xúc trực tiếp: content là object; cảm xúc lấy bù (old_reactions, cmd 610/611): content là chuỗi JSON
+  let rawContent: unknown = d?.content;
+  if (typeof rawContent === "string") {
+    try {
+      rawContent = JSON.parse(rawContent);
+    } catch {
+      return null;
+    }
+  }
+  const content = rawContent as { rMsg?: unknown; rIcon?: unknown } | undefined;
   const targets = (Array.isArray(content?.rMsg) ? (content.rMsg as Array<{ gMsgID?: unknown }>) : [])
     .map((x) => str(x?.gMsgID))
     .filter((id) => DIGITS.test(id));
