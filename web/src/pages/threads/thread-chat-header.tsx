@@ -9,7 +9,7 @@ import { BTN_ICON, formatNumber } from "../../shared/ui-bits";
 
 type ChatThread = ThreadMessagesResponse["thread"];
 
-/** Dòng phụ dưới tên như Zalo PC: "Nhóm · 25 thành viên" / "Bạn bè", kèm số tin trong kho */
+/** Dòng phụ dưới tên như Zalo PC: "Nhóm · 25 thành viên" / "Bạn bè" / "Người lạ" (chưa kết bạn), kèm số tin trong kho */
 export function chatSubtitle(thread: ChatThread): string {
   const kind =
     thread.threadType === "group"
@@ -18,7 +18,7 @@ export function chatSubtitle(thread: ChatThread): string {
         : "Nhóm"
       : thread.isFriend
         ? "Bạn bè"
-        : "Tin nhắn 1-1";
+        : "Người lạ";
   return `${kind} · ${formatNumber(thread.messageCount)} tin trong kho`;
 }
 
