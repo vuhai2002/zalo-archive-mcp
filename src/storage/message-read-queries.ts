@@ -26,6 +26,8 @@ export type AttachmentRow = {
   renewPending: boolean;
   /** Đã xin lại link (thành công hay không) */
   renewed: boolean;
+  /** sha256 nội dung file đã tải (null khi chưa tải) - dashboard gắn vào link để bộ nhớ đệm không lẫn */
+  sha256: string | null;
 };
 
 export type MessageRow = {
@@ -166,7 +168,7 @@ function withAttachments(db: DatabaseSync, messages: MessageRow[]): MessageRow[]
     m.text = withGroupEventMemberNames(db, m.msgType, m.text);
   }
   const stmt = db.prepare(
-    `SELECT id, msg_id, kind, status, file_name, local_path, size_bytes, mime, needs_renew, renewed_at
+    `SELECT id, msg_id, kind, status, file_name, local_path, size_bytes, mime, needs_renew, renewed_at, sha256
      FROM attachments WHERE msg_id = ? ORDER BY id`,
   );
   for (const m of messages) {
@@ -180,6 +182,7 @@ function withAttachments(db: DatabaseSync, messages: MessageRow[]): MessageRow[]
       mime: (a.mime as string | null) ?? null,
       renewPending: Number(a.needs_renew) === 1,
       renewed: a.renewed_at !== null,
+      sha256: (a.sha256 as string | null) ?? null,
     }));
   }
   return messages;

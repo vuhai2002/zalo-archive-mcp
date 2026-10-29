@@ -153,7 +153,8 @@ export type SearchResponse = { messages: SearchResult[] };
 export type SharedAttachment = AttachmentInfo & { sentAt: string };
 export type ThreadSharedMediaResponse = { items: SharedAttachment[]; total: number };
 
-// GET /api/media/:attachmentId  -> nội dung file (Content-Type đúng), 404 nếu chưa tải
+// GET /api/media/:attachmentId?v=<dấu sha256>  -> nội dung file (Content-Type đúng), 404 nếu chưa tải; ?v= chỉ để
+// trình duyệt không lẫn bộ nhớ đệm giữa các nick / bản tải lại, máy chủ bỏ qua
 
 // ---------- Gửi + hàng đợi ----------
 export type OutboxStatus = "draft" | "approved" | "sending" | "sent" | "failed" | "cancelled" | "rejected";

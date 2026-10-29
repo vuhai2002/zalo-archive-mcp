@@ -92,6 +92,13 @@ describe("dashboard API", () => {
     assert.equal(part.headers.get("content-range"), "bytes 1-2/3");
     assert.equal(await part.text(), "nh");
     assert.equal((await s.call("/api/media/1", { cookie, headers: { range: "bytes=9-" } })).status, 416);
+    // Link ảnh kèm dấu nội dung file: hai nick (kho riêng, số đính kèm trùng nhau) hay file tải lại
+    // không bao giờ dùng chung một link - trình duyệt không lấy nhầm ảnh cũ trong bộ nhớ đệm
+    const thread = (await (await s.call("/api/threads/u-lan/messages", { cookie })).json()) as {
+      messages: Array<{ attachments: Array<{ url: string | null }> }>;
+    };
+    assert.equal(thread.messages[0]!.attachments[0]!.url, "/api/media/1?v=abc");
+    assert.equal((await s.call("/api/media/1?v=abc", { cookie })).status, 200);
     s.db.prepare("UPDATE attachments SET local_path = '../../credentials.enc' WHERE id = 1").run();
     assert.equal((await s.call("/api/media/1", { cookie })).status, 404, "không thoát khỏi thư mục media");
   });

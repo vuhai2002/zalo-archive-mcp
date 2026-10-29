@@ -20,7 +20,7 @@ export function threadSharedMedia(
   const total = (db.prepare(`SELECT COUNT(*) AS n ${where}`).get({ threadId: q.threadId, threadType: q.threadType }) as { n: number }).n;
   const rows = db
     .prepare(
-      `SELECT a.id, a.kind, a.status, a.file_name, a.local_path, a.size_bytes, a.mime, a.needs_renew, a.renewed_at, m.sent_at
+      `SELECT a.id, a.kind, a.status, a.file_name, a.local_path, a.size_bytes, a.mime, a.needs_renew, a.renewed_at, a.sha256, m.sent_at
        ${where} ORDER BY m.sent_at DESC, a.id DESC LIMIT :limit OFFSET :offset`,
     )
     .all({ threadId: q.threadId, threadType: q.threadType, limit: q.limit, offset: q.offset }) as Array<Record<string, unknown>>;
@@ -36,6 +36,7 @@ export function threadSharedMedia(
       mime: (a.mime as string | null) ?? null,
       renewPending: Number(a.needs_renew) === 1,
       renewed: a.renewed_at !== null,
+      sha256: (a.sha256 as string | null) ?? null,
       sentAt: String(a.sent_at),
     })),
   };

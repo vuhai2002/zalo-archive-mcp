@@ -31,6 +31,15 @@ export function toArchivedMessage(m: MessageRow): ArchivedMessage {
   };
 }
 
+/**
+ * Link xem file: số đính kèm + dấu nội dung (sha256). Số đính kèm chỉ duy nhất trong kho của MỘT nick,
+ * và cùng số có thể đổi file (xin lại link rồi tải lại) - thiếu dấu thì trình duyệt (giữ đệm 1 ngày) lấy
+ * nhầm ảnh của nick khác / bản cũ. Máy chủ bỏ qua `?v=`, chỉ trình duyệt dùng nó làm khóa đệm.
+ */
+function mediaUrl(a: AttachmentRow): string {
+  return a.sha256 ? `/api/media/${a.id}?v=${a.sha256.slice(0, 16)}` : `/api/media/${a.id}`;
+}
+
 export function toAttachmentInfo(a: AttachmentRow): AttachmentInfo {
   return {
     id: a.id,
@@ -38,7 +47,7 @@ export function toAttachmentInfo(a: AttachmentRow): AttachmentInfo {
     status: a.status as AttachmentInfo["status"],
     fileName: a.fileName,
     sizeBytes: a.sizeBytes,
-    url: a.status === "done" ? `/api/media/${a.id}` : null,
+    url: a.status === "done" ? mediaUrl(a) : null,
     mime: a.mime,
     renewState: a.renewPending ? "waiting" : a.renewed && a.status === "failed" ? "gave_up" : null,
   };
