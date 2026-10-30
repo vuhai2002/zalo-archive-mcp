@@ -98,7 +98,8 @@ export function groupEventNotice(
     threadId: groupId,
     threadType: "group",
     senderId: DIGITS.test(actorId) ? actorId : groupId,
-    senderName: actor === "Bạn" ? null : actor,
+    // Chưa biết tên người làm thì để trống (không lấy mã số làm tên): lượt hỏi hồ sơ điền sau
+    senderName: actor === "Bạn" || actor === actorId || actor === "Ai đó" ? null : actor,
     isSelf: actorId !== "" && actorId === ctx.selfUid,
     msgType: "group_event",
     text,

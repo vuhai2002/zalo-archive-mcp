@@ -88,7 +88,11 @@ export function isFriend(db: DatabaseSync, threadId: string): boolean {
  */
 export function threadLabel(db: DatabaseSync, threadId: string): { name: string | null; isFriend: boolean } | null {
   const row = db
-    .prepare("SELECT name, is_friend FROM threads WHERE thread_id = ? ORDER BY last_message_at DESC LIMIT 1")
+    .prepare(
+      `SELECT COALESCE(c.alias, t.name) AS name, t.is_friend FROM threads t
+       LEFT JOIN contacts c ON t.thread_type = 'user' AND c.user_id = t.thread_id
+       WHERE t.thread_id = ? ORDER BY t.last_message_at DESC LIMIT 1`,
+    )
     .get(threadId) as { name: string | null; is_friend: number } | undefined;
   return row ? { name: row.name, isFriend: row.is_friend === 1 } : null;
 }

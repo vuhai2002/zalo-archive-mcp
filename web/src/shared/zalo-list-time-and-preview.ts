@@ -30,34 +30,39 @@ export function zaloListTime(iso: string | null | undefined, timeZone: string, n
   return a.yy === day(now).yy ? a.dm : `${a.dm}/${a.yy}`;
 }
 
-export type PreviewParts = { prefix: string; icon: "file" | null; text: string };
+export type PreviewIcon = "file" | "image" | "video" | "link";
+export type PreviewParts = { prefix: string; icon: PreviewIcon | null; text: string };
 
-const KIND_TEXT: Record<string, string> = {
-  photo: "[Hình ảnh]",
-  gif: "[GIF]",
-  sticker: "[Sticker]",
-  video: "[Video]",
-  voice: "[Tin nhắn thoại]",
+/** Như Zalo PC: ảnh / video hiện biểu tượng + chữ ("🖼 Hình ảnh"); sticker, GIF, tin thoại giữ ngoặc vuông */
+const KIND_PREVIEW: Record<string, { icon: PreviewIcon | null; text: string }> = {
+  photo: { icon: "image", text: "Hình ảnh" },
+  video: { icon: "video", text: "Video" },
+  gif: { icon: null, text: "[GIF]" },
+  sticker: { icon: null, text: "[Sticker]" },
+  voice: { icon: null, text: "[Tin nhắn thoại]" },
 };
 
 /**
- * Dòng xem trước tin cuối kiểu Zalo: "Bạn: " cho tin mình gửi, "Tên: " cho tin
- * người khác trong nhóm; file hiện tên file (kèm biểu tượng ghim), ảnh/sticker
- * hiện nhãn trong ngoặc vuông.
+ * Dòng xem trước tin cuối kiểu Zalo PC: "Bạn: " cho tin mình gửi, "Tên đầy đủ: " (tên gợi nhớ nếu có)
+ * cho tin người khác trong nhóm; file hiện tên file (kèm biểu tượng ghim), ảnh / video hiện biểu tượng
+ * + chữ, thẻ link hiện biểu tượng link + tiêu đề, sticker hiện nhãn trong ngoặc vuông.
  */
 export function previewParts(last: LastMessagePreview | null, threadType: ThreadKind): PreviewParts {
   if (!last) return { prefix: "", icon: null, text: "" };
   // Tin hệ thống ("X đã thêm Y vào nhóm") đã là câu đầy đủ: không thêm "Bạn: " / tên người gửi
   if (last.msgType === "group_event" || last.msgType === "chat.ecard") return { prefix: "", icon: null, text: last.text.trim() };
-  const firstName = last.senderName?.trim().split(/\s+/).at(-1) ?? "";
-  const prefix = last.isSelf ? "Bạn: " : threadType === "group" && firstName ? `${firstName}: ` : "";
+  const sender = last.senderName?.trim() ?? "";
+  const prefix = last.isSelf ? "Bạn: " : threadType === "group" && sender ? `${sender}: ` : "";
   if (last.recalled) return { prefix, icon: null, text: "Tin nhắn đã được thu hồi" };
   if (last.attachmentKind === "file") return { prefix, icon: "file", text: last.attachmentName ?? "File" };
   const firstLine = last.text.split("\n").find((l) => l.trim())?.trim() ?? "";
-  if (last.attachmentKind && last.attachmentKind in KIND_TEXT) {
+  const kind = last.attachmentKind ? KIND_PREVIEW[last.attachmentKind] : undefined;
+  if (kind) {
     // Ảnh có chú thích thì hiện chú thích, như Zalo
-    return { prefix, icon: null, text: firstLine && firstLine !== "[sticker]" ? firstLine : KIND_TEXT[last.attachmentKind]! };
+    return { prefix, icon: kind.icon, text: firstLine && firstLine !== "[sticker]" ? firstLine : kind.text };
   }
   if (last.msgType === "chat.sticker") return { prefix, icon: null, text: "[Sticker]" };
+  // Thẻ link (chat.recommended có địa chỉ web; tin cuộc gọi cùng loại nhưng không có link)
+  if (last.msgType === "chat.recommended" && /https?:\/\//.test(last.text)) return { prefix, icon: "link", text: firstLine };
   return { prefix, icon: null, text: firstLine || `[${last.msgType}]` };
 }

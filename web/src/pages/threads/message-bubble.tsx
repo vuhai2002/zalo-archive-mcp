@@ -4,6 +4,7 @@ import { ContactAvatar } from "../../shared/contact-avatar";
 import { formatClock, formatDateTime } from "../../shared/format-archive-time";
 import { MessageAlbumGrid } from "./message-album-grid";
 import { MessageAttachmentView } from "./message-attachment-view";
+import { MessageCallCard } from "./message-call-card";
 import { MessageLinkCard } from "./message-link-card";
 import { MessageReactionPill } from "./message-reaction-pill";
 import { isSystemMessage } from "./message-grouping";
@@ -12,18 +13,11 @@ import { RichMessageText } from "./rich-message-text";
 
 const VISUAL_KINDS = new Set(["photo", "gif", "sticker"]);
 
-/** Màu tiêu đề cuộc gọi bị nhỡ, gần màu đỏ Zalo dùng */
-const MISSED_CALL_COLOR = "#e5484d";
-
-/**
- * Thẻ thông báo của Zalo (vd đăng nhập trên máy tính) và tin cuộc gọi: dòng đầu là tiêu đề,
- * in đậm như trên Zalo; cuộc gọi tới mình mà không nghe thì tiêu đề màu đỏ.
- */
+/** Thẻ thông báo của Zalo (vd đăng nhập trên máy tính): dòng đầu là tiêu đề, in đậm như trên Zalo */
 function textStylesOf(msg: ArchivedMessage): TextStyleSpan[] {
-  if (msg.msgType !== "chat.list.action" && !msg.call) return msg.textStyles;
+  if (msg.msgType !== "chat.list.action") return msg.textStyles;
   const end = msg.text.indexOf("\n");
-  const color = msg.call?.missedIncoming ? MISSED_CALL_COLOR : null;
-  return [{ start: 0, end: end === -1 ? msg.text.length : end, bold: true, italic: false, underline: false, strike: false, color, size: null }];
+  return [{ start: 0, end: end === -1 ? msg.text.length : end, bold: true, italic: false, underline: false, strike: false, color: null, size: null }];
 }
 
 /**
@@ -109,7 +103,8 @@ export function MessageBubble({
       <div className={`flex min-w-0 max-w-[85%] flex-col lg:max-w-[78%] ${self ? "items-end" : "items-start"}`}>
         {bare ? (
           <>
-            {showName && <div className="mb-1 px-1 text-[12px] text-chat-time">{name}</div>}
+            {/* Ảnh trong nhóm: tên người gửi trong một viên nhỏ phía trên ảnh, như Zalo PC */}
+            {showName && <div className="mb-1 rounded-full bg-bubble px-2.5 py-0.5 text-[12px] text-chat-time shadow-sm">{name}</div>}
             <div className={`space-y-1 ${recalled ? "opacity-70" : ""}`}>
               {album ? (
                 <MessageAlbumGrid album={album} onMediaLoad={onMediaLoad} onMediaRetried={onMediaRetried} />
@@ -158,7 +153,13 @@ export function MessageBubble({
                 ))}
               </div>
             )}
-            {msg.link ? <MessageLinkCard link={msg.link} /> : hasText && <RichMessageText text={msg.text} styles={textStylesOf(msg)} />}
+            {msg.link ? (
+              <MessageLinkCard link={msg.link} />
+            ) : msg.call ? (
+              <MessageCallCard text={msg.text} missed={msg.call.missedIncoming} />
+            ) : (
+              hasText && <RichMessageText text={msg.text} styles={textStylesOf(msg)} />
+            )}
             {showMeta && meta}
           </div>
         )}

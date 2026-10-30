@@ -41,13 +41,23 @@ describe("previewParts", () => {
     });
   });
 
-  it("tin người khác trong nhóm: tên gọi + dòng đầu; 1-1 thì không có tiền tố", () => {
-    assert.deepEqual(previewParts(last({ text: "\nchào cả nhà\ndòng 2" }), "group"), { prefix: "Khê: ", icon: null, text: "chào cả nhà" });
+  it("tin người khác trong nhóm: TÊN ĐẦY ĐỦ (như Zalo PC) + dòng đầu; 1-1 thì không có tiền tố", () => {
+    assert.deepEqual(previewParts(last({ text: "\nchào cả nhà\ndòng 2" }), "group"), { prefix: "Lã Văn Khê: ", icon: null, text: "chào cả nhà" });
     assert.equal(previewParts(last({ text: "hi" }), "user").prefix, "");
   });
 
-  it("ảnh, sticker, thu hồi hiện nhãn như Zalo", () => {
-    assert.equal(previewParts(last({ attachmentKind: "photo" }), "user").text, "[Hình ảnh]");
+  it("ảnh / video: biểu tượng + chữ; thẻ link: biểu tượng link + dòng đầu; tin cuộc gọi không phải link", () => {
+    assert.deepEqual(previewParts(last({ attachmentKind: "photo" }), "group"), { prefix: "Lã Văn Khê: ", icon: "image", text: "Hình ảnh" });
+    assert.deepEqual(previewParts(last({ attachmentKind: "video" }), "user"), { prefix: "", icon: "video", text: "Video" });
+    assert.deepEqual(previewParts(last({ msgType: "chat.recommended", text: "Kế hoạch\nhttps://docs.google.com/x" }), "user"), {
+      prefix: "",
+      icon: "link",
+      text: "Kế hoạch",
+    });
+    assert.equal(previewParts(last({ msgType: "chat.recommended", text: "Bạn bị nhỡ\nCuộc gọi thoại" }), "user").icon, null);
+  });
+
+  it("sticker, thu hồi hiện nhãn như Zalo", () => {
     assert.equal(previewParts(last({ msgType: "chat.sticker", text: "[sticker]", attachmentKind: "sticker" }), "user").text, "[Sticker]");
     assert.equal(previewParts(last({ text: "x", recalled: true }), "user").text, "Tin nhắn đã được thu hồi");
   });

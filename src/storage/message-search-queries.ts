@@ -98,7 +98,7 @@ export function threadSenders(db: DatabaseSync, threadId: string, limit = 500): 
   const rows = db
     .prepare(
       `SELECT m.sender_id, MAX(m.is_self) AS is_self, COUNT(*) AS n,
-         COALESCE(MAX(c.display_name), MAX(m.sender_name)) AS name, MAX(c.avatar_url) AS avatar_url
+         COALESCE(MAX(c.alias), MAX(c.display_name), MAX(m.sender_name)) AS name, MAX(c.avatar_url) AS avatar_url
        FROM messages m LEFT JOIN contacts c ON c.user_id = m.sender_id
        WHERE m.thread_id = ? AND m.msg_type != 'group_event'
        GROUP BY m.sender_id ORDER BY n DESC LIMIT ?`,

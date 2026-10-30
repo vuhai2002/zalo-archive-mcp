@@ -1,10 +1,10 @@
 import type { ThreadListItem } from "../../archive-api-types";
-import { IconPaperclip } from "../../shared/action-and-media-icons";
+import { IconImage, IconLink, IconPaperclip, IconPlay } from "../../shared/action-and-media-icons";
 import { ContactAvatar } from "../../shared/contact-avatar";
-import { IconPin } from "../../shared/dashboard-icons";
+import { IconPin, IconUsers } from "../../shared/dashboard-icons";
 import { MemberAvatarStack } from "../../shared/member-avatar-stack";
 import { threadDisplayName } from "../../shared/thread-kind-badge";
-import { previewParts, zaloListTime } from "../../shared/zalo-list-time-and-preview";
+import { previewParts, zaloListTime, type PreviewIcon } from "../../shared/zalo-list-time-and-preview";
 
 /**
  * Một dòng hội thoại kiểu Zalo: avatar (nhóm không có ảnh thì ghép avatar thành
@@ -44,12 +44,16 @@ export function ThreadListRow({
         {avatar}
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
-            <span className="min-w-0 flex-1 truncate text-[15px] text-ink">{name}</span>
+            <span className="flex min-w-0 flex-1 items-center gap-1.5">
+              {/* Nhóm có biểu tượng người trước tên, như Zalo PC */}
+              {t.threadType === "group" && <IconUsers size={15} className="shrink-0 text-ink-soft" />}
+              <span className="min-w-0 truncate text-[15px] text-ink">{name}</span>
+            </span>
             <span className="shrink-0 text-[12px] text-ink-soft">{zaloListTime(t.lastMessageAt, timeZone)}</span>
           </span>
           <span className="mt-1 flex min-w-0 items-center gap-1 pr-6 text-[14px] text-ink-soft">
             {preview.prefix && <span className="shrink-0">{preview.prefix}</span>}
-            {preview.icon === "file" && <IconPaperclip size={14} className="shrink-0" />}
+            {preview.icon && <PreviewIconGlyph icon={preview.icon} />}
             <span className="min-w-0 truncate">{preview.text}</span>
           </span>
         </span>
@@ -68,4 +72,10 @@ export function ThreadListRow({
       </button>
     </div>
   );
+}
+
+/** Biểu tượng nhỏ trước chữ xem trước, như Zalo PC: file, ảnh, video, link */
+function PreviewIconGlyph({ icon }: { icon: PreviewIcon }) {
+  const Glyph = { file: IconPaperclip, image: IconImage, video: IconPlay, link: IconLink }[icon];
+  return <Glyph size={14} className="shrink-0" />;
 }

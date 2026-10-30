@@ -57,9 +57,10 @@ export type MessageRow = {
   attachments: AttachmentRow[];
 };
 
-// Tin từ bản sao lưu điện thoại không kèm tên người gửi: lấy tên trong danh bạ người
+// Tên người gửi như Zalo PC: tên gợi nhớ mình đặt cho họ trước, rồi tên trong tin; tin từ bản sao lưu
+// điện thoại không kèm tên người gửi thì lấy tên trong danh bạ người
 export const MESSAGE_COLUMNS = `m.id, m.msg_id, m.thread_id, m.thread_type, m.sender_id,
-  COALESCE(m.sender_name, c.display_name) AS sender_name, m.is_self,
+  COALESCE(c.alias, m.sender_name, c.display_name) AS sender_name, m.is_self,
   m.msg_type, m.text, m.quote_msg_id, m.sent_at, m.recalled_at, m.source, c.avatar_url AS sender_avatar_url,
   CASE WHEN m.msg_type = 'webchat' AND json_valid(m.raw_json) AND json_extract(m.raw_json, '$.content.action') = 'rtf'
     THEN json_extract(m.raw_json, '$.content.params') END AS rtf_params,

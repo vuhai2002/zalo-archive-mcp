@@ -297,4 +297,11 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   `
   CREATE INDEX attachments_fetched ON attachments (fetched_at);
   `,
+  // 15: tên gợi nhớ mình đặt cho người khác trên Zalo - Zalo PC hiện tên này ở mọi chỗ. Kèm dọn mã số
+  // người từng bị lưu làm TÊN (tin hệ thống của nhóm không mang tên người làm): để lượt hỏi hồ sơ điền lại
+  `
+  ALTER TABLE contacts ADD COLUMN alias TEXT;
+  UPDATE contacts SET display_name = NULL WHERE display_name = user_id;
+  UPDATE messages SET sender_name = NULL WHERE msg_type = 'group_event' AND sender_name = sender_id;
+  `,
 ];

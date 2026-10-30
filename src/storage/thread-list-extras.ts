@@ -24,7 +24,8 @@ export function lastMessagePreview(db: DatabaseSync, threadId: string, threadTyp
   const row = db
     .prepare(
       `SELECT m.msg_id, m.is_self, m.msg_type, m.text, m.recalled_at,
-         COALESCE(m.sender_name, (SELECT display_name FROM contacts c WHERE c.user_id = m.sender_id)) AS sender_name,
+         COALESCE((SELECT alias FROM contacts c WHERE c.user_id = m.sender_id), m.sender_name,
+           (SELECT display_name FROM contacts c WHERE c.user_id = m.sender_id)) AS sender_name,
          (SELECT kind FROM attachments a WHERE a.msg_id = m.msg_id ORDER BY a.id LIMIT 1) AS att_kind,
          (SELECT file_name FROM attachments a WHERE a.msg_id = m.msg_id ORDER BY a.id LIMIT 1) AS att_name
        FROM messages m WHERE m.thread_id = ? AND m.thread_type = ?
@@ -61,7 +62,7 @@ export function groupMemberAvatars(
   const memberCount = countRow?.member_count ?? null;
   const fromMembers = db
     .prepare(
-      `SELECT gm.user_id, c.display_name, c.avatar_url FROM group_members gm
+      `SELECT gm.user_id, COALESCE(c.alias, c.display_name) AS display_name, c.avatar_url FROM group_members gm
        LEFT JOIN contacts c ON c.user_id = gm.user_id
        WHERE gm.group_id = ? ORDER BY gm.position LIMIT ?`,
     )
@@ -75,7 +76,7 @@ export function groupMemberAvatars(
 function recentSendersWithSelf(db: DatabaseSync, groupId: string, limit: number): MemberAvatar[] {
   const rows = db
     .prepare(
-      `SELECT m.sender_id, MAX(m.sent_at) AS last_at, c.display_name, c.avatar_url
+      `SELECT m.sender_id, MAX(m.sent_at) AS last_at, COALESCE(c.alias, c.display_name) AS display_name, c.avatar_url
        FROM messages m LEFT JOIN contacts c ON c.user_id = m.sender_id
        WHERE m.thread_id = ? AND m.thread_type = 'group'
        GROUP BY m.sender_id ORDER BY last_at DESC LIMIT ?`,

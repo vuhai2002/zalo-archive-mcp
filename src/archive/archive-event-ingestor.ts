@@ -29,7 +29,7 @@ export type ArchiveEvent =
 export type IngestStats = { stored: number; recalls: number; reactions: number; skipped: number };
 
 const contactName = (db: DatabaseSync, uid: string) =>
-  (db.prepare("SELECT display_name FROM contacts WHERE user_id = ?").get(uid) as { display_name: string | null } | undefined)?.display_name ?? null;
+  (db.prepare("SELECT COALESCE(alias, display_name) AS display_name FROM contacts WHERE user_id = ?").get(uid) as { display_name: string | null } | undefined)?.display_name ?? null;
 const groupName = (db: DatabaseSync, groupId: string) =>
   (db.prepare("SELECT name FROM threads WHERE thread_id = ? AND thread_type = 'group'").get(groupId) as { name: string | null } | undefined)?.name ?? null;
 

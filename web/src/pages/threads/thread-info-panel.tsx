@@ -6,11 +6,12 @@ import { threadDisplayName } from "../../shared/thread-kind-badge";
 import { BTN_ICON } from "../../shared/ui-bits";
 import { chatSubtitle, ThreadAvatar } from "./thread-chat-header";
 import { setThreadPinned } from "./thread-pin-actions";
+import { ThreadLinksSection, ThreadMembersSection } from "./thread-links-and-members-sections";
 import { ThreadSharedMediaSection } from "./thread-shared-media-section";
 
 /**
  * Bảng "Thông tin hội thoại" bên phải khung chat như Zalo PC: ảnh đại diện, tên, số thành viên,
- * lưới Ảnh/Video và danh sách File gần đây. Từ xl là một cột cố định; nhỏ hơn thì phủ lên khung chat.
+ * Thành viên (nhóm), lưới Ảnh/Video, danh sách File và Link gần đây. Từ xl là một cột cố định; nhỏ hơn thì phủ lên khung chat.
  */
 export function ThreadInfoPanel({
   thread,
@@ -57,8 +58,10 @@ export function ThreadInfoPanel({
           </button>
           {pinError && <p className="text-[12px] text-red-600 dark:text-red-400">{pinError}</p>}
         </div>
+        {thread.threadType === "group" && <ThreadMembersSection threadId={thread.threadId} />}
         <ThreadSharedMediaSection threadId={thread.threadId} kind="visual" timeZone={timeZone} />
         <ThreadSharedMediaSection threadId={thread.threadId} kind="file" timeZone={timeZone} />
+        <ThreadLinksSection threadId={thread.threadId} timeZone={timeZone} />
       </div>
     </aside>
   );

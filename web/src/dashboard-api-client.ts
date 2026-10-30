@@ -22,6 +22,8 @@ import type {
   ThreadListResponse,
   ThreadMessagesResponse,
   ThreadSendersResponse,
+  ThreadLinksResponse,
+  ThreadMembersResponse,
   ThreadSharedMediaResponse,
 } from "./archive-api-types";
 
@@ -111,6 +113,10 @@ export const api = {
   setThreadPinned: (threadId: string, pinned: boolean) => post<{ pinned: boolean }>(`/api/threads/${enc(threadId)}/pin`, { pinned }),
   threadShared: (threadId: string, p: { kind: "visual" | "file"; limit: number; offset: number }) =>
     request<ThreadSharedMediaResponse>(withQuery(`/api/threads/${enc(threadId)}/shared`, p)),
+  threadLinks: (threadId: string, p: { limit: number; offset: number }) =>
+    request<ThreadLinksResponse>(withQuery(`/api/threads/${enc(threadId)}/links`, p)),
+  threadMembers: (threadId: string, p: { limit: number; offset: number }) =>
+    request<ThreadMembersResponse>(withQuery(`/api/threads/${enc(threadId)}/members`, p)),
   search: (p: {
     q?: string;
     threadId?: string;

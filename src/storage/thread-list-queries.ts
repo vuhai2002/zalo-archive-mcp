@@ -15,10 +15,12 @@ export type ThreadSummary = {
 };
 
 /**
- * Hội thoại kèm tên + avatar. Hội thoại 1-1: avatar (và tên dự phòng) lấy từ danh
- * bạ người `contacts`; nhóm: lấy từ chính dòng `threads`.
+ * Hội thoại kèm tên + avatar. Hội thoại 1-1: tên gợi nhớ mình đặt cho người đó (như Zalo PC) đứng
+ * trước, rồi tên trong danh sách hội thoại / danh bạ; avatar lấy từ danh bạ người `contacts`. Nhóm:
+ * lấy từ chính dòng `threads`. `other_name`: tên thật khi đang hiện tên gợi nhớ - tìm theo tên nào cũng ra.
  */
-const THREAD_SELECT = `SELECT t.thread_id, t.thread_type, COALESCE(t.name, c.display_name) AS name,
+const THREAD_SELECT = `SELECT t.thread_id, t.thread_type, COALESCE(c.alias, t.name, c.display_name) AS name,
+    COALESCE(t.name, c.display_name) AS other_name,
     COALESCE(t.avatar_url, c.avatar_url) AS avatar_url, t.is_friend, t.last_message_at, t.pinned_at
   FROM threads t LEFT JOIN contacts c ON t.thread_type = 'user' AND c.user_id = t.thread_id`;
 
@@ -49,7 +51,12 @@ export function listThreadsPage(
 
   const needle = foldVietnameseForSearch(raw);
   const filtered = raw
-    ? rows.filter((r) => r.thread_id === raw || foldVietnameseForSearch(String(r.name ?? "")).includes(needle))
+    ? rows.filter(
+        (r) =>
+          r.thread_id === raw ||
+          foldVietnameseForSearch(String(r.name ?? "")).includes(needle) ||
+          foldVietnameseForSearch(String(r.other_name ?? "")).includes(needle),
+      )
     : rows;
   const page = filtered.slice(opts.offset, opts.offset + opts.limit).map((r) => toThreadSummary(db, r));
   return { threads: page, total: filtered.length };

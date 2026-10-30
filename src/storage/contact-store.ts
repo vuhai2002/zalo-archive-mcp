@@ -32,6 +32,8 @@ export function upsertContacts(db: DatabaseSync, entries: ContactEntry[]): void 
  * đã có. Gọi lúc ghi tin, nằm sẵn trong giao dịch của người gọi.
  */
 export function noteContactSeen(db: DatabaseSync, userId: string, displayName: string | null): void {
+  // Mã số người không phải tên: lưu vào thì tên thật về sau không đè được nữa
+  if (displayName?.trim() === userId) displayName = null;
   db.prepare(
     `INSERT INTO contacts (user_id, display_name, updated_at) VALUES (?, ?, ?)
      ON CONFLICT (user_id) DO UPDATE SET display_name = COALESCE(contacts.display_name, excluded.display_name)`,

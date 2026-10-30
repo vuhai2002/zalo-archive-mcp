@@ -11,6 +11,6 @@ const UID_IN_TEXT = /\b\d{15,20}\b/g;
 export function withGroupEventMemberNames(db: DatabaseSync, msgType: string, text: string): string {
   if (msgType !== "group_event" || !UID_IN_TEXT.test(text)) return text;
   UID_IN_TEXT.lastIndex = 0;
-  const nameOf = db.prepare("SELECT display_name FROM contacts WHERE user_id = ?");
+  const nameOf = db.prepare("SELECT COALESCE(alias, display_name) AS display_name FROM contacts WHERE user_id = ?");
   return text.replace(UID_IN_TEXT, (uid) => (nameOf.get(uid) as { display_name: string | null } | undefined)?.display_name ?? uid);
 }

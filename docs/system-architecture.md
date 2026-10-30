@@ -100,6 +100,8 @@ thoại 1-1, 4 thành viên đầu nhóm chưa có ảnh) - hỏi cả nhóm đ�
 (mã 221). Mỗi lượt 50 người, cách nhau tối thiểu `DIRECTORY_CONTACT_LOOKUP_GAP_SECONDS`; bị chặn thì
 lượt đó không tính là đã hỏi và cả vòng nghỉ `DIRECTORY_RATE_LIMIT_PAUSE_MINUTES`, gấp đôi mỗi lần bị
 lại, tối đa 6 tiếng; trong lúc nghỉ, danh sách bạn bè và ảnh sticker (lệnh khác, không bị chặn) vẫn chạy. Lúc đọc, tin không kèm tên người gửi (bản sao lưu điện thoại) lấy tên trong danh bạ.
+Tên gợi nhớ mình đặt cho người khác (`getAliasList`, đồng bộ cùng danh sách bạn bè, lưu `contacts.alias`)
+đứng trước mọi tên khác ở danh sách, đầu khung chat, tên người gửi, xem trước, tìm kiếm và MCP - như Zalo PC.
 
 ## Lấy bù tin lỡ
 

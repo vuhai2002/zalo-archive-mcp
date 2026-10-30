@@ -163,6 +163,16 @@ export type ThreadSendersResponse = { senders: ThreadSender[] };
 export type SharedAttachment = AttachmentInfo & { sentAt: string };
 export type ThreadSharedMediaResponse = { items: SharedAttachment[]; total: number };
 
+// GET /api/threads/:threadId/links?limit=10&offset=0  (mới nhất trước) - mục Link của bảng thông tin:
+//   thẻ link hoặc link trong chữ; chỉ http(s)
+export type SharedLink = { messageId: number; url: string; title: string | null; domain: string; sentAt: string };
+export type ThreadLinksResponse = { items: SharedLink[]; total: number };
+
+// GET /api/threads/:threadId/members?limit=20&offset=0  (chỉ nhóm) - mục Thành viên: ai đã biết tên đứng
+//   trước; total theo số thành viên Zalo báo
+export type ThreadMember = { userId: string; name: string | null; avatarUrl: string | null; isSelf: boolean };
+export type ThreadMembersResponse = { members: ThreadMember[]; total: number };
+
 // GET /api/media/:attachmentId?v=<dấu sha256>  -> nội dung file (Content-Type đúng), 404 nếu chưa tải; ?v= chỉ để
 // trình duyệt không lẫn bộ nhớ đệm giữa các nick / bản tải lại, máy chủ bỏ qua
 

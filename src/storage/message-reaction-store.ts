@@ -42,7 +42,7 @@ export function reactionSummaries(db: DatabaseSync, msgIds: string[], selfUid: s
   if (msgIds.length === 0) return out;
   const rows = db
     .prepare(
-      `SELECT t.msg_id, t.reactor_id, t.icon, t.reacted_at, c.display_name FROM message_reaction_taps t
+      `SELECT t.msg_id, t.reactor_id, t.icon, t.reacted_at, COALESCE(c.alias, c.display_name) AS display_name FROM message_reaction_taps t
        LEFT JOIN contacts c ON c.user_id = t.reactor_id
        WHERE t.msg_id IN (${msgIds.map(() => "?").join(",")}) ORDER BY t.reacted_at, t.action_id`,
     )

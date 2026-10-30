@@ -25,6 +25,8 @@ export function ThreadSharedMediaSection({ threadId, kind, timeZone }: { threadI
   const [items, setItems] = useState<SharedAttachment[]>([]);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // Chưa tải xong lần đầu thì chưa báo "chưa có" (tránh nháy chữ sai)
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(
     async (offset: number, limit: number) => {
@@ -32,6 +34,7 @@ export function ThreadSharedMediaSection({ threadId, kind, timeZone }: { threadI
         const r = await api.threadShared(threadId, { kind, limit, offset });
         setItems((cur) => (offset === 0 ? r.items : [...cur, ...r.items]));
         setTotal(r.total);
+        setLoaded(true);
         setError(null);
       } catch (err) {
         setError(errorText(err));
@@ -73,7 +76,7 @@ export function ThreadSharedMediaSection({ threadId, kind, timeZone }: { threadI
       {open && (
         <div className="mt-2">
           {error && <p className="text-[12px] text-red-600 dark:text-red-400">{error}</p>}
-          {!error && total === 0 && <p className="py-2 text-[13px] text-ink-soft">Chưa có {kind === "visual" ? "ảnh hay video" : "file"} nào trong kho.</p>}
+          {!error && loaded && total === 0 && <p className="py-2 text-[13px] text-ink-soft">Chưa có {kind === "visual" ? "ảnh hay video" : "file"} nào trong kho.</p>}
           {kind === "visual" ? (
             <div className="grid grid-cols-4 gap-1">
               {items.map((a) => (

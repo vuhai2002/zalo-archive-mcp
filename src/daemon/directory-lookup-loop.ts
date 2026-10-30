@@ -8,6 +8,7 @@ import {
   syncFriendDirectory,
 } from "../zalo/contact-directory-sync.js";
 import { readLookupPause, saveLookupPause } from "../storage/directory-lookup-pause-store.js";
+import { syncContactAliases } from "../zalo/contact-alias-sync.js";
 import { resolveStickerImages } from "../zalo/sticker-image-resolver.js";
 
 const LOOKUP_INTERVAL_MS = 20_000;
@@ -16,7 +17,7 @@ const FRIEND_SYNC_DEBOUNCE_MS = 5_000;
 
 /**
  * Vòng hỏi Zalo những thứ tin nhắn không mang theo: tên + avatar nhóm, hồ sơ người
- * nhắn, ảnh sticker, danh sách bạn bè. Mỗi lượt chỉ gọi API khi THẬT SỰ có thứ
+ * nhắn, ảnh sticker, danh sách bạn bè + tên gợi nhớ. Mỗi lượt chỉ gọi API khi THẬT SỰ có thứ
  * còn thiếu (các truy vấn "còn thiếu gì" rẻ), nên chạy dày được: nhóm mới / sticker
  * mới hiện đủ sau vài chục giây thay vì chờ lâu.
  *
@@ -61,6 +62,7 @@ export function startDirectoryLookupLoop(o: {
         friendSyncDue = false;
         lastFriendSync = Date.now();
         await syncFriendDirectory(o.api, o.db, o.log);
+        await syncContactAliases(o.api, o.db, o.log);
       }
       // Ảnh sticker dùng lệnh riêng (không phải lệnh hỏi hồ sơ bị chặn), sticker đã biết ảnh thì
       // gắn ngay không gọi Zalo - nên không chờ giờ nghỉ, kẻo tin sticker mới chỉ hiện "[sticker]"
