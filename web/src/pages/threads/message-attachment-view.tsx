@@ -1,9 +1,11 @@
 import { useState } from "react";
-import type { AttachmentInfo } from "../../archive-api-types";
+import type { ArchivedMessage, AttachmentInfo } from "../../archive-api-types";
 import { api, errorText } from "../../dashboard-api-client";
 import { IconDownload, IconFileText, IconImage, IconRefresh } from "../../shared/action-and-media-icons";
 import { mediaStatusLabel } from "../../shared/archive-status-labels";
 import { formatFileSize } from "../../shared/format-file-size";
+import { canOpenInNewTab, sameOriginUrl } from "../../shared/same-origin-media-url";
+import { MessageVideoTile } from "./message-video-tile";
 
 const KIND_LABEL: Record<AttachmentInfo["kind"], string> = {
   photo: "Ảnh",
@@ -26,28 +28,8 @@ function playableKind(att: AttachmentInfo): "video" | "audio" | null {
   return null;
 }
 
-/**
- * Chỉ dùng URL cùng origin với dashboard. Server tự dựng `url` nên bình thường
- * luôn đúng; chặn ở đây để một giá trị lạ (vd `javascript:`) không bao giờ lọt
- * vào `href`/`src`.
- */
-export function sameOriginUrl(url: string | null): string | null {
-  if (!url) return null;
-  try {
-    const u = new URL(url, window.location.origin);
-    return u.origin === window.location.origin ? u.pathname + u.search : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Ảnh SVG mở ở tab mới là chạy được script trên origin của dashboard - file do
- * người lạ gửi thì đó là đường XSS. Chỉ cho bấm mở tab mới với ảnh raster.
- */
-export function canOpenInNewTab(mime: string | null): boolean {
-  return !mime || !mime.toLowerCase().includes("svg");
-}
+// Hai hàm kiểm link nằm ở module thuần; xuất lại cho chỗ gọi cũ
+export { canOpenInNewTab, sameOriginUrl } from "../../shared/same-origin-media-url";
 
 /** Nhãn trạng thái của file chưa xem được; link hết hạn có nhãn riêng */
 function pendingLabel(att: AttachmentInfo, retried: boolean): string {
@@ -104,11 +86,17 @@ export function MessageAttachmentView({
   att,
   onMediaLoad,
   onRetried,
+  onOpen,
+  video = null,
 }: {
   att: AttachmentInfo;
   onMediaLoad?: () => void;
   /** Vừa bấm Thử lại thành công: khung chat hỏi lại kho sau một lúc */
   onRetried?: () => void;
+  /** Mở cửa sổ xem ảnh / video (trong khung chat); không có thì ảnh mở ở thẻ mới như trước */
+  onOpen?: () => void;
+  /** Thông số video Zalo gửi kèm (thời lượng, tỉ lệ) */
+  video?: ArchivedMessage["video"];
 }) {
   const url = att.status === "done" ? sameOriginUrl(att.url) : null;
   const name = att.fileName ?? KIND_LABEL[att.kind];
@@ -130,6 +118,13 @@ export function MessageAttachmentView({
         className="max-h-[360px] max-w-full rounded-lg border border-black/10 bg-bubble object-contain dark:border-white/10"
       />
     );
+    if (onOpen) {
+      return (
+        <button type="button" onClick={onOpen} title="Xem ảnh" className="block cursor-zoom-in">
+          {img}
+        </button>
+      );
+    }
     return canOpenInNewTab(att.mime) ? (
       <a href={url} target="_blank" rel="noopener noreferrer" title="Mở ảnh cỡ gốc trong tab mới" className="block cursor-zoom-in">
         {img}
@@ -138,6 +133,9 @@ export function MessageAttachmentView({
       img
     );
   }
+
+  // Video Zalo: ô khung hình đầu + thời lượng + nút phát, bấm mở cửa sổ xem như Zalo PC
+  if (att.kind === "video" && onOpen) return <MessageVideoTile url={url} video={video} onOpen={onOpen} onMediaLoad={onMediaLoad} />;
 
   const playable = playableKind(att);
   const player =

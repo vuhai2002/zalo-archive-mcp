@@ -122,10 +122,12 @@ describe("dashboard API", () => {
     const s = await setup();
     const cookie = await login(s);
     const visual = (await (await s.call("/api/threads/u-lan/shared?kind=visual", { cookie })).json()) as {
-      items: Array<{ kind: string; sentAt: string }>;
+      items: Array<{ kind: string; sentAt: string; messageId: number; senderName: string | null; reactions: unknown[] }>;
       total: number;
     };
     assert.deepEqual([visual.total, visual.items[0]!.kind, visual.items[0]!.sentAt], [1, "photo", "2026-10-28T03:00:00.000Z"]);
+    // Cửa sổ xem ảnh cần tin gốc, người gửi, cảm xúc
+    assert.deepEqual([typeof visual.items[0]!.messageId, visual.items[0]!.senderName, visual.items[0]!.reactions], ["number", "Lan", []]);
     const files = (await (await s.call("/api/threads/u-lan/shared?kind=file", { cookie })).json()) as { total: number };
     assert.equal(files.total, 0);
     assert.equal((await s.call("/api/threads/khong-co/shared", { cookie })).status, 404);

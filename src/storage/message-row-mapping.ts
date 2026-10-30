@@ -4,6 +4,7 @@ import { callNoticeOf } from "../archive/zalo-call-message-text.js";
 import { withZaloEmoticons } from "../archive/zalo-emoticon-emoji.js";
 import { linkPreviewOf, type LinkPreview } from "../archive/zalo-link-preview.js";
 import { photoAlbumOf, type PhotoAlbum } from "../archive/zalo-photo-album.js";
+import { videoInfoOf, type VideoInfo } from "../archive/zalo-video-info.js";
 import { withGroupEventMemberNames } from "./group-event-member-names.js";
 import { reactionSummaries, type ReactionSummary } from "./message-reaction-store.js";
 import { parseTextStyles, type TextStyleSpan } from "./message-text-styles.js";
@@ -52,6 +53,8 @@ export type MessageRow = {
   album: PhotoAlbum | null;
   /** Thẻ link (recommened.link): URL, tiêu đề, mô tả, tên miền; null với tin khác */
   link: LinkPreview | null;
+  /** Tin video: thời lượng + kích thước (vẽ ô đúng tỉ lệ, hiện "00:33"); null với tin khác */
+  video: VideoInfo | null;
   /** Cảm xúc trên tin, gộp theo loại */
   reactions: ReactionSummary[];
   attachments: AttachmentRow[];
@@ -67,7 +70,9 @@ export const MESSAGE_COLUMNS = `m.id, m.msg_id, m.thread_id, m.thread_type, m.se
   CASE WHEN m.msg_type = 'chat.recommended' AND json_valid(m.raw_json)
     THEN json_extract(m.raw_json, '$.content') END AS rec_content,
   CASE WHEN m.msg_type = 'chat.photo' AND json_valid(m.raw_json)
-    THEN json_extract(m.raw_json, '$.content.params') END AS photo_params`;
+    THEN json_extract(m.raw_json, '$.content.params') END AS photo_params,
+  CASE WHEN m.msg_type = 'chat.video.msg' AND json_valid(m.raw_json)
+    THEN json_extract(m.raw_json, '$.content.params') END AS video_params`;
 /** Avatar người gửi lấy từ danh bạ người */
 export const SENDER_JOIN = "LEFT JOIN contacts c ON c.user_id = m.sender_id";
 
@@ -96,6 +101,7 @@ export function toMessageRow(r: Record<string, unknown>): MessageRow {
     call: call ? { missedIncoming: call.missedIncoming } : null,
     album: photoAlbumOf(r.photo_params),
     link: linkPreviewOf(rec),
+    video: videoInfoOf(r.video_params),
     reactions: [],
     attachments: [],
   };

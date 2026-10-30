@@ -9,6 +9,8 @@ import { FileTypeBadge } from "../../shared/file-type-badge";
 import { formatFileSize } from "../../shared/format-file-size";
 import { formatNumber } from "../../shared/ui-bits";
 import { useLoadMoreWhenVisible } from "../../shared/use-load-more-when-visible";
+import { useMediaViewer } from "./media-viewer-context";
+import { viewerItemFromShared } from "./media-viewer-items";
 import { canOpenInNewTab, sameOriginUrl } from "./message-attachment-view";
 
 /** Xem gọn: 8 ảnh (2 hàng lưới) / 4 file; "Xem tất cả" thì tải từng trang 48 mục */
@@ -105,6 +107,7 @@ export function ThreadSharedMediaSection({ threadId, kind, timeZone }: { threadI
 }
 
 function VisualTile({ a }: { a: SharedAttachment }) {
+  const viewer = useMediaViewer();
   const url = a.status === "done" ? sameOriginUrl(a.url) : null;
   const tile = "relative flex aspect-square items-center justify-center overflow-hidden rounded-md bg-tile";
   if (!url) return <div className={`${tile} p-1 text-center text-[10.5px] leading-tight text-ink-soft`}>{mediaStatusLabel(a.status)}</div>;
@@ -119,6 +122,15 @@ function VisualTile({ a }: { a: SharedAttachment }) {
     ) : (
       <img src={url} alt="Ảnh" loading="lazy" className="aspect-square w-full rounded-md object-cover" />
     );
+  // Bấm ô: mở cửa sổ xem ảnh của hội thoại như Zalo PC
+  const item = viewer ? viewerItemFromShared(a) : null;
+  if (item) {
+    return (
+      <button type="button" onClick={() => viewer?.open(item)} title={a.kind === "video" ? "Xem video" : "Xem ảnh"} className="block w-full">
+        {body}
+      </button>
+    );
+  }
   return canOpenInNewTab(a.mime) ? (
     <a href={url} target="_blank" rel="noopener noreferrer" title="Mở cỡ gốc trong tab mới" className="block">
       {body}

@@ -1,12 +1,14 @@
 import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { useArchiveTimeZone, useDashboardShell } from "../../layout/dashboard-shell-context";
 import { IconChevronDown } from "../../shared/dashboard-icons";
+import { threadDisplayName } from "../../shared/thread-kind-badge";
 import { EmptyState, ErrorNote, LoadingText } from "../../shared/ui-bits";
 import { useArchiveLiveChanges } from "../../shared/use-archive-live-changes";
 import { useLoadMoreWhenVisible } from "../../shared/use-load-more-when-visible";
 import { ChatItemRow, itemHasMessage } from "./chat-item-row";
 import { MessageComposer } from "./message-composer";
 import { layoutMessages } from "./message-grouping";
+import { MediaViewerProvider } from "./media-viewer-context";
 import { collapseAlbums } from "./photo-album-grouping";
 import { ThreadChatHeader } from "./thread-chat-header";
 import { ThreadInfoPanel } from "./thread-info-panel";
@@ -109,6 +111,7 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
   const layouts = useMemo(() => layoutMessages(items.map((x) => x.msg), tz), [items, tz]);
 
   return (
+    <MediaViewerProvider threadId={threadId} threadName={threadDisplayName(t.thread?.name)} timeZone={tz} onOpenMessage={(id) => void jump.jumpToMessage(id)}>
     <div className="relative flex h-full min-h-0 overflow-hidden bg-surface">
     <div className="relative flex min-w-0 flex-1 flex-col">
       <ThreadChatHeader
@@ -185,5 +188,6 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
       <ThreadSearchPanel threadId={threadId} timeZone={tz} onClose={side.closeSearch} onJump={(id) => void jump.jumpToMessage(id)} />
     )}
     </div>
+    </MediaViewerProvider>
   );
 }

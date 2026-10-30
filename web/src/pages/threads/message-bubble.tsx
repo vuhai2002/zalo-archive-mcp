@@ -1,17 +1,20 @@
-import type { ArchivedMessage, TextStyleSpan } from "../../archive-api-types";
+import type { ArchivedMessage, AttachmentInfo, TextStyleSpan } from "../../archive-api-types";
 import { sourceLabel } from "../../shared/archive-status-labels";
 import { ContactAvatar } from "../../shared/contact-avatar";
 import { formatClock, formatDateTime } from "../../shared/format-archive-time";
 import { MessageAlbumGrid } from "./message-album-grid";
 import { MessageAttachmentView } from "./message-attachment-view";
 import { MessageCallCard } from "./message-call-card";
+import { useMediaViewer } from "./media-viewer-context";
+import { viewerItemFromMessage } from "./media-viewer-items";
 import { MessageLinkCard } from "./message-link-card";
 import { MessageReactionPill } from "./message-reaction-pill";
 import { isSystemMessage } from "./message-grouping";
 import { mergeAlbumReactions } from "./photo-album-grouping";
 import { RichMessageText } from "./rich-message-text";
 
-const VISUAL_KINDS = new Set(["photo", "gif", "sticker"]);
+// Video cũng hiện trần (không khung bong bóng) như Zalo PC
+const VISUAL_KINDS = new Set(["photo", "gif", "sticker", "video"]);
 
 /** Thẻ thông báo của Zalo (vd đăng nhập trên máy tính): dòng đầu là tiêu đề, in đậm như trên Zalo */
 function textStylesOf(msg: ArchivedMessage): TextStyleSpan[] {
@@ -53,6 +56,12 @@ export function MessageBubble({
   onMediaRetried: () => void;
 }) {
   const self = msg.isSelf;
+  // Bấm ảnh / video: mở cửa sổ xem của hội thoại (ngoài khung chat thì không có, ảnh mở thẻ mới)
+  const viewer = useMediaViewer();
+  const openOf = (att: AttachmentInfo) => {
+    const item = viewer ? viewerItemFromMessage(msg, att) : null;
+    return item ? () => viewer?.open(item) : undefined;
+  };
   const recalled = msg.recalledAt !== null;
   const name = msg.senderName?.trim() || msg.senderId;
   const timeTitle = `${formatDateTime(msg.sentAt, timeZone)}${msg.source !== "live" ? ` · ${sourceLabel(msg.source)}` : ""}`;
@@ -110,7 +119,7 @@ export function MessageBubble({
                 <MessageAlbumGrid album={album} onMediaLoad={onMediaLoad} onMediaRetried={onMediaRetried} />
               ) : (
                 msg.attachments.map((att) => (
-                  <MessageAttachmentView key={att.id} att={att} onMediaLoad={onMediaLoad} onRetried={onMediaRetried} />
+                  <MessageAttachmentView key={att.id} att={att} onMediaLoad={onMediaLoad} onRetried={onMediaRetried} onOpen={openOf(att)} video={msg.video} />
                 ))
               )}
             </div>
@@ -149,7 +158,7 @@ export function MessageBubble({
             {msg.attachments.length > 0 && (
               <div className={`space-y-1.5 ${hasText ? "mb-1.5" : ""}`}>
                 {msg.attachments.map((att) => (
-                  <MessageAttachmentView key={att.id} att={att} onMediaLoad={onMediaLoad} onRetried={onMediaRetried} />
+                  <MessageAttachmentView key={att.id} att={att} onMediaLoad={onMediaLoad} onRetried={onMediaRetried} onOpen={openOf(att)} video={msg.video} />
                 ))}
               </div>
             )}

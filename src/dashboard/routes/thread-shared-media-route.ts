@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { findThread } from "../../storage/message-read-queries.js";
+import { reactionSummaries } from "../../storage/message-reaction-store.js";
+import { getMeta } from "../../storage/thread-directory-store.js";
 import { threadSharedLinks, threadMembers } from "../../storage/thread-links-and-members-queries.js";
 import { threadSharedMedia } from "../../storage/thread-shared-media-queries.js";
 import type { ThreadLinksResponse, ThreadMembersResponse, ThreadSharedMediaResponse } from "../dashboard-api-contract.js";
@@ -25,7 +27,18 @@ export function threadSharedMediaRoute(ctx: DashboardContext): Hono {
       limit: clampInt(c.req.query("limit"), 8, 1, 120),
       offset: clampInt(c.req.query("offset"), 0, 0, 1_000_000),
     });
-    const items = page.items.map((a) => ({ ...toAttachmentInfo(a), sentAt: a.sentAt }));
+    // Cảm xúc của tin chứa ảnh / video - cửa sổ xem ảnh hiện ở góc dưới như Zalo
+    const reactions = reactionSummaries(ctx.db, page.items.map((a) => a.msgId), getMeta(ctx.db, "self_uid"));
+    const items = page.items.map((a) => ({
+      ...toAttachmentInfo(a),
+      sentAt: a.sentAt,
+      messageId: a.messageId,
+      senderId: a.senderId,
+      senderName: a.senderName,
+      senderAvatarUrl: a.senderAvatarUrl,
+      isSelf: a.isSelf,
+      reactions: reactions.get(a.msgId) ?? [],
+    }));
     return c.json({ items, total: page.total } satisfies ThreadSharedMediaResponse);
   });
 

@@ -120,6 +120,8 @@ export type ArchivedMessage = {
   album: { id: string; index: number; total: number } | null;
   /** Thẻ link như Zalo (chỉ link http(s)): hiện thay cho chữ ghép "tiêu đề / link / mô tả" */
   link: { url: string; title: string | null; description: string | null; domain: string } | null;
+  /** Tin video: thời lượng (ms) + kích thước, để vẽ ô đúng tỉ lệ và hiện "00:33" như Zalo */
+  video: { durationMs: number | null; width: number | null; height: number | null } | null;
   /** Cảm xúc trên tin như Zalo, gộp theo loại; `emoji` null = mã Zalo chưa biết (hiện `icon`) */
   reactions: Array<{ icon: string; emoji: string | null; count: number; mine: boolean; names: string[] }>;
   attachments: AttachmentInfo[];
@@ -160,7 +162,16 @@ export type ThreadSendersResponse = { senders: ThreadSender[] };
 
 // GET /api/threads/:threadId/shared?kind=visual|file&limit=8&offset=0  (mới nhất trước)
 // Ảnh/video (visual) hoặc file đã gửi trong hội thoại - bảng "Thông tin hội thoại" kiểu Zalo PC
-export type SharedAttachment = AttachmentInfo & { sentAt: string };
+export type SharedAttachment = AttachmentInfo & {
+  sentAt: string;
+  /** Tin chứa file (cho cửa sổ xem ảnh: "Xem tin nhắn gốc", người gửi, cảm xúc) */
+  messageId: number;
+  senderId: string;
+  senderName: string | null;
+  senderAvatarUrl: string | null;
+  isSelf: boolean;
+  reactions: ArchivedMessage["reactions"];
+};
 export type ThreadSharedMediaResponse = { items: SharedAttachment[]; total: number };
 
 // GET /api/threads/:threadId/links?limit=10&offset=0  (mới nhất trước) - mục Link của bảng thông tin:
