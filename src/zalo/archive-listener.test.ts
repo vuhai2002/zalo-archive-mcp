@@ -9,6 +9,7 @@ import { listJournalFiles } from "../archive/raw-event-journal.js";
 import { createSilentLogger } from "../shared/logger.js";
 import { recentConnectionEvents } from "../storage/connection-event-store.js";
 import { readThread } from "../storage/message-read-queries.js";
+import { readReplayCursors } from "../storage/offline-replay-cursor-store.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { startArchiveListener } from "./archive-listener.js";
 
@@ -19,9 +20,13 @@ class FakeListener extends EventEmitter {
   }
   stop() {}
   requestOldMessages() {}
+  sent: Array<{ cmd: number; lastId: string | null }> = [];
+  sendWs(p: { cmd: number; data: { lastId: string | null } }) {
+    this.sent.push({ cmd: p.cmd, lastId: p.data.lastId });
+  }
 }
 
-function setup(giveUpAfterFlaps = 3) {
+function setup(giveUpAfterFlaps = 3, offlineReplay: { minIntervalMs: number } | null = null) {
   const db = openArchiveDatabase(":memory:");
   const journalDir = fs.mkdtempSync(path.join(os.tmpdir(), "zam-journal-"));
   const listener = new FakeListener();
@@ -32,7 +37,7 @@ function setup(giveUpAfterFlaps = 3) {
     journalDir,
     log: createSilentLogger(),
     reconnect: { baseDelayMs: 1000, maxDelayMs: 4000, duplicateWaitMs: 60_000, giveUpAfterFlaps },
-    offlineReplay: null,
+    offlineReplay,
     onGaveUp: () => {
       gaveUp = true;
     },
@@ -72,6 +77,24 @@ describe("archive listener", () => {
       ["10", "old_messages", true],
       ["12", "old_messages", false],
     ]);
+  });
+
+  it("lấy bù: trang tin / cảm xúc về đúng hàng chờ và lưu mốc; xong rồi thì tin trực tiếp đẩy mốc lên", () => {
+    mock.timers.enable({ apis: ["setTimeout"] });
+    const { db, listener, handle } = setup(3, { minIntervalMs: 600_000 });
+    try {
+      listener.emit("connected");
+      listener.emit("old_messages_meta", { threadType: ThreadType.User, count: 3, meta: { more: 0, lastActionId: "8400006000112" } });
+      mock.timers.tick(15_000);
+      assert.deepEqual(listener.sent.map((s) => s.cmd), [510, 511, 610, 611]);
+      listener.emit("old_reactions_meta", { threadType: ThreadType.Group, count: 1, meta: { more: 0, lastActionId: "8400009000114" } });
+      listener.emit("message", userMessage("8400007000000", "tin mới"));
+      listener.emit("reaction", { isGroup: true, threadId: "g-1", data: { msgId: "8400010000000" } });
+      assert.deepEqual(readReplayCursors(db), { user_messages: "8400007000000", group_reactions: "8400010000000" });
+    } finally {
+      handle.stop();
+      mock.timers.reset();
+    }
   });
 
   it("rớt mạng thì hẹn giờ nối lại; chớp-tắt quá ngưỡng thì dừng hẳn và báo", () => {

@@ -1,5 +1,5 @@
 diff --git a/dist/apis/listen.js b/dist/apis/listen.js
-index ce5d95e1ea1791f5225e7d4a6f2cd734f0c2d67d..39b55ecb36469be7af4dd8230cc9584ebcd88582 100644
+index ce5d95e1ea1791f5225e7d4a6f2cd734f0c2d67d..90505b986382ef166c30605c7e920ed0a3267200 100644
 --- a/dist/apis/listen.js
 +++ b/dist/apis/listen.js
 @@ -172,7 +172,7 @@ export class Listener extends EventEmitter {
@@ -11,7 +11,16 @@ index ce5d95e1ea1791f5225e7d4a6f2cd734f0c2d67d..39b55ecb36469be7af4dd8230cc9584e
                      const parsedData = (await decodeEventData(parsed, this.cipherKey)).data;
                      const { msgs } = parsedData;
                      for (const msg of msgs) {
-@@ -292,12 +292,18 @@ export class Listener extends EventEmitter {
+@@ -286,18 +286,27 @@ export class Listener extends EventEmitter {
+                     const reacts = parsedData[isGroup ? "reactGroups" : "reacts"];
+                     const reactionObjects = reacts.map((react) => new Reaction(this.ctx.uid, react, isGroup));
+                     this.emit("old_reactions", reactionObjects, isGroup);
++                    // zalo-archive-mcp: phát kèm phần còn lại của phản hồi (mã trang tiếp theo...) để lấy bù nhiều trang
++                    const { reacts: _reacts, reactGroups: _reactGroups, ...pageMeta } = parsedData;
++                    this.emit("old_reactions_meta", { threadType: isGroup ? ThreadType.Group : ThreadType.User, count: reacts.length, meta: pageMeta });
+                 }
+                 if (cmd == 510 && subCmd == 1) {
+                     const parsedData = (await decodeEventData(parsed, this.cipherKey)).data;
                      const msgs = parsedData.msgs;
                      const responseMsgs = msgs.map((msg) => new UserMessage(this.ctx.uid, msg));
                      this.emit("old_messages", responseMsgs, ThreadType.User);
@@ -31,7 +40,7 @@ index ce5d95e1ea1791f5225e7d4a6f2cd734f0c2d67d..39b55ecb36469be7af4dd8230cc9584e
                  if (cmd == 602 && subCmd == 0) {
                      const parsedData = (await decodeEventData(parsed, this.cipherKey)).data;
 diff --git a/dist/cjs/apis/listen.cjs b/dist/cjs/apis/listen.cjs
-index 1e8be5688e3684404b1452a4a2743db4d8a69fd6..71f292be4bde4abfd1b2230bee06f3b36e00d4f9 100644
+index 1e8be5688e3684404b1452a4a2743db4d8a69fd6..255880cb36e4a59aadea46f0834587795fec1cee 100644
 --- a/dist/cjs/apis/listen.cjs
 +++ b/dist/cjs/apis/listen.cjs
 @@ -185,7 +185,7 @@ class Listener extends EventEmitter {
@@ -43,7 +52,16 @@ index 1e8be5688e3684404b1452a4a2743db4d8a69fd6..71f292be4bde4abfd1b2230bee06f3b3
                      const parsedData = (await utils.decodeEventData(parsed, this.cipherKey)).data;
                      const { msgs } = parsedData;
                      for (const msg of msgs) {
-@@ -305,12 +305,18 @@ class Listener extends EventEmitter {
+@@ -299,18 +299,27 @@ class Listener extends EventEmitter {
+                     const reacts = parsedData[isGroup ? "reactGroups" : "reacts"];
+                     const reactionObjects = reacts.map((react) => new Reaction.Reaction(this.ctx.uid, react, isGroup));
+                     this.emit("old_reactions", reactionObjects, isGroup);
++                    // zalo-archive-mcp: phát kèm phần còn lại của phản hồi (mã trang tiếp theo...) để lấy bù nhiều trang
++                    const { reacts: _reacts, reactGroups: _reactGroups, ...pageMeta } = parsedData;
++                    this.emit("old_reactions_meta", { threadType: isGroup ? Enum.ThreadType.Group : Enum.ThreadType.User, count: reacts.length, meta: pageMeta });
+                 }
+                 if (cmd == 510 && subCmd == 1) {
+                     const parsedData = (await utils.decodeEventData(parsed, this.cipherKey)).data;
                      const msgs = parsedData.msgs;
                      const responseMsgs = msgs.map((msg) => new Message.UserMessage(this.ctx.uid, msg));
                      this.emit("old_messages", responseMsgs, Enum.ThreadType.User);

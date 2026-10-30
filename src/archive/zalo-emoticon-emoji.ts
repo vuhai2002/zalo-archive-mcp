@@ -68,7 +68,7 @@ const EMOJI_BY_CODE: Record<string, string | null> = {
   "b-)": "😬",
   "x-)": "😏",
   "p-(": "😣",
-  "--b": "😓",
+  "--b": "😥", // Zalo vẽ mắt ngước lên + giọt mồ hôi; 😓 trên Windows là mặt nhắm mắt, khác hẳn
   "&-(": "😰",
   "|-)": "😪",
   ">-|": "😤",

@@ -19,6 +19,8 @@ describe("mã biểu cảm Zalo", () => {
     assert.equal(withZaloEmoticons("Q xem :d rồi :d").text, "Q xem 😁 rồi 😁");
     assert.equal(withZaloEmoticons(":D:>").text, "😁😆");
     assert.equal(withZaloEmoticons("/-heart /-STRONG").text, "❤️ 👍");
+    // Ví dụ: "--B" dính sau chữ cách một dấu cách - Zalo vẽ mặt ngước mắt có giọt mồ hôi
+    assert.equal(withZaloEmoticons("nay chạy deadline --B").text, "nay chạy deadline 😥");
   });
 
   it("mã nằm trong chữ khác thì giữ nguyên: giờ, link, 'Note:do'", () => {

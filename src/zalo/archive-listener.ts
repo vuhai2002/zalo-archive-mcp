@@ -1,12 +1,13 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { Logger } from "pino";
-import type { API } from "zca-js";
+import { ThreadType, type API } from "zca-js";
 import { ingestArchiveEvent, type ArchiveEvent } from "../archive/archive-event-ingestor.js";
 import { appendJournal } from "../archive/raw-event-journal.js";
 import { recordConnectionEvent } from "../storage/connection-event-store.js";
 import { setMeta } from "../storage/thread-directory-store.js";
 import { applyFriendEvent, applyGroupEvent } from "./directory-event-handlers.js";
 import { describeListenerError, isNetworkErrorCode } from "./listener-error-details.js";
+import type { ReplayQueue } from "../storage/offline-replay-cursor-store.js";
 import { createMissedMessageRequester } from "./offline-message-replay.js";
 import { ReconnectPlanner, type ReconnectPlannerOptions } from "./reconnect-planner.js";
 import { messageToRaw, undoToRaw } from "./zalo-event-to-raw.js";
@@ -49,7 +50,7 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
   let lastErrorRecordedAt = 0;
   // Lỗi gần nhất TRƯỚC lần đóng này, để phân biệt mất mạng với phiên bị từ chối
   let lastErrorCode: string | null = null;
-  const missed = opts.offlineReplay ? createMissedMessageRequester(api, log, opts.offlineReplay) : null;
+  const missed = opts.offlineReplay ? createMissedMessageRequester(api, db, log, opts.offlineReplay) : null;
 
   const journal = (event: string, payload: unknown) => {
     try {
@@ -73,19 +74,27 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
     log.debug({ kind: event.kind, ...stats }, "Đã ghi sự kiện");
   };
 
-  listener.on("message", (m) => handle({ kind: "message", message: messageToRaw(m) }));
+  listener.on("message", (m) => {
+    handle({ kind: "message", message: messageToRaw(m) });
+    safely("message", () => missed?.onLiveEvent(m.type === ThreadType.Group ? "group_messages" : "user_messages", m.data.msgId));
+  });
   listener.on("undo", (u) => handle({ kind: "undo", undo: undoToRaw(u) }));
   listener.on("old_messages", (msgs) => handle({ kind: "old_messages", messages: msgs.map(messageToRaw) }));
   // Phần còn lại của phản hồi lấy bù (mã trang tiếp theo...), có nhờ bản vá zca-js - xem offline-message-replay.ts
-  (listener as unknown as NodeJS.EventEmitter).on("old_messages_meta", (page: unknown) => {
-    journal("old_messages_meta", page);
-    safely("old_messages_meta", () => missed?.onPage(page));
-  });
+  const onReplayPage = (event: string, groupQueue: ReplayQueue, userQueue: ReplayQueue) =>
+    (listener as unknown as NodeJS.EventEmitter).on(event, (page: unknown) => {
+      journal(event, page);
+      const group = (page as { threadType?: unknown } | null)?.threadType === ThreadType.Group;
+      safely(event, () => missed?.onPage(group ? groupQueue : userQueue, page));
+    });
+  onReplayPage("old_messages_meta", "group_messages", "user_messages");
+  onReplayPage("old_reactions_meta", "group_reactions", "user_reactions");
   // Cảm xúc + sự kiện nhóm: nhật ký ghi payload nguyên văn (như trước), rồi vào kho
   const ingestRaw = (event: ArchiveEvent) => ingestArchiveEvent(db, event, new Date(), log);
   listener.on("reaction", (r) => {
     journal("reaction", r);
     safely("reaction", () => ingestRaw({ kind: "reaction", reaction: r }));
+    safely("reaction", () => missed?.onLiveEvent(r.isGroup ? "group_reactions" : "user_reactions", r.data.msgId));
   });
   listener.on("old_reactions", (rs, isGroup) => {
     journal("old_reactions", { isGroup, reactions: rs });

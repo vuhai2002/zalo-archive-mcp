@@ -99,9 +99,16 @@ lại, tối đa 6 tiếng; trong lúc nghỉ, danh sách bạn bè và ảnh st
 
 ## Lấy bù tin lỡ
 
-Mỗi lần listener kết nối: xin Zalo gửi bù tin 1-1 (cmd 510), 2-5 giây sau tin nhóm (511). Nối lại
-trong vòng `OFFLINE_REPLAY_MIN_INTERVAL_MINUTES` thì không xin lại. Tin trả về khử trùng theo msg_id.
-Mới lấy trang đầu (giới hạn zca-js 2.2.0); Zalo giữ khoảng 2 tuần.
+Mỗi lần listener kết nối, `offline-message-replay.ts` xin Zalo gửi bù từ bốn hàng chờ: tin 1-1 (cmd 510),
+vài giây sau tin nhóm (511), rồi cảm xúc 1-1 (610) và cảm xúc nhóm (611). Nối lại trong vòng
+`OFFLINE_REPLAY_MIN_INTERVAL_MINUTES` thì không xin lại. Tin / cảm xúc trả về khử trùng như mọi sự kiện.
+
+Như Zalo Web: mỗi hàng chờ xin TỪ MỐC đã lưu (`meta.offline_replay_cursors`, id của việc mới nhất kho đã
+có), rồi theo `more` + `lastActionId` lật trang tới khi Zalo báo hết (trần 30 trang). Mỗi trang về là lưu
+mốc, nên chạm trần hay rớt kết nối giữa chừng thì lần sau đi tiếp. Lấy bù xong một hàng chờ thì tin /
+cảm xúc nhận trực tiếp đẩy mốc lên (cùng hệ id), để lần tắt máy sau chỉ xin phần thật sự lỡ. Chưa có
+mốc thì xin từ đầu hàng chờ; xin từ mốc mà Zalo không trả lời thì bỏ mốc. zca-js 2.2.0 bỏ mất `more` /
+`lastActionId`, bản vá zca-js phát thêm `old_messages_meta` / `old_reactions_meta`.
 
 Khoảng không nghe (`connection_events`, hiện ở Tổng quan và `sync_status`): listener ghi lúc đóng / nối
 lại; tiến trình chết đột ngột thì lần khởi động sau ghi bù theo heartbeat cuối; máy ngủ thì vòng
