@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, errorText } from "../dashboard-api-client";
-import { anhNen } from "../shared/background-image";
-import { IconArchive } from "../shared/dashboard-icons";
 import { safeNextPath } from "../shared/safe-next-path";
 import { SecretInput } from "../shared/secret-input";
 import { btnClass, ErrorNote, LoadingText } from "../shared/ui-bits";
-import { useTheme } from "../shared/use-theme";
 import { FirstPasswordSetupForm } from "./first-password-setup-form";
 
 type Mode = "loading" | "setup" | "login";
@@ -20,7 +17,6 @@ export function LoginPage() {
   const [params] = useSearchParams();
   const [mode, setMode] = useState<Mode>("loading");
   const [gateError, setGateError] = useState("");
-  const { theme } = useTheme();
   const goNext = useCallback(() => navigate(safeNextPath(params.get("next")), { replace: true }), [navigate, params]);
 
   const check = useCallback(() => {
@@ -40,15 +36,10 @@ export function LoginPage() {
   }, [check]);
 
   return (
-    <div
-      className="flex min-h-[100dvh] items-center justify-center bg-canvas bg-cover bg-center px-4"
-      style={{ backgroundImage: `url(${anhNen(theme)})` }}
-    >
+    <div className="flex min-h-[100dvh] items-center justify-center bg-canvas px-4">
       <div className="gc-card w-full max-w-sm p-8">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zalo-500 text-white">
-            <IconArchive size={28} />
-          </span>
+          <img src="/app-logo.png" alt="" className="h-16 w-16" />
           <div className="text-[20px] font-bold tracking-tight text-ink">Kho Zalo</div>
           <div className="text-[13px] text-ink-soft">Kho lưu trữ tin nhắn tài khoản Zalo cá nhân</div>
         </div>

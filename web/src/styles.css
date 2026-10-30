@@ -44,8 +44,7 @@
  * Nhờ vậy `bg-surface`, `text-ink`, `border-line`... trong mọi file tự đổi
  * theo, không phải rắc `dark:` khắp nơi rồi sót chỗ này chỗ kia.
  *
- * Tông xanh đêm (không phải xám trung tính) để hợp ảnh nền dark và giữ đúng
- * chất Zalo. Nền card sáng hơn nền trang một bậc - đó là thứ tạo ra chiều sâu
+ * Tông xanh đêm (không phải xám trung tính) để giữ đúng chất Zalo. Nền card sáng hơn nền trang một bậc - đó là thứ tạo ra chiều sâu
  * khi không có bóng đổ.
  */
 .dark {
@@ -141,11 +140,9 @@ summary,
 
 /* Trong @layer components để utility (pl-9...) vẫn override được khi cần */
 @layer components {
-  /* Card chuẩn mẫu: border mảnh, radius 12, KHÔNG shadow.
-     Hơi trong + blur nhẹ để ảnh nền của trang lộ ra sau card thay vì bị che
-     kín - đục hoàn toàn thì nền chỉ còn thấy ở mép, phí công đặt nền. */
+  /* Card chuẩn mẫu: border mảnh, radius 12, KHÔNG shadow, nền đặc trên nền trang trơn */
   .gc-card {
-    @apply rounded-xl border border-line bg-surface/95 backdrop-blur-sm;
+    @apply rounded-xl border border-line bg-surface;
   }
 
   /* Tile nhỏ trong panel (System Health): nền muted mờ */

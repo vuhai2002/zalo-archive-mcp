@@ -2,8 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } f
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import type { MeResponse, SessionStatus } from "../archive-api-types";
 import { api, ApiError, errorText, loginPath } from "../dashboard-api-client";
-import { anhNen } from "../shared/background-image";
-import { IconArchive, IconLogout, IconMoon, IconSun } from "../shared/dashboard-icons";
+import { IconLogout, IconMoon, IconSun } from "../shared/dashboard-icons";
 import { ErrorNote, LoadingText } from "../shared/ui-bits";
 import { useTheme } from "../shared/use-theme";
 import { DashboardShellContext, type DashboardShellValue } from "./dashboard-shell-context";
@@ -83,9 +82,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           {/* Topbar chỉ ở mobile - desktop đã có cột icon cố định */}
           <header className="sticky top-0 z-30 flex h-[53px] items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur lg:hidden">
             <Link to="/" className="flex min-w-0 flex-1 items-center gap-2" title="Về trang chính">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-zalo-500 text-white">
-                <IconArchive size={16} />
-              </span>
+              <img src="/app-logo.png" alt="" className="h-7 w-7 shrink-0" />
               <span className="truncate text-[15px] font-semibold text-ink">Kho Zalo</span>
             </Link>
             <button type="button" onClick={toggle} aria-label="Đổi giao diện sáng/tối" className="rounded-lg p-1.5 text-ink-soft hover:bg-tile hover:text-ink">
@@ -96,15 +93,13 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             </button>
           </header>
 
-          {/* Trang Hội thoại chiếm sát mép như Zalo PC; trang khác có ảnh nền + khoảng đệm.
-              `bg-canvas` làm màu lót khi ảnh chưa tải xong để trang không nháy trắng. */}
+          {/* Trang Hội thoại chiếm sát mép như Zalo PC; trang khác nền trơn + khoảng đệm */}
           <main
             className={
               fullBleed
                 ? "min-w-0 flex-1 bg-surface lg:overflow-hidden"
-                : "min-w-0 flex-1 bg-canvas bg-cover bg-fixed bg-center px-4 py-5 sm:px-6 lg:overflow-y-auto lg:px-8 lg:py-7 lg:scrollbar-stable"
+                : "min-w-0 flex-1 bg-canvas px-4 py-5 sm:px-6 lg:overflow-y-auto lg:px-8 lg:py-7 lg:scrollbar-stable"
             }
-            style={fullBleed ? undefined : { backgroundImage: `url(${anhNen(theme)})` }}
           >
             <AccountGate session={session}>{children}</AccountGate>
           </main>

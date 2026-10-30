@@ -13,12 +13,12 @@ import { useCallback, useEffect, useState } from "react";
  * lại, mắt thấy rõ cú nháy. Class được ghi ngay trong `index.html` trước khi
  * React chạy - hook này chỉ đọc lại trạng thái đã có.
  *
- * MỌI nơi gọi hook phải thấy CÙNG một giá trị: `SidebarNav` chứa nút bấm, còn
- * `app.tsx`/`login-page.tsx` cần `theme` để chọn ảnh nền. Nếu mỗi lần gọi tạo
- * một `useState` riêng thì bấm nút chỉ cập nhật state của sidebar - class trên
- * `<html>` đổi nên màu (qua token CSS) đổi ngay, nhưng ẢNH NỀN vẫn giữ bản cũ
- * tới khi tải lại trang. Đã dính đúng lỗi đó, nên trạng thái để ở NGOÀI React
- * và các hook đăng ký nhận thông báo chung.
+ * MỌI nơi gọi hook phải thấy CÙNG một giá trị (vd nút đổi theme và biểu tượng
+ * mặt trời / mặt trăng ở chỗ khác). Nếu mỗi lần gọi tạo một `useState` riêng thì
+ * bấm nút chỉ cập nhật state của nơi bấm - class trên `<html>` đổi nên màu (qua
+ * token CSS) đổi ngay, nhưng phần React dựa vào `theme` vẫn giữ bản cũ tới khi
+ * tải lại trang. Nên trạng thái để ở NGOÀI React và các hook đăng ký nhận thông
+ * báo chung.
  */
 
 export type Theme = "light" | "dark";

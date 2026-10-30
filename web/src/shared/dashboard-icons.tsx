@@ -79,14 +79,6 @@ export const IconGear = (p: IconProps) => (
   </svg>
 );
 
-/** Hộp lưu trữ - logo app */
-export const IconArchive = (p: IconProps) => (
-  <svg {...iconBase(p)}>
-    <rect x="3.5" y="4.5" width="17" height="4" rx="1" />
-    <path d="M5 8.5v10A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-10M10 12.5h4" />
-  </svg>
-);
-
 export const IconMenu = (p: IconProps) => (
   <svg {...iconBase(p)}>
     <path d="M4 7h16M4 12h16M4 17h16" />
