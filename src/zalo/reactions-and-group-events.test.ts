@@ -100,10 +100,10 @@ describe("sự kiện nhóm thành tin hệ thống giữa dòng chat", () => {
     ingestArchiveEvent(db, { kind: "group_event", event: groupEvent("new_pin_topic", { source: ME, members: [], time: 1_793_245_200_000 }) }, at, log);
 
     assert.deepEqual(notices(db), [
-      ["group_event", "Ngạn Lư đã thêm Bạn và Mạc Văn Quế vào nhóm"],
+      ["group_event", "Bạn và Mạc Văn Quế được Ngạn Lư thêm vào nhóm"],
       ["group_event", "Bình đã tham gia nhóm"],
-      ["group_event", "Bình đã rời nhóm"],
-      ["group_event", 'Bạn đã đổi tên nhóm thành "Nhóm Thử Nghiệm 2"'],
+      ["group_event", "Bình đã rời khỏi nhóm"],
+      ["group_event", "Bạn đổi tên nhóm thành Nhóm Thử Nghiệm 2"],
     ]);
   });
 });

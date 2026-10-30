@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { API } from "zca-js";
 import type { Logger } from "pino";
+import { CONTROLS_QUEUE } from "./offline-group-event-replay.js";
 import {
   isNewerZaloId,
   readReplayCursors,
@@ -9,9 +10,11 @@ import {
 } from "../storage/offline-replay-cursor-store.js";
 
 /**
- * Xin Zalo gửi lại những gì lỡ trong lúc listener tắt (tắt máy, đang dùng nick khác), từ bốn hàng
- * chờ Zalo giữ cho tài khoản: cmd 510 tin 1-1, 511 tin nhóm, 610 cảm xúc 1-1, 611 cảm xúc nhóm. Tin
- * về qua `old_messages`, cảm xúc qua `old_reactions`; kho khử trùng nên nhận lại thứ đã có không sao.
+ * Xin Zalo gửi lại những gì lỡ trong lúc listener tắt (tắt máy, đang dùng nick khác), từ năm hàng
+ * chờ Zalo giữ cho tài khoản: cmd 510 tin 1-1, 511 tin nhóm, 610 cảm xúc 1-1, 611 cảm xúc nhóm, 603
+ * điều khiển (sự kiện nhóm: thêm / rời / đổi tên). Tin về qua `old_messages`, cảm xúc qua
+ * `old_reactions`, sự kiện nhóm qua khung WS đọc thẳng (offline-group-event-replay.ts); kho khử trùng
+ * nên nhận lại thứ đã có không sao.
  *
  * Theo cách Zalo Web làm (`doGetOffline` / `onGotOffline`):
  * - xin TỪ MỐC đã lưu của hàng chờ (`{ first: true, lastId: mốc }`, chưa có mốc thì từ đầu hàng chờ);
@@ -39,11 +42,12 @@ export const MAX_PAGES = 30;
 const PAGE_TIMEOUT_MS = 8_000;
 
 /** Lệnh Zalo, tên hiện trong log, giờ bắt đầu sau khi kết nối (ms tối thiểu + khoảng ngẫu nhiên) */
-const QUEUE: Record<ReplayQueue, { cmd: number; label: string; startMs: number; spreadMs: number }> = {
-  user_messages: { cmd: 510, label: "tin 1-1", startMs: 0, spreadMs: 0 },
-  group_messages: { cmd: 511, label: "tin nhóm", startMs: 2_000, spreadMs: 3_000 },
-  user_reactions: { cmd: 610, label: "cảm xúc 1-1", startMs: 8_000, spreadMs: 3_000 },
-  group_reactions: { cmd: 611, label: "cảm xúc nhóm", startMs: 11_000, spreadMs: 3_000 },
+const QUEUE: Record<ReplayQueue, { cmd: number; subCmd: number; label: string; startMs: number; spreadMs: number }> = {
+  user_messages: { cmd: 510, subCmd: 1, label: "tin 1-1", startMs: 0, spreadMs: 0 },
+  group_messages: { cmd: 511, subCmd: 1, label: "tin nhóm", startMs: 2_000, spreadMs: 3_000 },
+  user_reactions: { cmd: 610, subCmd: 1, label: "cảm xúc 1-1", startMs: 8_000, spreadMs: 3_000 },
+  group_reactions: { cmd: 611, subCmd: 1, label: "cảm xúc nhóm", startMs: 11_000, spreadMs: 3_000 },
+  group_events: { cmd: CONTROLS_QUEUE.cmd, subCmd: CONTROLS_QUEUE.subCmd, label: "sự kiện nhóm", startMs: 14_000, spreadMs: 3_000 },
 };
 const QUEUES = Object.keys(QUEUE) as ReplayQueue[];
 
@@ -90,9 +94,9 @@ export function createMissedMessageRequester(
 
   const ask = (queue: ReplayQueue, r: Run, lastId: string | null, first: boolean) => {
     if (run[queue] !== r) return;
-    const { cmd, label } = QUEUE[queue];
+    const { cmd, subCmd, label } = QUEUE[queue];
     try {
-      api.listener.sendWs({ version: 1, cmd, subCmd: 1, data: { first, lastId, preIds: [] } });
+      api.listener.sendWs({ version: 1, cmd, subCmd, data: { first, lastId, preIds: [] } });
       r.requested = lastId;
       r.waiting = later(PAGE_TIMEOUT_MS, () => {
         if (run[queue] !== r) return;
@@ -146,11 +150,11 @@ export function createMissedMessageRequester(
       }
       r.pages++;
       const p = page as { count?: unknown; meta?: PageMeta } | null;
-      const { cmd, label } = QUEUE[queue];
+      const { cmd, subCmd, label } = QUEUE[queue];
       const nextId = p?.meta?.lastActionId;
       const next = typeof nextId === "string" || typeof nextId === "number" ? String(nextId) : null;
       const more = p?.meta?.more === true || p?.meta?.more === 1;
-      const evict = p?.meta?.queueStatus?.[`${cmd}_1`]?.evict;
+      const evict = p?.meta?.queueStatus?.[`${cmd}_${subCmd}`]?.evict;
       if ((evict === 1 || evict === true) && !r.evictWarned) {
         r.evictWarned = true;
         log.warn({ queue }, `Zalo báo hàng chờ ${label} đã đầy và bỏ bớt phần cũ - một ít có thể đã mất`);

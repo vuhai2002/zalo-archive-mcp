@@ -77,13 +77,13 @@ describe("không lấy mã số người làm tên", () => {
       { act: "leave", data: { groupId: "2090000000000000107", sourceId: "2050000000000000103", updateMembers: [], time: "1700000000000" } },
       { selfUid: "me", nameOf: () => null, groupNameOf: () => "Công Cụ", receivedAt: new Date() },
     )!;
-    assert.equal(notice.text, "2050000000000000103 đã rời nhóm");
+    assert.equal(notice.text, "2050000000000000103 đã rời khỏi nhóm");
     assert.equal(notice.senderName, null);
     noteContactSeen(db, "2050000000000000103", "2050000000000000103");
     assert.equal((db.prepare("SELECT display_name FROM contacts WHERE user_id = '2050000000000000103'").get() as { display_name: string | null }).display_name, null);
     // Hỏi hồ sơ xong thì tên thật vào được
     upsertContacts(db, [{ userId: "2050000000000000103", displayName: "Nguyễn Văn A", avatarUrl: null }]);
     upsertMessage(db, notice, live);
-    assert.equal(lastMessagePreview(db, "2090000000000000107", "group")?.text, "Nguyễn Văn A đã rời nhóm");
+    assert.equal(lastMessagePreview(db, "2090000000000000107", "group")?.text, "Nguyễn Văn A đã rời khỏi nhóm");
   });
 });

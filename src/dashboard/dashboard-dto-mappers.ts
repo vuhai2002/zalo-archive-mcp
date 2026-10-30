@@ -27,6 +27,7 @@ export function toArchivedMessage(m: MessageRow): ArchivedMessage {
     album: m.album,
     link: m.link,
     video: m.video,
+    noticeAvatar: m.noticeAvatar,
     reactions: m.reactions,
     attachments: m.attachments.map(toAttachmentInfo),
   };

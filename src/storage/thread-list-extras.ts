@@ -1,7 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ThreadKind } from "../archive/archived-message-types.js";
 import { withZaloEmoticons } from "../archive/zalo-emoticon-emoji.js";
-import { withGroupEventMemberNames } from "./group-event-member-names.js";
+import { createNoticeRenderer } from "./system-notice-display.js";
 
 /**
  * Phần thêm cho danh sách hội thoại kiểu Zalo trên dashboard: tin cuối (để hiện
@@ -24,6 +24,7 @@ export function lastMessagePreview(db: DatabaseSync, threadId: string, threadTyp
   const row = db
     .prepare(
       `SELECT m.msg_id, m.is_self, m.msg_type, m.text, m.recalled_at,
+         CASE WHEN m.msg_type = 'group_event' THEN m.raw_json END AS notice_raw,
          COALESCE((SELECT alias FROM contacts c WHERE c.user_id = m.sender_id), m.sender_name,
            (SELECT display_name FROM contacts c WHERE c.user_id = m.sender_id)) AS sender_name,
          (SELECT kind FROM attachments a WHERE a.msg_id = m.msg_id ORDER BY a.id LIMIT 1) AS att_kind,
@@ -33,13 +34,14 @@ export function lastMessagePreview(db: DatabaseSync, threadId: string, threadTyp
     )
     .get(threadId, threadType) as Record<string, unknown> | undefined;
   if (!row) return null;
+  const notice = createNoticeRenderer(db)(String(row.msg_type), (row.notice_raw as string | null) ?? null);
   return {
     isSelf: row.is_self === 1,
     senderName: (row.sender_name as string | null) ?? null,
     msgType: String(row.msg_type),
-    // Chữ dài chỉ cần đoạn đầu cho dòng xem trước; mã biểu cảm (":d") hiện thành emoji, mã số
-    // thành viên trong sự kiện nhóm thành tên - như khung chat
-    text: withZaloEmoticons(withGroupEventMemberNames(db, String(row.msg_type), String(row.text)).slice(0, 200)).text,
+    // Chữ dài chỉ cần đoạn đầu cho dòng xem trước; mã biểu cảm (":d") hiện thành emoji, thông báo
+    // nhóm dựng lại câu theo danh bạ hiện tại - như khung chat
+    text: withZaloEmoticons((notice?.text ?? String(row.text)).slice(0, 200)).text,
     attachmentKind: (row.att_kind as string | null) ?? null,
     attachmentName: (row.att_name as string | null) ?? null,
     recalled: row.recalled_at !== null,

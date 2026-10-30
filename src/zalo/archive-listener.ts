@@ -4,10 +4,11 @@ import { ThreadType, type API } from "zca-js";
 import { ingestArchiveEvent, type ArchiveEvent } from "../archive/archive-event-ingestor.js";
 import { appendJournal } from "../archive/raw-event-journal.js";
 import { recordConnectionEvent } from "../storage/connection-event-store.js";
-import { setMeta } from "../storage/thread-directory-store.js";
-import { applyFriendEvent, applyGroupEvent } from "./directory-event-handlers.js";
+import { getMeta, setMeta } from "../storage/thread-directory-store.js";
+import { applyFriendEvent, applyGroupEvent, applyReplayedGroupEvent } from "./directory-event-handlers.js";
 import { describeListenerError, isNetworkErrorCode } from "./listener-error-details.js";
 import type { ReplayQueue } from "../storage/offline-replay-cursor-store.js";
+import { attachControlsQueueListener } from "./offline-group-event-replay.js";
 import { createMissedMessageRequester } from "./offline-message-replay.js";
 import { ReconnectPlanner, type ReconnectPlannerOptions } from "./reconnect-planner.js";
 import { messageToRaw, undoToRaw } from "./zalo-event-to-raw.js";
@@ -90,7 +91,7 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
   onReplayPage("old_messages_meta", "group_messages", "user_messages");
   onReplayPage("old_reactions_meta", "group_reactions", "user_reactions");
   // Cảm xúc + sự kiện nhóm: nhật ký ghi payload nguyên văn (như trước), rồi vào kho
-  const ingestRaw = (event: ArchiveEvent) => ingestArchiveEvent(db, event, new Date(), log);
+  const ingestRaw = (event: ArchiveEvent, source?: "old_messages") => ingestArchiveEvent(db, event, new Date(), log, source);
   listener.on("reaction", (r) => {
     journal("reaction", r);
     safely("reaction", () => ingestRaw({ kind: "reaction", reaction: r }));
@@ -102,11 +103,25 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
   });
   // Sự kiện nhóm: thành tin hệ thống giữa dòng chat, rồi cập nhật danh bạ (tên nhóm, thành viên).
   // Ghi tin TRƯỚC khi đổi tên nhóm trong danh bạ: cần tên cũ để nhận ra đổi tên.
-  listener.on("group_event", (e) => {
+  const onGroupEvent = (e: unknown, replayed = false) => {
     journal("group_event", e);
-    safely("group_event", () => ingestRaw({ kind: "group_event", event: e }));
-    safely("group_event", () => applyGroupEvent(db, e));
-  });
+    safely("group_event", () => ingestRaw({ kind: "group_event", event: e }, replayed ? "old_messages" : undefined));
+    safely("group_event", () => (replayed ? applyReplayedGroupEvent : applyGroupEvent)(db, e));
+  };
+  listener.on("group_event", (e) => onGroupEvent(e));
+  // Sự kiện nhóm lỡ lúc tắt máy (hàng chờ điều khiển cmd 603): đi chung đường với sự kiện trực tiếp,
+  // theo đúng thứ tự Zalo trả, rồi báo trang về để xin trang sau / lưu mốc
+  const detachControlsQueue = missed
+    ? attachControlsQueueListener(
+        api,
+        () => getMeta(db, "self_uid"),
+        (page) => {
+          for (const e of page.events) onGroupEvent(e, true);
+          safely("old_group_events", () => missed.onPage("group_events", page));
+        },
+        (err) => log.warn({ err }, "Không đọc được trang lấy bù sự kiện nhóm"),
+      )
+    : () => {};
   listener.on("friend_event", (e) => {
     journal("friend_event", e);
     safely("friend_event", () => {
@@ -176,6 +191,7 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
       stopped = true;
       if (timer) clearTimeout(timer);
       missed?.stop();
+      detachControlsQueue();
       try {
         listener.stop();
       } catch {

@@ -3,15 +3,15 @@ import { getMeta, setMeta } from "./thread-directory-store.js";
 
 /**
  * Mốc lấy bù của từng hàng chờ Zalo giữ cho tài khoản (tin 1-1, tin nhóm, cảm xúc 1-1, cảm xúc
- * nhóm): id của việc mới nhất kho đã có. Lần kết nối sau xin tiếp TỪ mốc này, như Zalo Web nhớ
+ * nhóm, sự kiện nhóm): id của việc mới nhất kho đã có. Lần kết nối sau xin tiếp TỪ mốc này, như Zalo Web nhớ
  * `lastActionId` của từng hàng chờ - không xin lại từ đầu hàng chờ (có khi từ hôm trước), kẻo hết
  * trần trang mà chưa tới phần thật sự lỡ. Id Zalo tăng theo thời gian nên mốc chỉ tiến, không lùi.
  */
-export type ReplayQueue = "user_messages" | "group_messages" | "user_reactions" | "group_reactions";
+export type ReplayQueue = "user_messages" | "group_messages" | "user_reactions" | "group_reactions" | "group_events";
 export type ReplayCursors = Partial<Record<ReplayQueue, string>>;
 
 const KEY = "offline_replay_cursors";
-const QUEUES: ReplayQueue[] = ["user_messages", "group_messages", "user_reactions", "group_reactions"];
+const QUEUES: ReplayQueue[] = ["user_messages", "group_messages", "user_reactions", "group_reactions", "group_events"];
 const DIGITS = /^\d+$/;
 
 /** `id` là id Zalo hợp lệ và mới hơn `than` (chưa có mốc thì id hợp lệ nào cũng mới hơn) */

@@ -8,13 +8,15 @@ import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { createMissedMessageRequester, MAX_PAGES } from "./offline-message-replay.js";
 
 type Sent = { cmd: number; first: boolean; lastId: string | null };
+// Hàng chờ điều khiển (sự kiện nhóm) là lệnh con 0, các hàng chờ tin / cảm xúc là lệnh con 1
+const SUB_CMD: Record<number, number> = { 603: 0 };
 
 function setup(db: DatabaseSync = openArchiveDatabase(":memory:")) {
   const sent: Sent[] = [];
   const api = {
     listener: {
       sendWs: (p: { version: number; cmd: number; subCmd: number; data: { first: boolean; lastId: string | null; preIds: unknown[] } }) => {
-        assert.deepEqual([p.version, p.subCmd, p.data.preIds], [1, 1, []]);
+        assert.deepEqual([p.version, p.subCmd, p.data.preIds], [1, SUB_CMD[p.cmd] ?? 1, []]);
         sent.push({ cmd: p.cmd, first: p.data.first, lastId: p.data.lastId });
       },
     },
@@ -26,8 +28,8 @@ function setup(db: DatabaseSync = openArchiveDatabase(":memory:")) {
 
 const page = (lastActionId: string | number | undefined, more: boolean | number, count = 50) => ({ count, meta: { more, lastActionId } });
 
-/** Chạy hết các hàng chờ bắt đầu lệch giờ (tin nhóm ~3,5 giây, cảm xúc ~9,5 và ~12,5 giây) */
-const startAll = () => mock.timers.tick(15_000);
+/** Chạy hết các hàng chờ bắt đầu lệch giờ (tin nhóm ~3,5 giây, cảm xúc ~9,5 và ~12,5, sự kiện nhóm ~15,5 giây) */
+const startAll = () => mock.timers.tick(18_000);
 
 function withTimers(fn: () => void) {
   mock.timers.enable({ apis: ["setTimeout"] });
@@ -39,7 +41,7 @@ function withTimers(fn: () => void) {
 }
 
 describe("xin bù tin + cảm xúc lỡ", () => {
-  it("mỗi lần kết nối một lượt cho cả bốn hàng chờ, lệch giờ nhau; nối lại liền thì không xin lại", () =>
+  it("mỗi lần kết nối một lượt cho cả năm hàng chờ, lệch giờ nhau; nối lại liền thì không xin lại", () =>
     withTimers(() => {
       const { r, sent, advanceClock } = setup();
       r.onConnected();
@@ -47,12 +49,12 @@ describe("xin bù tin + cảm xúc lỡ", () => {
       mock.timers.tick(3_500);
       assert.deepEqual(sent.at(-1), { cmd: 511, first: true, lastId: null });
       startAll();
-      assert.deepEqual(sent.map((s) => s.cmd), [510, 511, 610, 611], "cảm xúc xin sau phần tin");
+      assert.deepEqual(sent.map((s) => s.cmd), [510, 511, 610, 611, 603], "cảm xúc, sự kiện nhóm xin sau phần tin");
 
       advanceClock(120_000);
       r.onConnected();
       startAll();
-      assert.equal(sent.length, 4, "nối lại sau 2 phút thì bỏ qua");
+      assert.equal(sent.length, 5, "nối lại sau 2 phút thì bỏ qua");
     }));
 
   it("còn trang thì xin tiếp bằng lastActionId, có nhịp; mỗi trang lưu mốc; tối đa MAX_PAGES trang", () =>
@@ -97,6 +99,7 @@ describe("xin bù tin + cảm xúc lỡ", () => {
         { cmd: 511, first: true, lastId: null },
         { cmd: 610, first: true, lastId: null },
         { cmd: 611, first: true, lastId: "8400009000114" },
+        { cmd: 603, first: true, lastId: null },
       ]);
     }));
 
@@ -138,6 +141,18 @@ describe("xin bù tin + cảm xúc lỡ", () => {
       s2.r.onPage("user_messages", page(8, true));
       mock.timers.tick(10_000);
       assert.equal(s2.sent.filter((s) => !s.first).length, 1, "trang về trễ sau khi đã bỏ cuộc thì không xin tiếp");
+    }));
+
+  it("sự kiện nhóm (cmd 603 lệnh con 0) lật trang, lưu mốc riêng; Zalo báo hàng chờ đầy thì vẫn đi tiếp", () =>
+    withTimers(() => {
+      const { r, db, sent } = setup();
+      r.onConnected();
+      startAll();
+      r.onPage("group_events", { count: 32, meta: { more: 1, lastActionId: "8400012772351", queueStatus: { "603_0": { evict: 1 } } } });
+      mock.timers.tick(4_000);
+      assert.deepEqual(sent.at(-1), { cmd: 603, first: false, lastId: "8400012772351" });
+      r.onPage("group_events", page("8400012772399", 0, 3));
+      assert.deepEqual(readReplayCursors(db), { group_events: "8400012772399" });
     }));
 
   it("xin từ mốc mà Zalo không trả lời: bỏ mốc đó, lần sau xin từ đầu như trước", () =>

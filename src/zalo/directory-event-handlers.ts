@@ -60,3 +60,21 @@ export function applyGroupEvent(db: DatabaseSync, event: unknown): void {
   }
   if (typeof data?.totalMembers === "number") setGroupMemberCount(db, groupId, data.totalMembers);
 }
+
+/**
+ * Sự kiện nhóm LẤY BÙ (hàng chờ điều khiển, có khi từ hôm trước): chỉ áp vào danh bạ khi xảy ra SAU
+ * lần hỏi thông tin nhóm gần nhất. Lần hỏi đó đã có tên, danh sách thành viên, tổng số mới hơn - áp sự
+ * kiện cũ hơn sẽ đè tên cũ, tổng số cũ lên. Nhóm chưa hỏi lần nào thì áp như sự kiện trực tiếp.
+ */
+export function applyReplayedGroupEvent(db: DatabaseSync, event: unknown): void {
+  const data = (event as { data?: { groupId?: unknown; time?: unknown } } | null)?.data;
+  const time = Number(data?.time);
+  if (typeof data?.groupId === "string" && Number.isFinite(time)) {
+    const row = db.prepare("SELECT name_lookup_at FROM threads WHERE thread_id = ? AND thread_type = 'group'").get(data.groupId) as
+      | { name_lookup_at: string | null }
+      | undefined;
+    const lookedUpAt = row?.name_lookup_at ? Date.parse(row.name_lookup_at) : Number.NaN;
+    if (Number.isFinite(lookedUpAt) && time <= lookedUpAt) return;
+  }
+  applyGroupEvent(db, event);
+}

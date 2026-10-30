@@ -52,9 +52,11 @@ export function setFriendFlag(db: DatabaseSync, userId: string, friend: boolean)
 }
 
 /**
- * Nhóm đã có tin trong kho nhưng chưa biết tên, avatar hoặc danh sách thành viên - để hỏi theo lô. Nhóm
- * hoạt động gần nhất trước; nhóm đã hỏi mà không ra tên thì chờ tới
- * `retryBeforeIso` mới hỏi lại (không hỏi mãi, không chặn đường nhóm mới).
+ * Nhóm đã có tin trong kho nhưng chưa biết tên, avatar hoặc ĐỦ danh sách thành viên - để hỏi theo lô.
+ * Biết ít người hơn tổng số thành viên cũng là thiếu: sự kiện "có người vào nhóm" chỉ thêm đúng người
+ * đó vào danh sách, chưa hỏi nhóm thì vẫn chưa biết những người còn lại (avatar ghép thiếu người).
+ * Nhóm hoạt động gần nhất trước; nhóm đã hỏi mà không ra thì chờ tới `retryBeforeIso` mới hỏi lại
+ * (không hỏi mãi, không chặn đường nhóm mới).
  */
 export function groupsMissingName(db: DatabaseSync, limit: number, retryBeforeIso: string): string[] {
   const rows = db
@@ -62,7 +64,7 @@ export function groupsMissingName(db: DatabaseSync, limit: number, retryBeforeIs
       `SELECT thread_id FROM threads
        WHERE thread_type = 'group'
          AND (name IS NULL OR avatar_url IS NULL
-              OR NOT EXISTS (SELECT 1 FROM group_members gm WHERE gm.group_id = threads.thread_id))
+              OR (SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = threads.thread_id) < COALESCE(member_count, 1))
          AND (name_lookup_at IS NULL OR name_lookup_at < ?)
        ORDER BY last_message_at DESC LIMIT ?`,
     )

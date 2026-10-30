@@ -122,6 +122,8 @@ export type ArchivedMessage = {
   link: { url: string; title: string | null; description: string | null; domain: string } | null;
   /** Tin video: thời lượng (ms) + kích thước, để vẽ ô đúng tỉ lệ và hiện "00:33" như Zalo */
   video: { durationMs: number | null; width: number | null; height: number | null } | null;
+  /** Thông báo nhóm (`group_event`): avatar nhỏ đứng trước câu - người được nhắc tới, hoặc ảnh Zalo gửi kèm */
+  noticeAvatar: { userId: string | null; name: string | null; url: string | null } | null;
   /** Cảm xúc trên tin như Zalo, gộp theo loại; `emoji` null = mã Zalo chưa biết (hiện `icon`) */
   reactions: Array<{ icon: string; emoji: string | null; count: number; mine: boolean; names: string[] }>;
   attachments: AttachmentInfo[];

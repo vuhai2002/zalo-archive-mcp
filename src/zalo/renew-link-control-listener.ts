@@ -1,6 +1,7 @@
 import type { API } from "zca-js";
 import type { MediaUrlBag } from "../media/media-link-renewal-request.js";
 import { decodeWsEventData } from "./mobile-sync/zca-mobile-sync-apis.js";
+import { attachRawWsFrameListener } from "./raw-ws-frame-listener.js";
 
 /**
  * Link do `renewlink` hẹn trả sau (`{async: true}`) về qua sự kiện điều khiển trên WebSocket:
@@ -58,42 +59,17 @@ export function extractRenewLinkResults(frame: Buffer, cipherKey: string | null 
   return results;
 }
 
-type ListenerLike = {
-  on: (event: string, fn: () => void) => void;
-  off?: (event: string, fn: () => void) => void;
-  ws?: { on: (e: string, fn: (d: unknown) => void) => void; off?: (e: string, fn: (d: unknown) => void) => void } | null;
-  cipherKey?: string | null;
-};
-
 /** Nghe khung WS của listener zca-js (gắn lại sau mỗi lần nối lại). Trả hàm gỡ. */
 export function attachRenewLinkListener(api: API, onResults: (results: RenewLinkResult[]) => void, onError: (err: unknown) => void): () => void {
-  const listener = (api as unknown as { listener?: ListenerLike }).listener;
-  if (!listener || typeof listener.on !== "function") return () => {};
-  let boundWs: ListenerLike["ws"] = null;
-  const onFrame = (data: unknown) => {
-    // Soi header trước: tin nhắn thường không tốn công giải mã
-    if (!Buffer.isBuffer(data) || data.length < 4 || data[0] !== 1 || data.readUInt16LE(1) !== CMD_CONTROL) return;
-    try {
-      const results = extractRenewLinkResults(data, listener.cipherKey);
+  return attachRawWsFrameListener(
+    api,
+    { cmd: CMD_CONTROL, subCmd: 0 },
+    (frame, cipherKey) => {
+      const results = extractRenewLinkResults(frame, cipherKey);
       if (results.length > 0) onResults(results);
-    } catch (err) {
-      onError(err);
-    }
-  };
-  const bind = () => {
-    const ws = listener.ws;
-    if (!ws || ws === boundWs) return;
-    boundWs?.off?.("message", onFrame);
-    boundWs = ws;
-    ws.on("message", onFrame);
-  };
-  listener.on("connected", bind);
-  bind();
-  return () => {
-    listener.off?.("connected", bind);
-    boundWs?.off?.("message", onFrame);
-    boundWs = null;
-  };
+    },
+    onError,
+  );
 }
 
 /**

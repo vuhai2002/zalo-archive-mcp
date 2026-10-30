@@ -42,6 +42,12 @@ dùng ghi ở `data/accounts.json`); daemon, MCP và lệnh CLI đều theo nick
    cách nhau ngẫu nhiên 4-10 giây, trần 200/ngày (lượt cấp lúc xếp hàng, quá trần sang ngày sau).
    Dashboard có nút "Thử lại" trên file hỏng.
 
+Thông báo nhóm (`msg_type = 'group_event'`): sự kiện nhóm của zca-js và tin webchat `msginfo.actionlist`
+("X vừa yêu cầu tham gia nhóm.", "X xác nhận: tham gia <lịch hẹn>."). Câu theo mẫu tiếng Việt của Zalo Web
+(`archive/zalo-system-notice.ts`: "Quế Khuê được Mẫn Khuê thêm vào nhóm"); lúc đọc
+(`storage/system-notice-display.ts`) dựng lại từ dữ liệu gốc theo danh bạ hiện tại - tên gợi nhớ, tên in
+đậm, avatar nhỏ người được nhắc tới - nên chữ lưu lúc chưa biết tên (mã số) vẫn hiện đúng.
+
 Parser sai: sửa code, `pnpm replay-journal` dựng lại (giữ `source`/`received_at` của lần đầu).
 
 ## Luồng gửi
@@ -98,15 +104,23 @@ Khóa mã hóa cookie tự sinh (`data/app-secrets.json`); máy chạy bản cũ
 ảnh sticker, danh sách bạn bè. Hồ sơ chỉ hỏi cho người kho thật sự hiện (đã gửi tin, người kia của hội
 thoại 1-1, 4 thành viên đầu nhóm chưa có ảnh) - hỏi cả nhóm đông là hàng nghìn người, Zalo chặn ngay
 (mã 221). Mỗi lượt 50 người, cách nhau tối thiểu `DIRECTORY_CONTACT_LOOKUP_GAP_SECONDS`; bị chặn thì
-lượt đó không tính là đã hỏi và cả vòng nghỉ `DIRECTORY_RATE_LIMIT_PAUSE_MINUTES`, gấp đôi mỗi lần bị
-lại, tối đa 6 tiếng; trong lúc nghỉ, danh sách bạn bè và ảnh sticker (lệnh khác, không bị chặn) vẫn chạy. Lúc đọc, tin không kèm tên người gửi (bản sao lưu điện thoại) lấy tên trong danh bạ.
+lượt đó không tính là đã hỏi và loại hỏi bị chặn nghỉ `DIRECTORY_RATE_LIMIT_PAUSE_MINUTES`, gấp đôi mỗi lần
+bị lại, tối đa 6 tiếng. Hỏi nhóm và hỏi hồ sơ nghỉ RIÊNG (`meta.directory_lookup_pause_groups` /
+`meta.directory_lookup_pause`): sau đồng bộ điện thoại, lệnh hỏi hồ sơ có thể bị chặn cả ngày, nhóm mới không
+phải chờ theo. Trong lúc nghỉ, danh sách bạn bè và ảnh sticker (lệnh khác, không bị chặn) vẫn chạy. Nhóm
+biết ít thành viên hơn tổng số (mới chỉ nghe sự kiện "có người vào nhóm") vẫn coi là thiếu, hỏi lại để ghép
+đủ avatar nhóm. Lúc đọc, tin không kèm tên người gửi (bản sao lưu điện thoại) lấy tên trong danh bạ.
 Tên gợi nhớ mình đặt cho người khác (`getAliasList`, đồng bộ cùng danh sách bạn bè, lưu `contacts.alias`)
 đứng trước mọi tên khác ở danh sách, đầu khung chat, tên người gửi, xem trước, tìm kiếm và MCP - như Zalo PC.
 
 ## Lấy bù tin lỡ
 
-Mỗi lần listener kết nối, `offline-message-replay.ts` xin Zalo gửi bù từ bốn hàng chờ: tin 1-1 (cmd 510),
-vài giây sau tin nhóm (511), rồi cảm xúc 1-1 (610) và cảm xúc nhóm (611). Nối lại trong vòng
+Mỗi lần listener kết nối, `offline-message-replay.ts` xin Zalo gửi bù từ năm hàng chờ: tin 1-1 (cmd 510),
+vài giây sau tin nhóm (511), rồi cảm xúc 1-1 (610), cảm xúc nhóm (611) và hàng chờ điều khiển (603, lệnh
+con 0) - nơi Zalo giữ sự kiện nhóm (thêm / rời / xóa / đổi tên) lỡ lúc tắt máy. zca-js không xin cũng không
+đọc phản hồi 603, nên `offline-group-event-replay.ts` đọc thẳng khung WS, chỉ lấy loại "group" và cho đi
+chung đường ghi với sự kiện trực tiếp; sự kiện cũ hơn lần hỏi thông tin nhóm gần nhất không được đè tên /
+số thành viên mới hơn. Nối lại trong vòng
 `OFFLINE_REPLAY_MIN_INTERVAL_MINUTES` thì không xin lại. Tin / cảm xúc trả về khử trùng như mọi sự kiện.
 
 Như Zalo Web: mỗi hàng chờ xin TỪ MỐC đã lưu (`meta.offline_replay_cursors`, id của việc mới nhất kho đã

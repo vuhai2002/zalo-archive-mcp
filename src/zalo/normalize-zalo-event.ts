@@ -3,6 +3,7 @@ import { attachmentKindOf, extractMessageAttachments } from "./extract-message-a
 import { callNoticeOf } from "../archive/zalo-call-message-text.js";
 import { webContentText } from "./zalo-web-content-text.js";
 import { zaloTimestampToIso } from "./zalo-message-timestamp.js";
+import { msgInfoNoticeOf } from "../archive/zalo-system-notice.js";
 
 /**
  * Hình dạng tin THÔ mà kho ghi vào nhật ký và chuẩn hóa từ đó. Cố tình là object
@@ -85,10 +86,13 @@ export function normalizeMessage(raw: RawListenerMessage, receivedAt: Date): Nor
   const msgId = str(d.msgId);
   const threadId = str(raw.threadId);
   if (!msgId || !threadId || isLocalDeletePayload(d)) return null;
-  const msgType = str(d.msgType) ?? "unknown";
+  // "X vừa yêu cầu tham gia nhóm." Zalo gửi như tin webchat của người đó nhưng là thông báo giữa
+  // khung chat: ghi chung loại với sự kiện nhóm để hiện, tìm, xem trước giống nhau
+  const notice = msgInfoNoticeOf(d.content);
+  const msgType = notice ? "group_event" : (str(d.msgType) ?? "unknown");
   const quote = d.quote && typeof d.quote === "object" ? (d.quote as Record<string, unknown>) : null;
-  const attachments = extractMessageAttachments(msgType, d.content);
-  const text = messageText(msgType, d.content);
+  const attachments = notice ? [] : extractMessageAttachments(msgType, d.content);
+  const text = notice?.text ?? messageText(msgType, d.content);
 
   return {
     msgId,

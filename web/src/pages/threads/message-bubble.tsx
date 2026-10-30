@@ -9,6 +9,7 @@ import { useMediaViewer } from "./media-viewer-context";
 import { viewerItemFromMessage } from "./media-viewer-items";
 import { MessageLinkCard } from "./message-link-card";
 import { MessageReactionPill } from "./message-reaction-pill";
+import { MessageSystemNotice } from "./message-system-notice";
 import { isSystemMessage } from "./message-grouping";
 import { mergeAlbumReactions } from "./photo-album-grouping";
 import { RichMessageText } from "./rich-message-text";
@@ -66,15 +67,7 @@ export function MessageBubble({
   const name = msg.senderName?.trim() || msg.senderId;
   const timeTitle = `${formatDateTime(msg.sentAt, timeZone)}${msg.source !== "live" ? ` · ${sourceLabel(msg.source)}` : ""}`;
 
-  if (isSystemMessage(msg)) {
-    return (
-      <div className="my-3 flex justify-center" title={timeTitle}>
-        <span className="max-w-[85%] rounded-full bg-bubble px-3 py-1 text-center text-[12.5px] text-chat-time shadow-sm">
-          {msg.text}
-        </span>
-      </div>
-    );
-  }
+  if (isSystemMessage(msg)) return <MessageSystemNotice msg={msg} title={timeTitle} />;
 
   const hasSticker = msg.msgType === "chat.sticker" && msg.attachments.some((a) => a.kind === "sticker" && a.status === "done");
   const hasText = !hasSticker && msg.text.trim().length > 0;

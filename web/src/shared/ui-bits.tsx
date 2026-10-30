@@ -140,8 +140,10 @@ export function InfoTile({ label, value, hint }: { label: string; value: ReactNo
   );
 }
 
-export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
+export type AvatarSize = "2xs" | "xs" | "sm" | "md" | "lg" | "xl";
 export const AVATAR_SIZE_CLASS: Record<AvatarSize, string> = {
+  // Avatar nhỏ trong thông báo giữa khung chat ("X được Y thêm vào nhóm")
+  "2xs": "h-[18px] w-[18px] text-[8px]",
   xs: "h-7 w-7 text-[10px]",
   sm: "h-7 w-7 text-[11px]",
   md: "h-9 w-9 text-[13px]",

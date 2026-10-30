@@ -9,7 +9,7 @@ import { upsertMessage } from "../storage/message-write-store.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { replaceFriendDirectory } from "../storage/thread-directory-store.js";
 import { rateLimitPauseMs, resolveMissingGroupInfo, resolveUnknownContacts } from "./contact-directory-sync.js";
-import { applyFriendEvent, applyGroupEvent } from "./directory-event-handlers.js";
+import { applyFriendEvent, applyGroupEvent, applyReplayedGroupEvent } from "./directory-event-handlers.js";
 import { resolveStickerImages } from "./sticker-image-resolver.js";
 
 const live = { source: "live" as const, receivedAt: "2026-10-29T03:00:00.000Z" };
@@ -161,6 +161,33 @@ describe("thành viên nhóm thật cho ảnh ghép", () => {
     applyGroupEvent(db, { act: "leave", data: { groupId: "g-1", totalMembers: 3, updateMembers: [{ id: "1002" }] } });
     const after = groupMemberAvatars(db, "g-1", 4);
     assert.deepEqual([after.memberAvatars.map((m) => m.userId), after.memberCount], [["1001", "1003", "1004"], 3]);
+  });
+
+  it("sự kiện lấy bù cũ hơn lần hỏi thông tin nhóm không đè tên / tổng số mới hơn; mới hơn thì áp", async () => {
+    const db = seeded();
+    const api = { getGroupInfo: async () => ({ gridInfoMap: { "g-1": { name: "Tên mới", avt: "", totalMember: 2, memVerList: ["1001_0", "1002_0"] } } }) };
+    await resolveMissingGroupInfo(api as unknown as API, db, log);
+    const lookedUp = Date.parse(String(db.prepare("SELECT name_lookup_at AS t FROM threads WHERE thread_id = 'g-1'").get()?.t));
+    const event = (time: number, id: string) => ({ act: "join", data: { groupId: "g-1", groupName: "Tên cũ", time: String(time), totalMembers: 9, updateMembers: [{ id }] } });
+
+    applyReplayedGroupEvent(db, event(lookedUp - 60_000, "1009"));
+    const g = db.prepare("SELECT name, member_count FROM threads WHERE thread_id = 'g-1'").get();
+    assert.deepEqual([g?.name, g?.member_count], ["Tên mới", 2]);
+    applyReplayedGroupEvent(db, event(lookedUp + 60_000, "1003"));
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM group_members WHERE group_id = 'g-1'").get()?.n, 3);
+  });
+
+  it("chưa hỏi nhóm mà có người vào nhóm (mới biết 1 / 22 người): vẫn coi là thiếu, hỏi nhóm lấy đủ", async () => {
+    const { groupsMissingName } = await import("../storage/thread-directory-store.js");
+    const db = seeded();
+    db.prepare("UPDATE threads SET name = 'Nhóm', avatar_url = 'https://g.zadn.vn/a.jpg' WHERE thread_id = 'g-1'").run();
+    applyGroupEvent(db, { act: "join", data: { groupId: "g-1", totalMembers: 22, updateMembers: [{ id: "1004" }] } });
+    assert.deepEqual(groupsMissingName(db, 10, "2000-01-01T00:00:00.000Z"), ["g-1"]);
+    // Đã biết đủ người thì thôi
+    const all = Array.from({ length: 22 }, (_, i) => `${3000 + i}_0`);
+    const api = { getGroupInfo: async () => ({ gridInfoMap: { "g-1": { name: "Nhóm", avt: "https://g.zadn.vn/a.jpg", totalMember: 22, memVerList: all } } }) };
+    await resolveMissingGroupInfo(api as unknown as API, db, log);
+    assert.deepEqual(groupsMissingName(db, 10, "2000-01-01T00:00:00.000Z"), []);
   });
 });
 

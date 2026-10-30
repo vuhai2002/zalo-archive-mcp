@@ -310,4 +310,11 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
     local_path = NULL, sha256 = NULL, size_bytes = NULL, mime = NULL, fetched_at = NULL
   WHERE status = 'done' AND (size_bytes = 0 OR sha256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
   `,
+  // 17: "X vừa yêu cầu tham gia nhóm." / "X xác nhận: tham gia <lịch hẹn>." - Zalo gửi như tin webchat của
+  // người đó (content.action = msginfo.actionlist) nhưng là thông báo giữa khung chat: chuyển sang loại
+  // thông báo nhóm, câu + tên in đậm dựng lúc đọc
+  `
+  UPDATE messages SET msg_type = 'group_event'
+  WHERE msg_type = 'webchat' AND json_valid(raw_json) AND json_extract(raw_json, '$.content.action') = 'msginfo.actionlist';
+  `,
 ];

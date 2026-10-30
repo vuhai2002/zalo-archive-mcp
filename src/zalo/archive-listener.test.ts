@@ -14,6 +14,9 @@ import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { startArchiveListener } from "./archive-listener.js";
 
 class FakeListener extends EventEmitter {
+  /** WebSocket giả: kho đọc thẳng khung WS cho lệnh zca-js bỏ qua (hàng chờ điều khiển 603) */
+  ws = new EventEmitter();
+  cipherKey = null;
   starts = 0;
   start() {
     this.starts++;
@@ -85,12 +88,46 @@ describe("archive listener", () => {
     try {
       listener.emit("connected");
       listener.emit("old_messages_meta", { threadType: ThreadType.User, count: 3, meta: { more: 0, lastActionId: "8400006000112" } });
-      mock.timers.tick(15_000);
-      assert.deepEqual(listener.sent.map((s) => s.cmd), [510, 511, 610, 611]);
+      // Các hàng chờ bắt đầu lệch nhau ngẫu nhiên; sự kiện nhóm (603) muộn nhất, trong khoảng 14-17 giây
+      mock.timers.tick(18_000);
+      assert.deepEqual(listener.sent.map((s) => s.cmd), [510, 511, 610, 611, 603]);
       listener.emit("old_reactions_meta", { threadType: ThreadType.Group, count: 1, meta: { more: 0, lastActionId: "8400009000114" } });
       listener.emit("message", userMessage("8400007000000", "tin mới"));
       listener.emit("reaction", { isGroup: true, threadId: "g-1", data: { msgId: "8400010000000" } });
       assert.deepEqual(readReplayCursors(db), { user_messages: "8400007000000", group_reactions: "8400010000000" });
+    } finally {
+      handle.stop();
+      mock.timers.reset();
+    }
+  });
+
+  it("sự kiện nhóm lỡ lúc tắt máy (hàng chờ 603): thành thông báo giữa khung chat, cập nhật thành viên, lưu mốc", () => {
+    mock.timers.enable({ apis: ["setTimeout"] });
+    const { db, listener, handle } = setup(3, { minIntervalMs: 600_000 });
+    try {
+      listener.emit("connected");
+      mock.timers.tick(18_000);
+      assert.equal(listener.sent.at(-1)?.cmd, 603);
+      const join = { groupId: "202000000000000109", sourceId: "1", time: "1700000000000", totalMembers: 23, updateMembers: [{ id: "2", dName: "Ngô Khuê Lục" }] };
+      const page = {
+        controls: [
+          { actionId: "8400012772351", content: { act_type: "profile", act: "update", data: "{}" } },
+          { actionId: "8400012772352", content: { act_type: "group", act: "join_reject", data: JSON.stringify(join) } },
+          { actionId: "8400012772353", content: { act_type: "group", act: "join", data: JSON.stringify(join) } },
+        ],
+        more: 0,
+        lastActionId: "8400012772353",
+        queueStatus: { "603_0": { lastId: "8400012772353" } },
+      };
+      const json = JSON.stringify({ error_code: 0, error_message: "", data: JSON.stringify(page), encrypt: 0 });
+      const header = Buffer.from([1, 0, 0, 0]);
+      header.writeUInt16LE(603, 1);
+      listener.ws.emit("message", Buffer.concat([header, Buffer.from(json, "utf8")]));
+
+      const rows = readThread(db, { threadId: "202000000000000109", threadType: "group", limit: 10 });
+      assert.deepEqual(rows.map((r) => [r.msgType, r.source, r.text]), [["group_event", "old_messages", "Ngô Khuê Lục được 1 thêm vào nhóm"]]);
+      assert.equal(db.prepare("SELECT COUNT(*) AS n FROM group_members WHERE user_id = '2'").get()?.n, 1);
+      assert.equal(readReplayCursors(db).group_events, "8400012772353");
     } finally {
       handle.stop();
       mock.timers.reset();

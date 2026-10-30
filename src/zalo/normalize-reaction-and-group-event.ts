@@ -1,5 +1,6 @@
 import type { NormalizedMessage } from "../archive/archived-message-types.js";
 import type { ReactionInput } from "../storage/message-reaction-store.js";
+import { groupEventNoticeOf } from "../archive/zalo-system-notice.js";
 
 /**
  * Chuẩn hóa hai loại sự kiện của zca-js mà trước đây kho chỉ ghi nhật ký thô:
@@ -46,17 +47,11 @@ export function normalizeReaction(raw: unknown, receivedAt: Date): ReactionInput
   };
 }
 
-type Member = { id: string; dName: string | null };
-
-function joinNames(names: string[]): string {
-  if (names.length <= 1) return names[0] ?? "";
-  return `${names.slice(0, -1).join(", ")} và ${names[names.length - 1]}`;
-}
-
 /**
- * Sự kiện nhóm -> một "tin hệ thống" (msg_type `group_event`) để hiện giữa dòng chat như
- * Zalo: "Ngạn Lư đã thêm Bạn và Mạc Văn Quế vào nhóm". Chỉ các sự kiện thành viên / tên / ảnh /
- * phó nhóm; còn lại (ghim, bảng tin, nhắc hẹn, cài đặt) thì null - vẫn nằm trong nhật ký thô.
+ * Sự kiện nhóm -> một "tin hệ thống" (msg_type `group_event`) để hiện giữa dòng chat như Zalo:
+ * "Quế Khuê được Mẫn Khuê thêm vào nhóm" (câu dựng ở `zalo-system-notice.ts`, lúc đọc dựng lại
+ * theo danh bạ mới nhất). Chỉ các sự kiện thành viên / tên / ảnh / phó nhóm; còn lại (ghim, bảng
+ * tin, nhắc hẹn, cài đặt) thì null - vẫn nằm trong nhật ký thô.
  */
 export function groupEventNotice(
   raw: unknown,
@@ -67,42 +62,32 @@ export function groupEventNotice(
   const act = str(e?.act);
   const groupId = str(d?.groupId);
   if (!act || !DIGITS.test(groupId)) return null;
-  const actorId = str(d?.sourceId);
-  const members: Member[] = (Array.isArray(d?.updateMembers) ? (d.updateMembers as Array<Record<string, unknown>>) : [])
-    .map((m) => ({ id: str(m?.id), dName: str(m?.dName).trim() || null }))
-    .filter((m) => DIGITS.test(m.id));
-
-  const who = (id: string, dName: string | null = null) =>
-    id && id === ctx.selfUid ? "Bạn" : (dName ?? members.find((m) => m.id === id)?.dName ?? ctx.nameOf(id) ?? (id || "Ai đó"));
-  const actor = who(actorId);
-  const list = joinNames(members.map((m) => who(m.id, m.dName)));
+  // Sự kiện "update" chỉ là đổi tên khi tên mới khác tên kho đang biết (Zalo gửi cả khi đổi cài đặt khác)
   const groupName = str(d?.groupName).trim();
+  if (act === "update" && (!groupName || groupName === ctx.groupNameOf(groupId))) return null;
+  const notice = groupEventNoticeOf(raw, ctx);
+  if (!notice) return null;
 
-  let text: string | null = null;
-  if (act === "join") {
-    text = members.length === 1 && members[0]!.id === actorId ? `${list} đã tham gia nhóm` : members.length ? `${actor} đã thêm ${list} vào nhóm` : null;
-  } else if (act === "leave") text = `${list || actor} đã rời nhóm`;
-  else if (act === "remove_member" && members.length) text = `${actor} đã mời ${list} ra khỏi nhóm`;
-  else if (act === "block_member" && members.length) text = `${actor} đã chặn ${list} khỏi nhóm`;
-  else if (act === "add_admin" && members.length) text = `${actor} đã thêm ${list} làm phó nhóm`;
-  else if (act === "remove_admin" && members.length) text = `${actor} đã gỡ quyền phó nhóm của ${list}`;
-  else if (act === "update_avatar") text = `${actor} đã đổi ảnh nhóm`;
-  else if (act === "update" && groupName && groupName !== ctx.groupNameOf(groupId)) text = `${actor} đã đổi tên nhóm thành "${groupName}"`;
-  if (!text) return null;
-
+  const actorId = str(d?.sourceId);
+  const memberIds = (Array.isArray(d?.updateMembers) ? (d.updateMembers as Array<Record<string, unknown>>) : [])
+    .map((m) => str(m?.id))
+    .filter((id) => DIGITS.test(id));
+  const actorDName = (Array.isArray(d?.updateMembers) ? (d.updateMembers as Array<Record<string, unknown>>) : [])
+    .find((m) => str(m?.id) === actorId)?.dName;
+  const actorName = actorId && actorId !== ctx.selfUid ? (str(actorDName).trim() || ctx.nameOf(actorId)) : null;
   const time = str(d?.time);
   return {
     // Sự kiện nhóm không có msgId: khóa khử trùng dựng từ nhóm + loại + giờ + người làm + người bị tác động
-    msgId: `group-event:${groupId}:${act}:${time}:${actorId}:${members.map((m) => m.id).join(",")}`,
+    msgId: `group-event:${groupId}:${act}:${time}:${actorId}:${memberIds.join(",")}`,
     cliMsgId: null,
     threadId: groupId,
     threadType: "group",
     senderId: DIGITS.test(actorId) ? actorId : groupId,
     // Chưa biết tên người làm thì để trống (không lấy mã số làm tên): lượt hỏi hồ sơ điền sau
-    senderName: actor === "Bạn" || actor === actorId || actor === "Ai đó" ? null : actor,
+    senderName: actorName || null,
     isSelf: actorId !== "" && actorId === ctx.selfUid,
     msgType: "group_event",
-    text,
+    text: notice.text,
     quoteMsgId: null,
     sentAt: msToIso(time, ctx.receivedAt),
     attachments: [],
