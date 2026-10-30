@@ -95,7 +95,7 @@ Khóa mã hóa cookie tự sinh (`data/app-secrets.json`); máy chạy bản cũ
 thoại 1-1, 4 thành viên đầu nhóm chưa có ảnh) - hỏi cả nhóm đông là hàng nghìn người, Zalo chặn ngay
 (mã 221). Mỗi lượt 50 người, cách nhau tối thiểu `DIRECTORY_CONTACT_LOOKUP_GAP_SECONDS`; bị chặn thì
 lượt đó không tính là đã hỏi và cả vòng nghỉ `DIRECTORY_RATE_LIMIT_PAUSE_MINUTES`, gấp đôi mỗi lần bị
-lại, tối đa 6 tiếng. Lúc đọc, tin không kèm tên người gửi (bản sao lưu điện thoại) lấy tên trong danh bạ.
+lại, tối đa 6 tiếng; trong lúc nghỉ, danh sách bạn bè và ảnh sticker (lệnh khác, không bị chặn) vẫn chạy. Lúc đọc, tin không kèm tên người gửi (bản sao lưu điện thoại) lấy tên trong danh bạ.
 
 ## Lấy bù tin lỡ
 

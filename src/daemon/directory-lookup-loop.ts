@@ -23,7 +23,8 @@ const FRIEND_SYNC_DEBOUNCE_MS = 5_000;
  * Hồ sơ người nhắn hỏi thưa hơn (`contactLookupGapMs` giữa hai lượt): sau khi đồng bộ từ
  * điện thoại có thể có vài trăm người cần hỏi. Zalo báo hỏi quá nhiều (mã 221) thì nghỉ cả
  * vòng `rateLimitPauseMs`, bị lại thì gấp đôi, hỏi được một lượt thì về mức đầu. Thời gian nghỉ lưu
- * trong DB (`directory-lookup-pause-store.ts`) để chạy lại daemon không phá lệ nghỉ.
+ * trong DB (`directory-lookup-pause-store.ts`) để chạy lại daemon không phá lệ nghỉ. Danh sách bạn
+ * bè và ảnh sticker không thuộc lệnh bị chặn nên vẫn chạy trong lúc nghỉ.
  *
  * Các bước chạy NỐI TIẾP, lượt sau không chồng lượt trước.
  */
@@ -61,6 +62,9 @@ export function startDirectoryLookupLoop(o: {
         lastFriendSync = Date.now();
         await syncFriendDirectory(o.api, o.db, o.log);
       }
+      // Ảnh sticker dùng lệnh riêng (không phải lệnh hỏi hồ sơ bị chặn), sticker đã biết ảnh thì
+      // gắn ngay không gọi Zalo - nên không chờ giờ nghỉ, kẻo tin sticker mới chỉ hiện "[sticker]"
+      await resolveStickerImages(o.api, o.db, o.log);
       // Đang nghỉ vì Zalo chặn: danh sách bạn bè (lượt khác, không bị chặn) vẫn đồng bộ, phần hỏi còn lại chờ
       if (Date.now() < pausedUntil) return;
       const groups = await resolveMissingGroupInfo(o.api, o.db, o.log);
@@ -74,7 +78,6 @@ export function startDirectoryLookupLoop(o: {
           saveLookupPause(o.db, { untilMs: 0, times: 0 });
         }
       }
-      await resolveStickerImages(o.api, o.db, o.log);
     } catch (err) {
       o.log.warn({ err }, "Vòng hỏi danh bạ gặp lỗi");
     } finally {
