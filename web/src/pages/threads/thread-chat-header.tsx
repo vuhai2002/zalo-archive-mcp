@@ -1,8 +1,8 @@
-import { Link } from "react-router-dom";
 import type { ThreadMessagesResponse } from "../../archive-api-types";
 import { ContactAvatar } from "../../shared/contact-avatar";
 import { IconArrowLeft, IconPanelRight, IconSearch } from "../../shared/dashboard-icons";
 import { MemberAvatarStack } from "../../shared/member-avatar-stack";
+import type { ChatSidePanel } from "./use-chat-side-panel";
 import { threadDisplayName } from "../../shared/thread-kind-badge";
 import { BTN_ICON, formatNumber } from "../../shared/ui-bits";
 
@@ -34,15 +34,18 @@ export function ThreadChatHeader({
   threadId,
   thread,
   onBack,
-  infoOpen,
+  panel,
   onToggleInfo,
+  onToggleSearch,
 }: {
   threadId: string;
   thread: ChatThread | null;
   onBack: () => void;
-  infoOpen: boolean;
+  panel: ChatSidePanel;
   onToggleInfo: () => void;
+  onToggleSearch: () => void;
 }) {
+  const on = "bg-zalo-50 text-zalo-500 dark:bg-zalo-500/15";
   return (
     <div className="flex h-[68px] shrink-0 items-center gap-3 border-b border-line bg-surface px-3 sm:px-4">
       <button type="button" onClick={onBack} aria-label="Quay lại danh sách" className={`${BTN_ICON} lg:hidden`}>
@@ -53,16 +56,23 @@ export function ThreadChatHeader({
         <h2 className="truncate text-[17px] font-semibold leading-tight text-ink">{threadDisplayName(thread?.name)}</h2>
         {thread && <div className="mt-0.5 truncate text-[13px] text-ink-soft">{chatSubtitle(thread)}</div>}
       </div>
-      <Link to={`/threads/${encodeURIComponent(threadId)}?find=1`} title="Tìm trong hội thoại này" aria-label="Tìm trong hội thoại này" className={BTN_ICON}>
+      <button
+        type="button"
+        onClick={onToggleSearch}
+        aria-pressed={panel === "search"}
+        title="Tìm kiếm trong trò chuyện"
+        aria-label="Tìm kiếm trong trò chuyện"
+        className={`${BTN_ICON} ${panel === "search" ? on : ""}`}
+      >
         <IconSearch size={20} />
-      </Link>
+      </button>
       <button
         type="button"
         onClick={onToggleInfo}
-        aria-pressed={infoOpen}
-        title={infoOpen ? "Ẩn thông tin hội thoại" : "Thông tin hội thoại: ảnh, file"}
+        aria-pressed={panel === "info"}
+        title={panel === "info" ? "Ẩn thông tin hội thoại" : "Thông tin hội thoại: ảnh, file"}
         aria-label="Thông tin hội thoại"
-        className={`${BTN_ICON} ${infoOpen ? "bg-zalo-50 text-zalo-500 dark:bg-zalo-500/15" : ""}`}
+        className={`${BTN_ICON} ${panel === "info" ? on : ""}`}
       >
         <IconPanelRight size={20} />
       </button>

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SharedAttachment } from "../../archive-api-types";
 import { api, errorText } from "../../dashboard-api-client";
-import { IconDownload, IconFileText, IconPlay } from "../../shared/action-and-media-icons";
+import { IconDownload, IconPlay } from "../../shared/action-and-media-icons";
 import { mediaStatusLabel } from "../../shared/archive-status-labels";
 import { IconChevronDown } from "../../shared/dashboard-icons";
 import { formatDateTime } from "../../shared/format-archive-time";
+import { FileTypeBadge } from "../../shared/file-type-badge";
 import { formatFileSize } from "../../shared/format-file-size";
 import { formatNumber } from "../../shared/ui-bits";
 import { useLoadMoreWhenVisible } from "../../shared/use-load-more-when-visible";
@@ -128,9 +129,7 @@ function FileRow({ a, timeZone }: { a: SharedAttachment; timeZone: string }) {
   const url = a.status === "done" ? sameOriginUrl(a.url) : null;
   const inner = (
     <>
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zalo-50 text-zalo-500 dark:bg-zalo-500/15">
-        <IconFileText size={20} />
-      </span>
+      <FileTypeBadge name={a.fileName} size={40} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[14px] font-medium text-ink">{a.fileName ?? "File"}</span>
         <span className="flex justify-between gap-2 text-[12px] text-ink-soft">

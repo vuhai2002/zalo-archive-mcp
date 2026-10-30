@@ -13,6 +13,11 @@ function mergeLatest(current: ArchivedMessage[], latest: ArchivedMessage[]): Arc
   return [...older, ...latest];
 }
 
+const notIn = (cur: ArchivedMessage[]) => {
+  const have = new Set(cur.map((m) => m.id));
+  return (m: ArchivedMessage) => !have.has(m.id);
+};
+
 /**
  * Tin của MỘT hội thoại, phân trang lùi bằng `beforeId`. Component dùng hook
  * này được key theo threadId nên đổi hội thoại là dựng lại từ đầu, không phải
@@ -21,8 +26,12 @@ function mergeLatest(current: ArchivedMessage[], latest: ArchivedMessage[]): Arc
  * Còn tin cũ hay không: dựa vào CẢ `messageCount` của thread lẫn việc trang vừa
  * tải có đầy không. Chỉ dựa một bên thì hoặc hiện nút thừa ở hội thoại 3 tin,
  * hoặc giấu nút sớm nếu server đếm khác cách web đếm.
+ *
+ * Nhảy tới một tin (kết quả tìm kiếm): `jumpTo` tải một trang QUANH tin đó, nên phần đang xem không
+ * còn chạm tin mới nhất (`atLatest` = false) - cuộn xuống thì `loadNewer` tải tiếp, và tin mới tới
+ * (SSE) không chèn vào giữa cho tới khi xem lại tới cuối. `initialAroundId`: mở hội thoại thẳng tại tin đó.
  */
-export function useThreadMessages(threadId: string) {
+export function useThreadMessages(threadId: string, initialAroundId?: number) {
   const [thread, setThread] = useState<ThreadMessagesResponse["thread"] | null>(null);
   const [messages, setMessages] = useState<ArchivedMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +40,11 @@ export function useThreadMessages(threadId: string) {
   const [olderError, setOlderError] = useState<string | null>(null);
   const [lastPageFull, setLastPageFull] = useState(false);
   const [exhausted, setExhausted] = useState(false);
+  const [atLatest, setAtLatest] = useState(true);
+  const [loadingNewer, setLoadingNewer] = useState(false);
   const alive = useRef(true);
+  const atLatestRef = useRef(true);
+  const firstAround = useRef(initialAroundId);
 
   useEffect(() => {
     alive.current = true;
@@ -40,26 +53,51 @@ export function useThreadMessages(threadId: string) {
     };
   }, []);
 
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const r = await api.threadMessages(threadId, { limit: PAGE_SIZE });
-      if (!alive.current) return;
-      setThread(r.thread);
-      setMessages(r.messages);
-      setLastPageFull(r.messages.length >= PAGE_SIZE);
-      setExhausted(r.messages.length === 0);
-    } catch (err) {
-      if (alive.current) setError(errorText(err));
-    } finally {
-      if (alive.current) setLoading(false);
-    }
-  }, [threadId]);
+  const markLatest = (v: boolean) => {
+    atLatestRef.current = v;
+    setAtLatest(v);
+  };
+
+  /** Tải lại từ đầu: trang mới nhất, hoặc trang quanh một tin (`aroundId`) */
+  const load = useCallback(
+    async (aroundId?: number) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const r = await api.threadMessages(threadId, { limit: PAGE_SIZE, aroundId });
+        if (!alive.current) return;
+        setThread(r.thread);
+        setMessages(r.messages);
+        // Trang quanh một tin: coi như còn tin cũ (đếm theo messageCount) và chưa chạm tin mới nhất
+        setLastPageFull(aroundId ? true : r.messages.length >= PAGE_SIZE);
+        setExhausted(r.messages.length === 0);
+        markLatest(!aroundId);
+      } catch (err) {
+        if (alive.current) setError(errorText(err));
+      } finally {
+        if (alive.current) setLoading(false);
+      }
+    },
+    [threadId],
+  );
+
+  const reload = useCallback(() => load(), [load]);
 
   useEffect(() => {
-    void reload();
-  }, [reload]);
+    const around = firstAround.current;
+    firstAround.current = undefined;
+    void load(around);
+  }, [load]);
+
+  /** Tin đã nằm trong phần đang xem thì thôi (true); chưa thì tải trang quanh nó */
+  const jumpTo = useCallback(
+    async (messageId: number): Promise<boolean> => {
+      if (messages.some((m) => m.id === messageId)) return true;
+      await load(messageId);
+      return false;
+    },
+    [messages, load],
+  );
 
   const loadOlder = useCallback(async () => {
     const oldest = messages[0];
@@ -73,10 +111,7 @@ export function useThreadMessages(threadId: string) {
       if (r.messages.length === 0) {
         setExhausted(true);
       } else {
-        setMessages((cur) => {
-          const have = new Set(cur.map((m) => m.id));
-          return [...r.messages.filter((m) => !have.has(m.id)), ...cur];
-        });
+        setMessages((cur) => [...r.messages.filter(notIn(cur)), ...cur]);
         setLastPageFull(r.messages.length >= PAGE_SIZE);
       }
     } catch (err) {
@@ -86,11 +121,30 @@ export function useThreadMessages(threadId: string) {
     }
   }, [messages, loadingOlder, threadId]);
 
-  /** Lấy lại trang mới nhất (sau khi gửi tin, hoặc bấm làm mới) mà không mất các trang cũ đã tải */
+  /** Sau khi nhảy tới tin cũ: cuộn xuống thì tải các tin mới hơn, hết thì phần đang xem đã chạm cuối */
+  const loadNewer = useCallback(async () => {
+    const newest = messages.at(-1);
+    if (!newest || loadingNewer || atLatestRef.current) return;
+    setLoadingNewer(true);
+    try {
+      const r = await api.threadMessages(threadId, { afterId: newest.id, limit: PAGE_SIZE });
+      if (!alive.current) return;
+      setMessages((cur) => [...cur, ...r.messages.filter(notIn(cur))]);
+      if (r.messages.length < PAGE_SIZE) markLatest(true);
+    } catch (err) {
+      if (alive.current) setOlderError(errorText(err));
+    } finally {
+      if (alive.current) setLoadingNewer(false);
+    }
+  }, [messages, loadingNewer, threadId]);
+
+  /** Lấy lại trang mới nhất (sau khi gửi tin, hoặc có tin mới) mà không mất các trang cũ đã tải */
   const refreshLatest = useCallback(async () => {
+    // Đang xem đoạn cũ (nhảy từ kết quả tìm): không chèn tin mới vào giữa, cuộn tới cuối sẽ tự tải
+    if (!atLatestRef.current) return;
     try {
       const r = await api.threadMessages(threadId, { limit: PAGE_SIZE });
-      if (!alive.current) return;
+      if (!alive.current || !atLatestRef.current) return;
       setThread(r.thread);
       setMessages((cur) => mergeLatest(cur, r.messages));
     } catch (err) {
@@ -101,5 +155,20 @@ export function useThreadMessages(threadId: string) {
   const hasOlder =
     !exhausted && messages.length > 0 && (lastPageFull || (thread !== null && messages.length < thread.messageCount));
 
-  return { thread, messages, loading, error, reload, hasOlder, loadingOlder, olderError, loadOlder, refreshLatest };
+  return {
+    thread,
+    messages,
+    loading,
+    error,
+    reload,
+    jumpTo,
+    hasOlder,
+    loadingOlder,
+    olderError,
+    loadOlder,
+    atLatest,
+    loadingNewer,
+    loadNewer,
+    refreshLatest,
+  };
 }

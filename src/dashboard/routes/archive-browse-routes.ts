@@ -1,14 +1,15 @@
 import { Hono } from "hono";
-import { startOfLocalDayDaysAgoUtc, startOfLocalDayUtc, startOfNextLocalDayUtc, startOfTodayUtc } from "../../shared/local-date-range.js";
+import { startOfLocalDayDaysAgoUtc, startOfTodayUtc } from "../../shared/local-date-range.js";
 import { listenerGaps, recentConnectionEvents } from "../../storage/connection-event-store.js";
 import { GROUP_MOSAIC_MEMBERS } from "../../storage/contact-store.js";
 import { HEARTBEAT_STALE_MS } from "../../storage/daemon-liveness.js";
-import { findThread, listThreadsPage, readThread, searchMessages } from "../../storage/message-read-queries.js";
+import { findThread, listThreadsPage, readThread } from "../../storage/message-read-queries.js";
+import { readThreadAfter, readThreadAround } from "../../storage/message-window-queries.js";
 import { archiveTotals, countBy, dailyMessageCounts, topThreadsSince } from "../../storage/overview-stats-queries.js";
 import { groupMemberAvatars, lastMessagePreview } from "../../storage/thread-list-extras.js";
 import { setThreadPinned } from "../../storage/thread-pin-store.js";
-import { getMeta, threadLabel } from "../../storage/thread-directory-store.js";
-import type { OverviewResponse, SearchResponse, ThreadListResponse, ThreadMessagesResponse } from "../dashboard-api-contract.js";
+import { getMeta } from "../../storage/thread-directory-store.js";
+import type { OverviewResponse, ThreadListResponse, ThreadMessagesResponse } from "../dashboard-api-contract.js";
 import type { DashboardContext } from "../dashboard-context.js";
 import { toArchivedMessage } from "../dashboard-dto-mappers.js";
 
@@ -17,7 +18,7 @@ const clampInt = (raw: string | undefined, def: number, min: number, max: number
   return Number.isInteger(n) ? Math.min(max, Math.max(min, n)) : def;
 };
 
-/** Xem kho: tổng quan, hội thoại, tin, tìm kiếm (file media: media-file-route.ts) */
+/** Xem kho: tổng quan, hội thoại, tin (tìm kiếm: message-search-routes.ts, file media: media-file-route.ts) */
 export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
   const app = new Hono();
   const { db, env } = ctx;
@@ -67,13 +68,15 @@ export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
   app.get("/threads/:threadId/messages", (c) => {
     const thread = findThread(db, c.req.param("threadId"));
     if (!thread) return c.json({ error: "Không có hội thoại này" }, 404);
-    const beforeId = clampInt(c.req.query("beforeId"), 0, 0, Number.MAX_SAFE_INTEGER);
-    const messages = readThread(db, {
-      threadId: thread.threadId,
-      threadType: thread.threadType,
-      beforeId: beforeId || undefined,
-      limit: clampInt(c.req.query("limit"), 50, 1, 200),
-    });
+    const id = (name: string) => clampInt(c.req.query(name), 0, 0, Number.MAX_SAFE_INTEGER);
+    const ref = { threadId: thread.threadId, threadType: thread.threadType, limit: clampInt(c.req.query("limit"), 50, 1, 200) };
+    // Nhảy tới một tin (kết quả tìm kiếm): một trang quanh tin đó; cuộn xuống: các tin mới hơn
+    const messages = id("aroundId")
+      ? readThreadAround(db, { ...ref, messageId: id("aroundId") })
+      : id("afterId")
+        ? readThreadAfter(db, { ...ref, afterId: id("afterId") })
+        : readThread(db, { ...ref, beforeId: id("beforeId") || undefined });
+    if (!messages) return c.json({ error: "Tin này không thuộc hội thoại" }, 404);
     const parts = groupAvatarParts(thread.threadType, thread.threadId, thread.avatarUrl);
     // Đầu khung chat ghi "Nhóm · N thành viên" cho mọi nhóm, kể cả nhóm có ảnh riêng
     const memberCount =
@@ -96,34 +99,6 @@ export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
       return c.json({ error: "Không có hội thoại này" }, 404);
     }
     return c.json({ pinned: body.pinned });
-  });
-
-  app.get("/search", (c) => {
-    const q = c.req.query("q")?.trim() ?? "";
-    if (!q) return c.json({ messages: [] } satisfies SearchResponse);
-    const fromDate = c.req.query("fromDate");
-    const toDate = c.req.query("toDate");
-    const fromIso = fromDate ? startOfLocalDayUtc(fromDate, tz) : undefined;
-    const toIso = toDate ? startOfNextLocalDayUtc(toDate, tz) : undefined;
-    if (fromIso === null || toIso === null) return c.json({ error: "Ngày phải dạng YYYY-MM-DD" }, 400);
-    const messages = searchMessages(db, {
-      query: q,
-      threadId: c.req.query("threadId") || undefined,
-      fromIso,
-      toIso,
-      limit: clampInt(c.req.query("limit"), 50, 1, 200),
-    });
-    const results = messages.map((m) => {
-      const label = threadLabel(db, m.threadId);
-      const thread = findThread(db, m.threadId);
-      return {
-        ...toArchivedMessage(m),
-        threadName: label?.name ?? thread?.name ?? null,
-        threadIsFriend: label?.isFriend ?? false,
-        threadAvatarUrl: thread?.avatarUrl ?? null,
-      };
-    });
-    return c.json({ messages: results } satisfies SearchResponse);
   });
 
   return app;

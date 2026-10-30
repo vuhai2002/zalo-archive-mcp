@@ -137,16 +137,26 @@ export type TextStyleSpan = {
   size: "small" | "big" | null;
 };
 
-// GET /api/threads/:threadId/messages?beforeId=&limit=50
-//   -> tin theo thời gian TĂNG dần; trang cũ hơn: beforeId = messages[0].id; hết khi messages rỗng
+// GET /api/threads/:threadId/messages?beforeId=&afterId=&aroundId=&limit=50
+//   -> tin theo thời gian TĂNG dần; trang cũ hơn: beforeId = messages[0].id; hết khi messages rỗng.
+//   afterId: các tin MỚI hơn (cuộn xuống sau khi nhảy tới tin cũ). aroundId: một trang quanh tin đó
+//   (nhảy tới tin từ kết quả tìm kiếm); tin không thuộc hội thoại thì 404
 export type ThreadMessagesResponse = {
   thread: ThreadSummary & { memberAvatars: MemberAvatar[]; memberCount: number | null };
   messages: ArchivedMessage[];
 };
 
-// GET /api/search?q=&threadId=&fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD&limit=50  (mới nhất trước)
+// GET /api/search?q=&threadId=&senderId=&fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD&files=only|exclude&offset=0&limit=50
+//   (mới nhất trước). Không có q thì phải có senderId hoặc ngày. files: chỉ tin có file / bỏ tin có file.
+//   filter=mentions: tin người khác nhắc mình (@mình, @Tất cả); filter=reactions: tin của mình được thả
+//   cảm xúc (tin vừa được thả gần nhất trước) - hai bộ lọc này bỏ qua các tham số khác trừ offset/limit
+export type SearchFilter = "mentions" | "reactions";
 export type SearchResult = ArchivedMessage & { threadName: string | null; threadIsFriend: boolean; threadAvatarUrl: string | null };
 export type SearchResponse = { messages: SearchResult[] };
+
+// GET /api/threads/:threadId/senders  -> người đã gửi tin trong hội thoại (bộ lọc "Người gửi"), nhiều tin nhất trước
+export type ThreadSender = { senderId: string; name: string | null; avatarUrl: string | null; isSelf: boolean; count: number };
+export type ThreadSendersResponse = { senders: ThreadSender[] };
 
 // GET /api/threads/:threadId/shared?kind=visual|file&limit=8&offset=0  (mới nhất trước)
 // Ảnh/video (visual) hoặc file đã gửi trong hội thoại - bảng "Thông tin hội thoại" kiểu Zalo PC

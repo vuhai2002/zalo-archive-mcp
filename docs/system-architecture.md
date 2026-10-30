@@ -81,6 +81,10 @@ Chạy trong tiến trình daemon (`src/dashboard`), phục vụ `web/dist`. H�
 - Tự cập nhật: `GET /api/events` (SSE). Khi có tab mở, `archive-change-feed.ts` dò kho mỗi giây theo mốc
   (`archive-change-cursor.ts`: id tin, rowid cảm xúc / thu hồi, `fetched_at` của file) rồi gửi `change { threadIds }`;
   trình duyệt chỉ tải lại phần đổi. Không tab nào mở thì không dò.
+- Tìm kiếm như Zalo PC: tìm chung ở cột trái (Liên hệ / Tin nhắn / File; chưa gõ thì "Tìm gần đây" lưu theo
+  trình duyệt và bộ lọc Nhắc bạn / Biểu cảm), tìm trong một hội thoại ở bảng bên phải (lọc người gửi, ngày
+  gửi). Bấm kết quả là mở hội thoại tại đúng tin (`?msg=`, API `aroundId`); đang xem đoạn cũ thì cuộn xuống
+  tải tiếp (`afterId`), tin mới tới không chèn vào giữa cho tới khi về tin mới nhất.
 - Route kho / gửi / cài đặt / media dựng riêng cho từng nick (một lần), mỗi yêu cầu đi vào bộ route
   của nick đang dùng; chưa có nick thì 409.
 

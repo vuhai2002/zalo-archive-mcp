@@ -13,6 +13,7 @@ import type {
   OutboxListResponse,
   OutboxStatus,
   OverviewResponse,
+  SearchFilter,
   SearchResponse,
   SendRequest,
   SendSettings,
@@ -20,6 +21,7 @@ import type {
   SettingsResponse,
   ThreadListResponse,
   ThreadMessagesResponse,
+  ThreadSendersResponse,
   ThreadSharedMediaResponse,
 } from "./archive-api-types";
 
@@ -104,13 +106,23 @@ export const api = {
 
   threads: (p: { query?: string; limit: number; offset: number }) =>
     request<ThreadListResponse>(withQuery("/api/threads", p)),
-  threadMessages: (threadId: string, p: { beforeId?: number; limit: number }) =>
+  threadMessages: (threadId: string, p: { beforeId?: number; afterId?: number; aroundId?: number; limit: number }) =>
     request<ThreadMessagesResponse>(withQuery(`/api/threads/${enc(threadId)}/messages`, p)),
   setThreadPinned: (threadId: string, pinned: boolean) => post<{ pinned: boolean }>(`/api/threads/${enc(threadId)}/pin`, { pinned }),
   threadShared: (threadId: string, p: { kind: "visual" | "file"; limit: number; offset: number }) =>
     request<ThreadSharedMediaResponse>(withQuery(`/api/threads/${enc(threadId)}/shared`, p)),
-  search: (p: { q: string; threadId?: string; fromDate?: string; toDate?: string; limit: number }) =>
-    request<SearchResponse>(withQuery("/api/search", p)),
+  search: (p: {
+    q?: string;
+    threadId?: string;
+    senderId?: string;
+    fromDate?: string;
+    toDate?: string;
+    files?: "only" | "exclude";
+    filter?: SearchFilter;
+    offset?: number;
+    limit: number;
+  }) => request<SearchResponse>(withQuery("/api/search", p)),
+  threadSenders: (threadId: string) => request<ThreadSendersResponse>(`/api/threads/${enc(threadId)}/senders`),
 
   outboxList: (status: OutboxStatus, limit: number) =>
     request<OutboxListResponse>(withQuery("/api/outbox", { status, limit })),

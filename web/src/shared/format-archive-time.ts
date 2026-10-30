@@ -100,3 +100,11 @@ export function formatDuration(fromIso: string, toIso: string | null): string {
   if (hours < 48) return `${hours} giờ ${minutes % 60} phút`;
   return `${Math.floor(hours / 24)} ngày`;
 }
+
+/** "24/07/2024" - ngày gửi file trong kết quả tìm, như Zalo */
+export function formatDayMonthYear(iso: string | null | undefined, timeZone: string): string {
+  const d = parse(iso);
+  if (!d) return "-";
+  const p = zonedParts(d, timeZone);
+  return `${p.day}/${p.month}/${p.year}`;
+}

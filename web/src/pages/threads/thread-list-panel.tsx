@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ThreadListItem } from "../../archive-api-types";
+import type { SearchResult, ThreadListItem } from "../../archive-api-types";
 import { api, errorText } from "../../dashboard-api-client";
 import { useArchiveTimeZone } from "../../layout/dashboard-shell-context";
 import { IconSearch } from "../../shared/dashboard-icons";
@@ -7,6 +7,7 @@ import { EmptyState, ErrorNote, formatNumber, LoadingText } from "../../shared/u
 import { useDebouncedValue } from "../../shared/use-debounced-value";
 import { useLoadMoreWhenVisible } from "../../shared/use-load-more-when-visible";
 import { ThreadListRow } from "./thread-list-row";
+import { rememberRecentThread, type RecentThread } from "./recent-search-threads";
 import { SEARCH_TABS, ThreadSearchResults, type SearchTab } from "./thread-search-results";
 import { setThreadPinned, useOnThreadsChanged } from "./thread-pin-actions";
 import { useThreadListLiveRefresh } from "./use-thread-list-live-refresh";
@@ -15,26 +16,24 @@ const PAGE_SIZE = 50;
 
 /**
  * Cột danh sách hội thoại kiểu Zalo PC. Ô tìm kiếm nằm ngay trên đầu: bấm vào là sang chế độ tìm
- * (nút "Đóng", các tab Tất cả / Liên hệ / Tin nhắn / File, kết quả hiện ngay trong cột), không có
- * trang tìm kiếm riêng. `scopeThreadId`: mở từ nút tìm của khung chat - chỉ tìm trong hội thoại đó.
+ * (nút "Đóng"; chưa gõ thì "Tìm gần đây" + "Lọc tin nhắn", gõ rồi thì các tab Tất cả / Liên hệ / Tin
+ * nhắn / File), không có trang tìm kiếm riêng. Tìm trong MỘT hội thoại nằm ở bảng bên phải khung chat.
  */
 export function ThreadListPanel({
   selectedId,
   onSelect,
-  scopeThreadId = null,
-  onCloseScope,
+  onOpenMessage,
 }: {
   selectedId?: string;
   onSelect: (threadId: string) => void;
-  scopeThreadId?: string | null;
-  onCloseScope?: () => void;
+  /** Mở hội thoại và nhảy tới một tin (bấm kết quả tìm) */
+  onOpenMessage: (threadId: string, messageId: number) => void;
 }) {
   const tz = useArchiveTimeZone();
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [tab, setTab] = useState<SearchTab>("all");
-  const inputRef = useRef<HTMLInputElement>(null);
-  const searching = searchOpen || scopeThreadId !== null;
+  const searching = searchOpen;
   const debounced = useDebouncedValue(query.trim(), 300);
   const [threads, setThreads] = useState<ThreadListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -81,17 +80,19 @@ export function ThreadListPanel({
       setTotal(r.total);
     },
   });
-  // Mở từ nút tìm của khung chat: vào thẳng ô tìm, tab Tin nhắn
-  useEffect(() => {
-    if (!scopeThreadId) return;
-    setTab("messages");
-    inputRef.current?.focus();
-  }, [scopeThreadId]);
   const closeSearch = () => {
     setQuery("");
     setSearchOpen(false);
     setTab("all");
-    onCloseScope?.();
+  };
+  // Mở từ kết quả tìm: nhớ vào "Tìm gần đây"
+  const openFromSearch = (r: RecentThread) => {
+    rememberRecentThread({ threadId: r.threadId, threadType: r.threadType, name: r.name, avatarUrl: r.avatarUrl });
+    onSelect(r.threadId);
+  };
+  const openMessage = (m: SearchResult) => {
+    rememberRecentThread({ threadId: m.threadId, threadType: m.threadType, name: m.threadName, avatarUrl: m.threadAvatarUrl });
+    onOpenMessage(m.threadId, m.id);
   };
   const scrollRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
@@ -116,16 +117,15 @@ export function ThreadListPanel({
             </h1>
           </div>
         )}
-        <div className={`flex items-center gap-2 ${searching ? "" : "pb-3"}`}>
+        <div className={`flex items-center gap-2 ${searching && query.trim() !== "" ? "" : "pb-3"}`}>
           <div className="relative min-w-0 flex-1">
             <IconSearch size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft/60" />
             <input
-              ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => setSearchOpen(true)}
               onKeyDown={(e) => e.key === "Escape" && closeSearch()}
-              placeholder={scopeThreadId ? "Tìm trong hội thoại này" : "Tìm kiếm"}
+              placeholder="Tìm kiếm"
               aria-label="Tìm kiếm"
               className="gc-input w-full py-1.5 pl-9"
             />
@@ -136,9 +136,9 @@ export function ThreadListPanel({
             </button>
           )}
         </div>
-        {searching && (
+        {searching && query.trim() !== "" && (
           <div className="mt-2 flex gap-4">
-            {SEARCH_TABS.filter((t) => !scopeThreadId || t.id !== "contacts").map((t) => (
+            {SEARCH_TABS.map((t) => (
               <button
                 key={t.id}
                 type="button"
@@ -161,10 +161,9 @@ export function ThreadListPanel({
             tab={tab}
             onTab={setTab}
             contacts={debounced ? threads : []}
-            scopeThreadId={scopeThreadId}
             timeZone={tz}
-            onSelect={onSelect}
-            onTogglePin={togglePin}
+            onOpenThread={openFromSearch}
+            onOpenMessage={openMessage}
           />
         ) : (
           <>

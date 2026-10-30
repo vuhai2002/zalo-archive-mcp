@@ -1,30 +1,35 @@
-import { Fragment, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { useArchiveTimeZone, useDashboardShell } from "../../layout/dashboard-shell-context";
+import { IconChevronDown } from "../../shared/dashboard-icons";
 import { EmptyState, ErrorNote, LoadingText } from "../../shared/ui-bits";
 import { useArchiveLiveChanges } from "../../shared/use-archive-live-changes";
 import { useLoadMoreWhenVisible } from "../../shared/use-load-more-when-visible";
-import { MessageBubble } from "./message-bubble";
+import { ChatItemRow, itemHasMessage } from "./chat-item-row";
 import { MessageComposer } from "./message-composer";
 import { layoutMessages } from "./message-grouping";
 import { collapseAlbums } from "./photo-album-grouping";
 import { ThreadChatHeader } from "./thread-chat-header";
 import { ThreadInfoPanel } from "./thread-info-panel";
+import { ThreadSearchPanel } from "./thread-search-panel";
+import { useChatSidePanel } from "./use-chat-side-panel";
+import { scrollToMessage, useMessageJump, type MessageFocus, type ScrollIntent } from "./use-message-jump";
 import { useThreadMessages } from "./use-thread-messages";
 
 /** Cách đáy dưới ngần này coi như "đang đọc tin mới nhất" - ảnh tải xong thì kéo theo xuống đáy */
 const STICK_PX = 80;
 
-type ScrollIntent = { kind: "bottom" } | { kind: "keep"; prevHeight: number; prevTop: number };
-
-export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBack: () => void }) {
+export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: string; focus: MessageFocus | null; onBack: () => void }) {
   const tz = useArchiveTimeZone();
   // Nick Chỉ đọc: không có ô soạn tin (máy chủ cũng từ chối mọi lệnh gửi)
   const readOnly = useDashboardShell().session?.account?.readOnly ?? false;
-  const t = useThreadMessages(threadId);
+  // Mở thẳng tại một tin (bấm kết quả tìm chung): trang đầu tải quanh tin đó thay vì trang mới nhất
+  const initialFocusId = useRef(focus?.messageId).current;
+  const t = useThreadMessages(threadId, initialFocusId);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const intent = useRef<ScrollIntent | null>({ kind: "bottom" });
-  const stickToBottom = useRef(true);
-  const [infoOpen, toggleInfo] = useInfoPanelOpen();
+  const intent = useRef<ScrollIntent | null>(initialFocusId ? { kind: "message", id: initialFocusId } : { kind: "bottom" });
+  const stickToBottom = useRef(!initialFocusId);
+  const side = useChatSidePanel();
+  const jump = useMessageJump({ focus, jumpTo: t.jumpTo, intent, scrollRef, stickToBottom });
 
   // Áp ý định cuộn NGAY sau khi DOM đổi, trước khi trình duyệt vẽ: tải tin cũ
   // chèn lên đầu mà không bù scrollTop thì khung nhảy mất chỗ đang đọc.
@@ -33,7 +38,8 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
     const want = intent.current;
     if (!el || !want || t.messages.length === 0) return;
     if (want.kind === "bottom") el.scrollTop = el.scrollHeight;
-    else el.scrollTop = want.prevTop + (el.scrollHeight - want.prevHeight);
+    else if (want.kind === "keep") el.scrollTop = want.prevTop + (el.scrollHeight - want.prevHeight);
+    else scrollToMessage(el, want.id);
     intent.current = null;
   }, [t.messages]);
 
@@ -43,16 +49,21 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
     void t.loadOlder();
   };
 
+  // Tin cũ (cuộn lên) và tin mới hơn (cuộn xuống sau khi nhảy tới tin cũ) không tải cùng lúc:
+  // ý định "giữ chỗ" của lần tải tin cũ chỉ đúng khi không có gì chèn thêm ở đáy
+  const busy = t.loadingOlder || t.loadingNewer;
   const olderRef = useRef<HTMLDivElement>(null);
   useLoadMoreWhenVisible({
     sentinel: olderRef,
     root: scrollRef,
     enabled: t.hasOlder && !t.olderError && t.messages.length > 0,
-    busy: t.loadingOlder,
+    busy,
     onLoadMore: loadOlder,
   });
+  const newerRef = useRef<HTMLDivElement>(null);
+  useLoadMoreWhenVisible({ sentinel: newerRef, root: scrollRef, enabled: !t.atLatest && t.messages.length > 0, busy, onLoadMore: () => void t.loadNewer() });
 
-  const { refreshLatest } = t;
+  const { refreshLatest, reload } = t;
   const refreshToBottom = useCallback(() => {
     // Ghi đè luôn ý định cũ (vd "giữ chỗ" còn sót khi lần tải tin cũ trả về rỗng)
     intent.current = stickToBottom.current ? { kind: "bottom" } : null;
@@ -65,12 +76,20 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
     if (change === "all" || change.includes(threadId)) refreshToBottom();
   });
 
+  /** Về tin mới nhất (đang xem đoạn cũ sau khi nhảy từ kết quả tìm) */
+  const backToLatest = useCallback(() => {
+    intent.current = { kind: "bottom" };
+    stickToBottom.current = true;
+    void reload();
+  }, [reload]);
+
   // Tin daemon vừa gửi phải chờ listener ghi lại mới có trong kho - hỏi lại sau một nhịp
   const afterSent = useCallback(() => {
+    if (!t.atLatest) return backToLatest();
     intent.current = { kind: "bottom" };
     stickToBottom.current = true;
     setTimeout(() => void refreshLatest(), 2_000);
-  }, [refreshLatest]);
+  }, [refreshLatest, t.atLatest, backToLatest]);
 
   // Xin lại link + tải lại mất vài giây (lâu hơn nếu phải chờ lượt): hỏi lại kho hai nhịp
   const afterMediaRetried = useCallback(() => {
@@ -91,20 +110,21 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
 
   return (
     <div className="relative flex h-full min-h-0 overflow-hidden bg-surface">
-    <div className="flex min-w-0 flex-1 flex-col">
+    <div className="relative flex min-w-0 flex-1 flex-col">
       <ThreadChatHeader
         threadId={threadId}
         thread={t.thread}
         onBack={onBack}
-        infoOpen={infoOpen}
-        onToggleInfo={toggleInfo}
+        panel={side.panel}
+        onToggleInfo={side.toggleInfo}
+        onToggleSearch={side.toggleSearch}
       />
 
       <div
         ref={scrollRef}
         onScroll={(e) => {
           const el = e.currentTarget;
-          stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_PX;
+          stickToBottom.current = t.atLatest && el.scrollHeight - el.scrollTop - el.clientHeight < STICK_PX;
         }}
         className="scrollbar-stable min-h-0 flex-1 overflow-y-auto bg-chat px-3 pb-4 pt-3 sm:px-6"
       >
@@ -124,29 +144,33 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
           </p>
         )}
 
-        {items.map(({ msg: m, album }, i) => (
-          <Fragment key={m.id}>
-            {layouts[i]!.separatorLabel && (
-              <div className="mb-1 mt-4 flex justify-center first:mt-1">
-                <span className="rounded-full bg-black/25 px-3 py-1 text-[12px] font-medium text-white dark:bg-white/15">
-                  {layouts[i]!.separatorLabel}
-                </span>
-              </div>
-            )}
-            <MessageBubble
-              msg={m}
-              album={album}
-              isGroup={isGroup}
-              quoted={m.quoteMsgId ? byMsgId.get(m.quoteMsgId) : undefined}
-              timeZone={tz}
-              first={layouts[i]!.firstInGroup}
-              last={layouts[i]!.lastInGroup}
-              onMediaLoad={onMediaLoad}
-              onMediaRetried={afterMediaRetried}
-            />
-          </Fragment>
+        {items.map((item, i) => (
+          <ChatItemRow
+            key={item.msg.id}
+            item={item}
+            layout={layouts[i]!}
+            highlighted={itemHasMessage(item, jump.highlightId)}
+            isGroup={isGroup}
+            quoted={item.msg.quoteMsgId ? byMsgId.get(item.msg.quoteMsgId) : undefined}
+            timeZone={tz}
+            onMediaLoad={onMediaLoad}
+            onMediaRetried={afterMediaRetried}
+          />
         ))}
+        {/* Đang xem đoạn cũ (nhảy từ kết quả tìm): cuộn xuống là tải tiếp tin mới hơn */}
+        <div ref={newerRef} aria-hidden="true" className="h-px" />
+        {t.loadingNewer && <p className="pt-1 text-center text-[12px] text-chat-time">Đang tải tin mới hơn...</p>}
       </div>
+
+      {!t.atLatest && !t.loading && (
+        <button
+          type="button"
+          onClick={backToLatest}
+          className="absolute bottom-20 right-5 z-10 flex items-center gap-1 rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] font-medium text-zalo-500 shadow-md hover:bg-tile"
+        >
+          <IconChevronDown size={16} /> Tin mới nhất
+        </button>
+      )}
 
       {readOnly ? (
         <div className="border-t border-line bg-surface px-4 py-3 text-center text-[13px] text-ink-soft">
@@ -156,34 +180,10 @@ export function ThreadMessagePane({ threadId, onBack }: { threadId: string; onBa
         <MessageComposer threadId={threadId} onSent={afterSent} />
       )}
     </div>
-    {infoOpen && t.thread && <ThreadInfoPanel thread={t.thread} timeZone={tz} onClose={toggleInfo} />}
+    {side.panel === "info" && t.thread && <ThreadInfoPanel thread={t.thread} timeZone={tz} onClose={side.toggleInfo} />}
+    {side.panel === "search" && (
+      <ThreadSearchPanel threadId={threadId} timeZone={tz} onClose={side.closeSearch} onJump={(id) => void jump.jumpToMessage(id)} />
+    )}
     </div>
   );
-}
-
-const INFO_PANEL_KEY = "zalo-archive.thread-info-open";
-
-/**
- * Bảng thông tin bên phải mở hay đóng - nhớ theo trình duyệt (chỉ là tiện ích, hỏng thì mặc định đóng).
- * Chỉ tự mở lại trên màn hình rộng (xl), nơi bảng là một cột riêng; màn hẹp bảng phủ lên khung chat.
- */
-function useInfoPanelOpen(): [boolean, () => void] {
-  const [open, setOpen] = useState(() => {
-    try {
-      return localStorage.getItem(INFO_PANEL_KEY) === "1" && window.matchMedia("(min-width: 1280px)").matches;
-    } catch {
-      return false;
-    }
-  });
-  const toggle = useCallback(() => {
-    setOpen((v) => {
-      try {
-        localStorage.setItem(INFO_PANEL_KEY, v ? "0" : "1");
-      } catch {
-        // Trình duyệt chặn lưu: vẫn bật/tắt được trong lần mở này
-      }
-      return !v;
-    });
-  }, []);
-  return [open, toggle];
 }
