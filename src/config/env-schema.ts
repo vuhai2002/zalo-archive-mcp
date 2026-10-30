@@ -60,7 +60,8 @@ export const envSchema = z
 
     // Tải media
     MEDIA_DOWNLOAD_ENABLED: flag(true),
-    MEDIA_MAX_MEGABYTES: int(200, 1, 4096),
+    // Zalo cho gửi file tới 1 GB; trần thấp hơn thì video dài trong kho không bao giờ tải về
+    MEDIA_MAX_MEGABYTES: int(1024, 1, 4096),
     MEDIA_MAX_ATTEMPTS: int(5, 1, 50),
     MEDIA_DOWNLOAD_TIMEOUT_MINUTES: int(15, 1, 240),
     MEDIA_ALLOWED_HOST_SUFFIXES: z
