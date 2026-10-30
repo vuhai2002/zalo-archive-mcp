@@ -121,6 +121,11 @@ export async function downloadToTempFile(opts: DownloadOptions): Promise<Downloa
     }
     return { ok: false, permanent: false, status: "failed", error: `Đứt khi tải: ${err instanceof Error ? err.message : String(err)}` };
   }
+  // CDN Zalo trả 200 mà rỗng khi tải ngay lúc ảnh vừa gửi (file chưa lên CDN): chưa có gì, lát thử lại
+  if (size === 0) {
+    fs.rmSync(tempFile, { force: true });
+    return { ok: false, permanent: false, status: "failed", error: "Phản hồi rỗng (0 byte) - CDN chưa có file, sẽ thử lại" };
+  }
   return { ok: true, tempFile, sha256: hash.digest("hex"), sizeBytes: size, mime: response.headers.get("content-type") };
 }
 

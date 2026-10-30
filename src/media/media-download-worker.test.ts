@@ -82,6 +82,20 @@ describe("MediaDownloadWorker", () => {
     assert.equal(gone.att().status, "failed");
   });
 
+  it("CDN trả 200 mà rỗng (ảnh vừa gửi chưa lên CDN): chưa xong, hẹn thử lại; lần sau có ảnh thì done", async () => {
+    let body = "";
+    const cdn = (async () => new Response(body, { headers: { "content-type": "image/jpg" } })) as unknown as typeof fetch;
+    const { worker, db, mediaDir, att } = setup("https://photo-stal-35.zdn.vn/gr/jpg/a", cdn);
+    await worker.tick();
+    assert.equal(att().status, "pending", "file rỗng không được đánh done");
+    assert.match(String(att().last_error), /rỗng/);
+    assert.deepEqual(fs.readdirSync(path.join(mediaDir, ".tmp")), [], "không để lại file tạm rỗng");
+    body = "ảnh thật";
+    db.prepare("UPDATE attachments SET next_attempt_at = NULL").run();
+    await worker.tick();
+    assert.deepEqual([att().status, att().size_bytes], ["done", Buffer.byteLength("ảnh thật")]);
+  });
+
   it("file từng bị chặn vì host, nay host được phép: đưa về hàng đợi tải lại", async () => {
     const { db, worker, att } = setup("https://file-stal-21.dlfl.vn/gr/x", respond("x"));
     await worker.tick();

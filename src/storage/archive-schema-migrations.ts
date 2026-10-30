@@ -304,4 +304,10 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   UPDATE contacts SET display_name = NULL WHERE display_name = user_id;
   UPDATE messages SET sender_name = NULL WHERE msg_type = 'group_event' AND sender_name = sender_id;
   `,
+  // 16: file "đã tải" mà rỗng (CDN Zalo trả 200 không nội dung khi tải ngay lúc ảnh vừa gửi) - tải lại
+  `
+  UPDATE attachments SET status = 'pending', attempts = 0, next_attempt_at = NULL, last_error = NULL,
+    local_path = NULL, sha256 = NULL, size_bytes = NULL, mime = NULL, fetched_at = NULL
+  WHERE status = 'done' AND (size_bytes = 0 OR sha256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+  `,
 ];
