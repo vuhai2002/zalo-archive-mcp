@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ThreadKind } from "../archive/archived-message-types.js";
 import type { AttachmentRow } from "./message-read-queries.js";
+import { isZaloDeletedFailure } from "./zalo-deleted-media-store.js";
 
 /**
  * Ảnh/video và file đã gửi trong một hội thoại, mới nhất trước - cho bảng "Thông tin hội thoại"
@@ -29,7 +30,7 @@ export function threadSharedMedia(
   const total = (db.prepare(`SELECT COUNT(*) AS n ${where}`).get({ threadId: q.threadId, threadType: q.threadType }) as { n: number }).n;
   const rows = db
     .prepare(
-      `SELECT a.id, a.kind, a.status, a.file_name, a.local_path, a.size_bytes, a.mime, a.needs_renew, a.renewed_at, a.sha256, m.sent_at,
+      `SELECT a.id, a.kind, a.status, a.file_name, a.local_path, a.size_bytes, a.mime, a.needs_renew, a.renewed_at, a.last_error, a.sha256, m.sent_at,
          m.id AS message_id, m.msg_id, m.sender_id, m.is_self, c.avatar_url AS sender_avatar_url,
          COALESCE(c.alias, m.sender_name, c.display_name) AS sender_name
        ${where} ORDER BY m.sent_at DESC, a.id DESC LIMIT :limit OFFSET :offset`,
@@ -47,6 +48,7 @@ export function threadSharedMedia(
       mime: (a.mime as string | null) ?? null,
       renewPending: Number(a.needs_renew) === 1,
       renewed: a.renewed_at !== null,
+      zaloDeleted: isZaloDeletedFailure(String(a.status), (a.last_error as string | null) ?? null),
       sha256: (a.sha256 as string | null) ?? null,
       sentAt: String(a.sent_at),
       messageId: Number(a.message_id),

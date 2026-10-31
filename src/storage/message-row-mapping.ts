@@ -9,6 +9,7 @@ import { reactionSummaries, type ReactionSummary } from "./message-reaction-stor
 import { parseTextStyles, type TextStyleSpan } from "./message-text-styles.js";
 import { createNoticeRenderer, type NoticeAvatar } from "./system-notice-display.js";
 import { getMeta } from "./thread-directory-store.js";
+import { isZaloDeletedFailure } from "./zalo-deleted-media-store.js";
 
 /**
  * Dựng một dòng tin để hiện (dùng chung cho đọc hội thoại, tìm kiếm, lọc): cột cần đọc, chuyển
@@ -26,6 +27,8 @@ export type AttachmentRow = {
   renewPending: boolean;
   /** Đã xin lại link (thành công hay không) */
   renewed: boolean;
+  /** Zalo đã xóa file khỏi máy chủ (kho đóng luôn, hoặc Zalo từ chối cấp lại link) - không cứu được */
+  zaloDeleted: boolean;
   /** sha256 nội dung file đã tải (null khi chưa tải) - dashboard gắn vào link để bộ nhớ đệm không lẫn */
   sha256: string | null;
 };
@@ -129,7 +132,7 @@ export function withAttachments(db: DatabaseSync, messages: MessageRow[]): Messa
     if (notice) Object.assign(m, { text: notice.text, textStyles: notice.textStyles, noticeAvatar: notice.avatar });
   }
   const stmt = db.prepare(
-    `SELECT id, msg_id, kind, status, file_name, local_path, size_bytes, mime, needs_renew, renewed_at, sha256
+    `SELECT id, msg_id, kind, status, file_name, local_path, size_bytes, mime, needs_renew, renewed_at, last_error, sha256
      FROM attachments WHERE msg_id = ? ORDER BY id`,
   );
   for (const m of messages) {
@@ -143,6 +146,7 @@ export function withAttachments(db: DatabaseSync, messages: MessageRow[]): Messa
       mime: (a.mime as string | null) ?? null,
       renewPending: Number(a.needs_renew) === 1,
       renewed: a.renewed_at !== null,
+      zaloDeleted: isZaloDeletedFailure(String(a.status), (a.last_error as string | null) ?? null),
       sha256: (a.sha256 as string | null) ?? null,
     }));
   }

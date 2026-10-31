@@ -27,7 +27,7 @@ export function MessageAlbumGrid({
         if (!att || !url) {
           return (
             <div key={m.id} className={`flex aspect-square items-center justify-center overflow-hidden rounded-md bg-black/[0.04] p-1 dark:bg-white/5 ${dim}`}>
-              {att ? <MessageAttachmentView att={att} onMediaLoad={onMediaLoad} onRetried={onMediaRetried} /> : null}
+              {att ? <MessageAttachmentView att={att} onMediaLoad={onMediaLoad} onRetried={onMediaRetried} compact /> : null}
             </div>
           );
         }

@@ -63,3 +63,8 @@ export function closeQueuedRenewalsDeletedByZalo(db: DatabaseSync, now: Date): n
   }
   return n;
 }
+
+/** File hỏng hẳn vì Zalo đã xóa khỏi máy chủ: kho đóng luôn, hoặc Zalo từ chối cấp lại link (mã 1001) */
+export function isZaloDeletedFailure(status: string, lastError: string | null): boolean {
+  return status === "failed" && !!lastError && (lastError === DELETED_BY_ZALO_ERROR || lastError.includes(ZALO_REFUSED_RENEW_ERROR));
+}

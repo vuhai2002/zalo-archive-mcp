@@ -8,7 +8,9 @@ import { sampleMessage } from "../storage/archive-store-test-helpers.js";
 import { upsertMessage } from "../storage/message-write-store.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { getMeta } from "../storage/thread-directory-store.js";
-import { DELETED_BY_ZALO_ERROR, isDeletedByZalo } from "../storage/zalo-deleted-media-store.js";
+import { DELETED_BY_ZALO_ERROR, isDeletedByZalo, markAttachmentDeletedByZalo } from "../storage/zalo-deleted-media-store.js";
+import { readThread } from "../storage/message-read-queries.js";
+import { toAttachmentInfo } from "../dashboard/dashboard-dto-mappers.js";
 import { MediaDownloadWorker } from "./media-download-worker.js";
 import { MediaLinkRenewer } from "./media-link-renewer.js";
 
@@ -103,6 +105,23 @@ describe("bỏ qua file Zalo đã xóa khi xin lại link", () => {
     renewer.requeueExpired(NOW);
     const status = (id: number) => db.prepare("SELECT status, needs_renew FROM attachments WHERE id = ?").get(id);
     assert.deepEqual([status(queued)?.status, status(fresh)?.status, status(fresh)?.needs_renew], ["failed", "pending", 1]);
+  });
+
+  it("dashboard biết file Zalo đã xóa (đóng luôn hoặc bị từ chối 1001) để hiện 'Ảnh đã hết hạn', file hỏng khác thì không", () => {
+    const db = openArchiveDatabase(":memory:");
+    withRefusedPhotos(db);
+    const closed = addMedia(db, "closed", "2026-10-10T03:00:00.000Z");
+    markAttachmentDeletedByZalo(db, closed, NOW);
+    const other = addMedia(db, "other", "2026-10-29T03:00:00.000Z");
+    db.prepare("UPDATE attachments SET status = 'failed', renewed_at = ?, last_error = 'Link đã xin lại vẫn hỏng: HTTP 404' WHERE id = ?").run(NOW.toISOString(), other);
+    const states = readThread(db, { threadId: "u-lan", threadType: "user", limit: 10 }).map((m) => [m.msgId, toAttachmentInfo(m.attachments[0]!).renewState]);
+    assert.deepEqual(states, [
+      ["closed", "deleted"],
+      ["r0", "deleted"],
+      ["r1", "deleted"],
+      ["r2", "deleted"],
+      ["other", "gave_up"],
+    ]);
   });
 
   it("khởi động: lượt của file vừa đóng được trả lại, hàng chờ còn lại cấp lượt mới - tin mới nhất trước, vẫn giữ trần ngày", () => {

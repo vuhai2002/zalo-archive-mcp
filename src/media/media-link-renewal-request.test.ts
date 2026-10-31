@@ -16,8 +16,22 @@ describe("yêu cầu xin lại link media", () => {
       oriUrl: "https://p.zdn.vn/hd/a.jpg",
       url: "https://p.zdn.vn/hd/a.jpg",
     });
-    const file = JSON.stringify({ content: { href: "https://f.dlfl.vn/a", title: "hợp đồng.pdf" } });
-    assert.deepEqual(renewMsgInfoFromRawJson("file", file, "https://khac"), { url: "https://f.dlfl.vn/a", title: "hợp đồng.pdf" });
+    // File: đủ trường như Zalo Web gửi khi chuyển tiếp file (thiếu thì Zalo báo "Tham số không hợp lệ")
+    const params = JSON.stringify({ fileSize: "273548", checksum: "D41D8CD98F00B204E9800998ECF8427E", checksumSha: "", fileExt: "pdf", fdata: "{}", fType: 1 });
+    const file = JSON.stringify({ content: { href: "https://f.dlfl.vn/a", title: "hợp đồng.pdf", thumb: "https://f.dlfl.vn/t.jpg", params } });
+    assert.deepEqual(renewMsgInfoFromRawJson("file", file, "https://khac"), {
+      url: "https://f.dlfl.vn/a",
+      fileName: "hợp đồng.pdf",
+      extension: "pdf",
+      checksum: "D41D8CD98F00B204E9800998ECF8427E",
+      size: "273548",
+      fType: 1,
+      fdata: "{}",
+      thumbUrl: "https://f.dlfl.vn/t.jpg",
+    });
+    // Tin thiếu params: đuôi lấy từ tên, checksum sai dạng thì bỏ, fType mặc định 1
+    const bare = JSON.stringify({ content: { href: "https://f.dlfl.vn/b", title: "Bảng giá.XLSX", params: JSON.stringify({ checksum: "abc" }) } });
+    assert.deepEqual(renewMsgInfoFromRawJson("file", bare, "https://khac"), { url: "https://f.dlfl.vn/b", fileName: "Bảng giá.XLSX", extension: "xlsx", fType: 1 });
     assert.deepEqual(renewMsgInfoFromRawJson("video", "không phải json", "https://v.zdn.vn/x"), { videoUrl: "https://v.zdn.vn/x", renewType: 1 });
   });
 

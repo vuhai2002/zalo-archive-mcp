@@ -51,7 +51,7 @@ export function toAttachmentInfo(a: AttachmentRow): AttachmentInfo {
     sizeBytes: a.sizeBytes,
     url: a.status === "done" ? mediaUrl(a) : null,
     mime: a.mime,
-    renewState: a.renewPending ? "waiting" : a.renewed && a.status === "failed" ? "gave_up" : null,
+    renewState: a.renewPending ? "waiting" : a.zaloDeleted ? "deleted" : a.renewed && a.status === "failed" ? "gave_up" : null,
   };
 }
 

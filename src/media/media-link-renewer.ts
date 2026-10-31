@@ -37,6 +37,17 @@ export type MediaLinkRenewerOptions = {
 /** Zalo Web chờ link trả sau tối đa 30 giây cho mỗi lệnh - kho chờ đúng như vậy */
 const ASYNC_REPLY_TIMEOUT_MS = 30_000;
 
+/**
+ * Lỗi Zalo trả cho renewlink, kèm MÃ LỖI: Zalo có lúc trả mã lỗi khác 0 mà câu báo lại là "Successful.",
+ * chỉ ghi câu báo thì không biết chuyện gì. Ghi "mã lỗi N" cùng dạng với lỗi Zalo trả qua WebSocket, để
+ * lần từ chối vì file đã bị xóa (1001) dù về đường nào cũng được nhận ra như nhau.
+ */
+export function zaloErrorText(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  const code = (err as { code?: unknown } | null)?.code;
+  return typeof code === "number" || (typeof code === "string" && code.trim() !== "") ? `mã lỗi ${code} - ${message}` : message;
+}
+
 export type RenewOutcome = { kind: "renewed"; url: string } | { kind: "wait"; at: Date } | { kind: "failed"; error: string };
 
 /**
@@ -121,7 +132,7 @@ export class MediaLinkRenewer {
       response = await this.o.call({ threadId: ctx.threadId, isGroup: ctx.threadType === "group", mediaType, msgInfo });
     } catch (err) {
       pending?.cancel();
-      return fail(`Link hết hạn, Zalo không cấp lại link mới (${err instanceof Error ? err.message : String(err)})`);
+      return fail(`Link hết hạn, Zalo không cấp lại link mới (${zaloErrorText(err)})`);
     }
     const reply = readRenewReply(response);
     // Dạng phản hồi chưa có tài liệu: ghi lại một mẩu để chỉnh bộ đọc nếu Zalo đổi

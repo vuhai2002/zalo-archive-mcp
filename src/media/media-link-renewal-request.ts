@@ -22,10 +22,36 @@ function compact(o: Record<string, string | number | undefined>): Record<string,
   return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== "")) as Record<string, string | number>;
 }
 
+const text = (v: unknown): string | undefined => (typeof v === "string" && v.trim() ? v.trim() : typeof v === "number" ? String(v) : undefined);
+const MD5 = /^[a-f0-9]{32}$/i;
+
+/**
+ * Thông tin file như Zalo Web gửi khi chuyển tiếp file (cũng là thứ nó gửi lên renewlink): link, tên,
+ * đuôi, checksum MD5, cỡ, loại (`fType`, mặc định 1), kèm `fdata` / ảnh nhỏ nếu có. Chỉ gửi link + tiêu
+ * đề thì Zalo trả "Tham số không hợp lệ". Checksum không đúng dạng MD5 thì bỏ (Zalo Web cũng từ chối).
+ */
+function fileMsgInfo(content: Record<string, unknown>, href: string, thumb: string | undefined): Record<string, string | number> {
+  const params = parseContentParams(content);
+  const fileName = text(content.title);
+  const extFromName = fileName && fileName.includes(".") ? fileName.slice(fileName.lastIndexOf(".") + 1).toLowerCase() : undefined;
+  const checksum = text(params.checksum);
+  const fType = Number(params.fType);
+  return compact({
+    url: href,
+    fileName,
+    extension: text(params.fileExt) ?? extFromName,
+    checksum: checksum && MD5.test(checksum) ? checksum : undefined,
+    size: text(params.fileSize),
+    fType: Number.isInteger(fType) && fType > 0 ? fType : 1,
+    fdata: text(params.fdata),
+    thumbUrl: thumb,
+  });
+}
+
 /**
  * `msgInfo` gửi lên, dựng từ `content` của tin gốc như Zalo Web: ảnh có link thường (href),
- * HD (params.hd), ảnh nhỏ (thumb), bản gốc = HD hoặc thường; file có `url`; video có `videoUrl`.
- * Thiếu link thì dùng link kho đang tải.
+ * HD (params.hd), ảnh nhỏ (thumb), bản gốc = HD hoặc thường; file có link, tên, đuôi, checksum,
+ * cỡ (`fileMsgInfo`); video có `videoUrl`. Thiếu link thì dùng link kho đang tải.
  */
 export function renewMsgInfoFromRawJson(kind: string, rawJson: string, fallbackUrl: string): Record<string, string | number> {
   let content: Record<string, unknown> = {};
@@ -45,7 +71,7 @@ export function renewMsgInfoFromRawJson(kind: string, rawJson: string, fallbackU
     return compact({ normalUrl: href, hdUrl: hd, thumbUrl: thumb, oriUrl: ori, url: ori });
   }
   if (kind === "video") return compact({ videoUrl: href, thumbUrl: thumb, renewType: 1 });
-  return compact({ url: href, title: typeof content.title === "string" ? content.title : undefined });
+  return fileMsgInfo(content, href, thumb);
 }
 
 export type RenewReply = { kind: "urls"; bag: MediaUrlBag } | { kind: "async" };

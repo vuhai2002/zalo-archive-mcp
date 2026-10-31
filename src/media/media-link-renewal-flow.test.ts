@@ -11,7 +11,8 @@ import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { RenewLinkReplyWaiter } from "../zalo/renew-link-control-listener.js";
 import type { RenewMediaLinkInput } from "../zalo/zca-renew-media-link-api.js";
 import { MediaDownloadWorker } from "./media-download-worker.js";
-import { MediaLinkRenewer } from "./media-link-renewer.js";
+import { MediaLinkRenewer, zaloErrorText } from "./media-link-renewer.js";
+import { isZaloDeletedFailure } from "../storage/zalo-deleted-media-store.js";
 
 const OLD = "https://f1.dlfl.vn/old/tai-lieu-mau.pdf";
 const NEW = "https://f1.dlfl.vn/new/tai-lieu-mau.pdf";
@@ -72,7 +73,7 @@ describe("xin lại link media hết hạn", () => {
 
     await t.worker.tick();
     assert.deepEqual(t.calls, [
-      { threadId: "u-lan", isGroup: false, mediaType: 1, msgInfo: { url: OLD, title: "báo cáo.pdf" } },
+      { threadId: "u-lan", isGroup: false, mediaType: 1, msgInfo: { url: OLD, fileName: "báo cáo.pdf", extension: "pdf", fType: 1 } },
     ]);
     const r = t.row();
     assert.deepEqual([r.status, r.remote_url, r.original_url, r.needs_renew], ["done", NEW, OLD, 0]);
@@ -90,6 +91,18 @@ describe("xin lại link media hết hạn", () => {
     t.advance(60_000);
     await t.worker.tick();
     assert.equal(t.calls.length, 2);
+  });
+
+  it("Zalo báo lỗi kèm mã (vd mã 1001 mà câu báo là 'Successful.'): ghi cả mã, nhận ra là Zalo đã xóa file", async () => {
+    const refused = Object.assign(new Error("Successful."), { code: 1001 });
+    const t = setup({}, {}, { afterCall: () => { throw refused; } });
+    await t.worker.tick();
+    await t.worker.tick();
+    const r = t.row();
+    assert.equal(r.status, "failed");
+    assert.equal(r.last_error, "Link hết hạn, Zalo không cấp lại link mới (mã lỗi 1001 - Successful.)");
+    assert.equal(isZaloDeletedFailure(String(r.status), String(r.last_error)), true);
+    assert.equal(zaloErrorText(new Error("mạng hỏng")), "mạng hỏng", "lỗi không có mã thì giữ nguyên câu");
   });
 
   it("link mới vẫn 404: hỏng hẳn, không xin lần hai", async () => {

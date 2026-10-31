@@ -101,8 +101,11 @@ export type AttachmentInfo = {
   /** Có khi status = "done": GET url này (cùng cookie) để xem/tải file */
   url: string | null;
   mime: string | null;
-  /** Link hết hạn: "waiting" = đang chờ lượt xin Zalo cấp lại; "gave_up" = đã xin mà vẫn không tải được */
-  renewState: "waiting" | "gave_up" | null;
+  /**
+   * Link hết hạn: "waiting" = đang chờ lượt xin Zalo cấp lại; "deleted" = Zalo đã xóa file khỏi máy chủ
+   * (như Zalo hiện "Ảnh đã hết hạn"), không cứu được; "gave_up" = đã xin mà vẫn không tải được vì lý do khác
+   */
+  renewState: "waiting" | "deleted" | "gave_up" | null;
 };
 
 export type ArchivedMessage = {

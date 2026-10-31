@@ -317,4 +317,10 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   UPDATE messages SET msg_type = 'group_event'
   WHERE msg_type = 'webchat' AND json_valid(raw_json) AND json_extract(raw_json, '$.content.action') = 'msginfo.actionlist';
   `,
+  // 18: xin lại link cho file từng chỉ gửi link + tên, Zalo trả "Tham số không hợp lệ" - không phải file đã bị
+  // xóa. Nay gửi đủ như Zalo Web (tên, đuôi, checksum, cỡ): bỏ dấu "đã xin" để lúc khởi động xếp xin lại một lần
+  `
+  UPDATE attachments SET renewed_at = NULL
+  WHERE kind = 'file' AND status = 'failed' AND renewed_at IS NOT NULL AND last_error LIKE '%Tham số không hợp lệ%';
+  `,
 ];
