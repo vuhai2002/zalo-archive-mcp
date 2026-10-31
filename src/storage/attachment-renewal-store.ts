@@ -63,15 +63,16 @@ export const EXPIRED_LINK_ERROR = /^HTTP (403|404|410)\b|Link hết hạn/;
 
 /**
  * File hỏng hẳn vì link hết hạn TRƯỚC khi kho biết xin lại link: xếp vào hàng xin lại, mỗi
- * file một lượt do `allocate` cấp (đã giãn nhịp + trần ngày). Chạy lúc khởi động.
+ * file một lượt do `allocate` cấp (đã giãn nhịp + trần ngày). `skip` trả true cho file không cần
+ * xếp (vd Zalo đã xóa - nơi gọi tự đóng file đó). Chạy lúc khởi động.
  */
-export function requeueExpiredForRenewal(db: DatabaseSync, allocate: () => string): number {
+export function requeueExpiredForRenewal(db: DatabaseSync, allocate: () => string, skip: (id: number) => boolean = () => false): number {
   const rows = db
     .prepare("SELECT id, last_error FROM attachments WHERE status = 'failed' AND renewed_at IS NULL ORDER BY id")
     .all() as Array<{ id: number; last_error: string | null }>;
   let n = 0;
   for (const r of rows) {
-    if (!r.last_error || !EXPIRED_LINK_ERROR.test(r.last_error)) continue;
+    if (!r.last_error || !EXPIRED_LINK_ERROR.test(r.last_error) || skip(r.id)) continue;
     scheduleAttachmentRenewal(db, r.id, { slotIso: allocate(), error: r.last_error });
     n++;
   }
@@ -90,4 +91,29 @@ export function requestAttachmentRetry(db: DatabaseSync, id: number, nowIso: str
     )
     .run(nowIso, id);
   return Number(r.changes) > 0;
+}
+
+/** File đang chờ lượt xin lại link (tự động, chưa xin lần nào), tin mới nhất trước: file mới dễ cứu hơn */
+export function queuedRenewalsNewestFirst(db: DatabaseSync): number[] {
+  const rows = db
+    .prepare(
+      `SELECT a.id FROM attachments a JOIN messages m ON m.msg_id = a.msg_id
+       WHERE a.status = 'pending' AND a.needs_renew = 1 AND a.renewed_at IS NULL
+       ORDER BY m.sent_at DESC, a.id DESC`,
+    )
+    .all() as Array<{ id: number }>;
+  return rows.map((r) => r.id);
+}
+
+/** Đổi mốc lượt xin lại link của một file đang chờ */
+export function rescheduleRenewal(db: DatabaseSync, id: number, slotIso: string): void {
+  db.prepare("UPDATE attachments SET next_attempt_at = ? WHERE id = ?").run(slotIso, id);
+}
+
+/** Số lệnh xin lại link đã gửi Zalo từ `sinceIso` (thành công hay không; trừ file đóng vì `skipError` mà không gọi) */
+export function renewCallsSince(db: DatabaseSync, sinceIso: string, skipError: string): number {
+  const r = db
+    .prepare("SELECT COUNT(*) AS n FROM attachments WHERE renewed_at >= ? AND (last_error IS NULL OR last_error != ?)")
+    .get(sinceIso, skipError) as { n: number };
+  return r.n;
 }

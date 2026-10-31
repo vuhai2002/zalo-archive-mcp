@@ -40,7 +40,12 @@ dùng ghi ở `data/accounts.json`); daemon, MCP và lệnh CLI đều theo nick
    WS cmd 601 `act = "renew_link"` - `renew-link-control-listener.ts` đọc thẳng khung WS (zca-js bỏ
    qua sự kiện này), ghép theo link gốc, chờ tối đa 30 giây. Mỗi file một lần tự động; các lệnh
    cách nhau ngẫu nhiên 4-10 giây, trần 200/ngày (lượt cấp lúc xếp hàng, quá trần sang ngày sau).
-   Dashboard có nút "Thử lại" trên file hỏng.
+   Dashboard có nút "Thử lại" trên file hỏng. Zalo xóa file cũ khỏi máy chủ (ảnh đo được sau khoảng
+   2 tuần) và từ chối cấp lại link (mã 1001); không có số liệu chính thức. `zalo-deleted-media-store.ts`
+   suy theo từng loại file: Zalo đã từ chối ít nhất 3 file cùng loại gửi cùng lúc hoặc SAU file này, và
+   7 ngày qua chưa cấp lại được file cùng loại nào cũ hơn, thì đóng file luôn, không xếp lượt, không gọi
+   Zalo. Lúc khởi động: đóng các file đang chờ lượt mà Zalo đã xóa, trả lại lượt của chúng, cấp lượt mới
+   cho phần còn lại theo tin mới nhất trước (file mới dễ cứu hơn), trần ngày vẫn tính số lệnh đã gửi.
 
 Thông báo nhóm (`msg_type = 'group_event'`): sự kiện nhóm của zca-js và tin webchat `msginfo.actionlist`
 ("X vừa yêu cầu tham gia nhóm.", "X xác nhận: tham gia <lịch hẹn>."). Câu theo mẫu tiếng Việt của Zalo Web

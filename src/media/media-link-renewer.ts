@@ -5,14 +5,23 @@ import {
   getAttachmentRenewContext,
   markAttachmentRenewFailed,
   recordAttachmentRenewed,
+  queuedRenewalsNewestFirst,
+  renewCallsSince,
   requeueExpiredForRenewal,
+  rescheduleRenewal,
   scheduleAttachmentRenewal,
 } from "../storage/attachment-renewal-store.js";
 import type { PendingAttachment } from "../storage/attachment-queue-store.js";
+import {
+  closeQueuedRenewalsDeletedByZalo,
+  DELETED_BY_ZALO_ERROR,
+  isDeletedByZalo,
+  markAttachmentDeletedByZalo,
+} from "../storage/zalo-deleted-media-store.js";
 import type { RenewLinkReplyWaiter } from "../zalo/renew-link-control-listener.js";
 import type { RenewMediaLinkInput } from "../zalo/zca-renew-media-link-api.js";
 import { pickRenewedUrl, readRenewReply, renewableMediaType, renewMsgInfoFromRawJson } from "./media-link-renewal-request.js";
-import { allocateRenewSlot, type RenewPacing } from "./media-link-renew-schedule.js";
+import { allocateRenewSlot, restartRenewSchedule, type RenewPacing } from "./media-link-renew-schedule.js";
 
 export type MediaLinkRenewerOptions = {
   db: DatabaseSync;
@@ -34,6 +43,10 @@ export type RenewOutcome = { kind: "renewed"; url: string } | { kind: "wait"; at
  * Xin Zalo cấp lại link media hết hạn, TỪNG lệnh một. Lượt của mỗi file đã được cấp khi xếp
  * hàng (giãn nhịp + trần ngày); ở đây giữ thêm khoảng cách tối thiểu giữa hai lệnh thật sự
  * gửi đi, kể cả lệnh do người dùng bấm Thử lại.
+ *
+ * File mà Zalo đã xóa khỏi máy chủ (suy từ các lần Zalo từ chối file cùng loại mới hơn - xem
+ * `zalo-deleted-media-store.ts`) thì đóng luôn, không xếp lượt, không gọi Zalo: lượt xin lại để
+ * dành cho file còn cứu được.
  */
 export class MediaLinkRenewer {
   private lastCallAt = 0;
@@ -43,18 +56,42 @@ export class MediaLinkRenewer {
   /** Link vừa hỏng vì hết hạn: xếp hàng xin lại nếu file chưa từng được xin. Trả false nếu đã xin rồi. */
   scheduleAfterExpiry(item: PendingAttachment, error: string, now: Date): boolean {
     if (item.renewedAt) return false;
+    if (this.closeIfDeletedByZalo(item.id, now)) return true;
     const slot = allocateRenewSlot(this.o.db, this.o.pacing, now, this.o.random);
     scheduleAttachmentRenewal(this.o.db, item.id, { slotIso: slot.toISOString(), error });
     this.o.log.info({ id: item.id, kind: item.kind, at: slot.toISOString() }, "Link media hết hạn - đã xếp lượt xin lại link");
     return true;
   }
 
-  /** Xếp lại các file đã hỏng vì link hết hạn từ trước. Chạy lúc khởi động. */
+  /**
+   * Chạy lúc khởi động: đóng file đang chờ lượt mà Zalo đã xóa, trả lại lượt của chúng, cấp lượt mới cho
+   * hàng chờ còn lại theo tin mới nhất trước (giữ trần ngày), rồi xếp các file đã hỏng vì link hết hạn
+   * từ trước. Trả số file vừa được xếp thêm.
+   */
   requeueExpired(now: Date): number {
-    return requeueExpiredForRenewal(this.o.db, () => allocateRenewSlot(this.o.db, this.o.pacing, now, this.o.random).toISOString());
+    const { db, pacing, random, log } = this.o;
+    const closed = closeQueuedRenewalsDeletedByZalo(db, now);
+    restartRenewSchedule(db, pacing, now, (since) => renewCallsSince(db, since, DELETED_BY_ZALO_ERROR));
+    const queued = queuedRenewalsNewestFirst(db);
+    for (const id of queued) rescheduleRenewal(db, id, allocateRenewSlot(db, pacing, now, random).toISOString());
+    if (closed > 0 || queued.length > 0) log.info({ closed, queued: queued.length }, "Hàng chờ xin lại link: đóng file Zalo đã xóa, cấp lại lượt cho phần còn lại");
+    return requeueExpiredForRenewal(
+      db,
+      () => allocateRenewSlot(db, pacing, now, random).toISOString(),
+      (id) => this.closeIfDeletedByZalo(id, now),
+    );
+  }
+
+  /** Zalo đã xóa file này: đóng hẳn, không tốn lượt xin lại */
+  private closeIfDeletedByZalo(id: number, now: Date): boolean {
+    if (!isDeletedByZalo(this.o.db, id, now)) return false;
+    markAttachmentDeletedByZalo(this.o.db, id, now);
+    this.o.log.debug({ id }, "Zalo đã xóa file cũ - không xin lại link");
+    return true;
   }
 
   async renew(item: PendingAttachment, now: Date): Promise<RenewOutcome> {
+    if (this.closeIfDeletedByZalo(item.id, now)) return { kind: "failed", error: DELETED_BY_ZALO_ERROR };
     const sinceLast = now.getTime() - this.lastCallAt;
     if (sinceLast < this.o.pacing.minGapSeconds * 1000) {
       const gap = randomGapMs(this.o.pacing.minGapSeconds, this.o.pacing.maxGapSeconds, this.o.random);

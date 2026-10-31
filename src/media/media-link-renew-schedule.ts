@@ -42,3 +42,14 @@ export function allocateRenewSlot(db: DatabaseSync, pacing: RenewPacing, now: Da
   setMeta(db, META_KEY, JSON.stringify({ lastSlotAt: slot.toISOString(), day, used: used + 1 } satisfies ScheduleState));
   return slot;
 }
+
+/**
+ * Bắt đầu lại lịch cấp lượt (lúc khởi động, sau khi đóng các file Zalo đã xóa): lượt đã cấp cho file
+ * vừa đóng được trả lại, hàng chờ còn lại sẽ được cấp lượt mới theo thứ tự nơi gọi chọn. Trần ngày
+ * vẫn giữ: hôm nay tính `callsToday(mốc 00:00 hôm nay)` lệnh đã thật sự gửi Zalo.
+ */
+export function restartRenewSchedule(db: DatabaseSync, pacing: RenewPacing, now: Date, callsToday: (sinceIso: string) => number): void {
+  const startOfToday = DateTime.fromJSDate(now, { zone: pacing.timeZone }).startOf("day").toUTC().toISO() ?? now.toISOString();
+  const state: ScheduleState = { lastSlotAt: null, day: dayKey(now.getTime(), pacing.timeZone), used: callsToday(startOfToday) };
+  setMeta(db, META_KEY, JSON.stringify(state));
+}
