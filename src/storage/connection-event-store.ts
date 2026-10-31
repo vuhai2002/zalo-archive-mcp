@@ -53,11 +53,13 @@ function lastLifecycleEvent(db: DatabaseSync, beforeIso?: string): { at: string;
  * nên khoảng thủng sau đó sẽ vô hình. Lúc khởi động, nếu trạng thái nghe cuối
  * vẫn là `connected`, ghi bù một `closed` tại mốc heartbeat cuối cùng còn biết.
  */
+const DANGLING_DETAIL = "Tiến trình dừng đột ngột (ghi bù lúc khởi động lại)";
+
 export function closeDanglingConnection(db: DatabaseSync, lastHeartbeatAt: string | null): boolean {
   const last = lastLifecycleEvent(db);
   if (last?.kind !== "connected") return false;
   const at = lastHeartbeatAt && lastHeartbeatAt > last.at ? lastHeartbeatAt : last.at;
-  recordConnectionEvent(db, "closed", { at, detail: "Tiến trình dừng đột ngột (ghi bù lúc khởi động lại)" });
+  recordConnectionEvent(db, "closed", { at, detail: DANGLING_DETAIL });
   return true;
 }
 
@@ -94,6 +96,8 @@ export type ListenerGap = {
   suspected?: boolean;
   /** Khoảng máy ngủ / tiến trình bị treo, ghi bù khi chạy tiếp (mốc đầu sớm hơn lúc ngủ thật tối đa 1 nhịp heartbeat) */
   asleep?: boolean;
+  /** Daemon không chạy: tắt máy, khởi động lại daemon (Windows dừng tiến trình ngay, ghi bù lúc chạy lại) hay dừng hẳn */
+  daemonStopped?: boolean;
 };
 
 export type GapOptions = { lastHeartbeatAt: string | null; nowIso: string; staleAfterMs: number };
@@ -131,7 +135,13 @@ export function listenerGaps(db: DatabaseSync, sinceIso: string, opts?: GapOptio
       }
     } else {
       lastConnectedAt = null;
-      open ??= { from: r.at, to: null, closeCode: r.code, ...(r.detail === SUSPEND_DETAIL ? { asleep: true } : {}) };
+      open ??= {
+        from: r.at,
+        to: null,
+        closeCode: r.code,
+        ...(r.detail === SUSPEND_DETAIL ? { asleep: true } : {}),
+        ...(r.detail === DANGLING_DETAIL || r.kind === "stopped" ? { daemonStopped: true } : {}),
+      };
     }
   }
   if (open) gaps.push(open);

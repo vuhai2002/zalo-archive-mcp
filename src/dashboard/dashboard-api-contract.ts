@@ -22,7 +22,15 @@ export type * from "./dashboard-auth-and-account-contract.js";
 // GET /api/overview?days=30
 export type DailyCount = { day: string /* YYYY-MM-DD theo timeZone */; incoming: number; outgoing: number };
 export type TopThread = { threadId: string; threadType: ThreadKind; name: string | null; messages: number };
-export type ListenerGap = { from: string; to: string | null; closeCode: number | null; suspected?: boolean; asleep?: boolean };
+export type ListenerGap = {
+  from: string;
+  to: string | null;
+  closeCode: number | null;
+  suspected?: boolean;
+  asleep?: boolean;
+  /** Daemon không chạy (tắt máy, khởi động lại daemon) */
+  daemonStopped?: boolean;
+};
 export type ConnectionEvent = { at: string; kind: string; code: number | null; detail: string | null };
 
 export type OverviewResponse = {
@@ -43,7 +51,7 @@ export type OverviewResponse = {
   daily: DailyCount[];
   topThreads: TopThread[]; // 10 hội thoại nhiều tin nhất trong `days` ngày
   gaps: ListenerGap[]; // 7 ngày gần nhất
-  recentEvents: ConnectionEvent[]; // 20 sự kiện kết nối gần nhất
+  recentEvents: ConnectionEvent[]; // 40 sự kiện kết nối gần nhất
 };
 
 // ---------- Hội thoại + tin ----------

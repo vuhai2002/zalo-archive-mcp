@@ -43,14 +43,17 @@ describe("connection events", () => {
     assert.equal(closeDanglingConnection(db, "2026-10-28T01:20:00.000Z"), true);
   });
 
-  it("ghi bù closed khi tiến trình chết đột ngột, theo mốc heartbeat cuối", () => {
+  it("ghi bù closed khi tiến trình chết đột ngột, theo mốc heartbeat cuối; khoảng đó đánh dấu daemon không chạy", () => {
     const db = openArchiveDatabase(":memory:");
     recordConnectionEvent(db, "connected", { at: "2026-10-28T01:00:00.000Z" });
     assert.equal(closeDanglingConnection(db, "2026-10-28T01:30:00.000Z"), true);
     assert.equal(closeDanglingConnection(db, "2026-10-28T01:30:00.000Z"), false, "không ghi bù hai lần");
     recordConnectionEvent(db, "connected", { at: "2026-10-28T02:00:00.000Z" });
+    recordConnectionEvent(db, "stopped", { at: "2026-10-28T03:00:00.000Z" });
+    recordConnectionEvent(db, "connected", { at: "2026-10-28T03:01:00.000Z" });
     assert.deepEqual(listenerGaps(db, "2026-10-28T00:00:00.000Z"), [
-      { from: "2026-10-28T01:30:00.000Z", to: "2026-10-28T02:00:00.000Z", closeCode: null },
+      { from: "2026-10-28T03:00:00.000Z", to: "2026-10-28T03:01:00.000Z", closeCode: null, daemonStopped: true },
+      { from: "2026-10-28T01:30:00.000Z", to: "2026-10-28T02:00:00.000Z", closeCode: null, daemonStopped: true },
     ]);
   });
 

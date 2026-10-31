@@ -1,19 +1,56 @@
+import { useState } from "react";
 import type { ConnectionEvent, ListenerGap } from "../../archive-api-types";
 import { useArchiveTimeZone } from "../../layout/dashboard-shell-context";
 import { IconSignal } from "../../shared/dashboard-icons";
 import { IconClock } from "../../shared/action-and-media-icons";
 import { eventKindInfo } from "../../shared/archive-status-labels";
-import { formatDateTime, formatDuration } from "../../shared/format-archive-time";
+import { formatClock, formatDateTime, formatDuration } from "../../shared/format-archive-time";
 import { Badge, EmptyState, SectionCard } from "../../shared/ui-bits";
+import { gapReason, isQuickGap, QUICK_GAP_MS, shortEventDetail, visibleConnectionEvents } from "./connection-panel-display";
+
+const GAPS_SHOWN = 5;
+const EVENTS_SHOWN = 8;
+
+/** Nút chữ nhỏ cuối mục: "Xem tất cả" / "Thu gọn" */
+function ToggleMore({ expanded, total, onToggle }: { expanded: boolean; total: number; onToggle: () => void }) {
+  return (
+    <button type="button" onClick={onToggle} className="text-[13px] font-medium text-zalo-600 hover:underline">
+      {expanded ? "Thu gọn" : `Xem tất cả (${total})`}
+    </button>
+  );
+}
+
+/** "12/03 08:00 - 13/03 10:30"; cùng ngày thì vế sau chỉ còn giờ: "12/03 09:15 - 09:20" */
+function gapRange(g: ListenerGap, tz: string): string {
+  const from = formatDateTime(g.from, tz);
+  if (!g.to) return `${from} - vẫn đang mất`;
+  const to = formatDateTime(g.to, tz);
+  return from.split(" ")[0] === to.split(" ")[0] ? `${from} - ${formatClock(g.to, tz)}` : `${from} - ${to}`;
+}
+
+/** Dòng cuối khi thu gọn: "Còn 1 khoảng cũ hơn và 3 lần nối lại nhanh dưới 2 phút (...)" */
+function hiddenSummary(olderNotable: number, quick: number): string {
+  const parts = [
+    olderNotable > 0 ? `${olderNotable} khoảng cũ hơn` : "",
+    quick > 0 ? `${quick} lần nối lại nhanh dưới ${QUICK_GAP_MS / 60_000} phút (khởi động lại daemon, chớp mạng)` : "",
+  ].filter(Boolean);
+  return parts.length > 0 ? `Còn ${parts.join(" và ")}` : "";
+}
 
 /**
- * Khoảng listener mất kết nối trong 7 ngày. Khoảng `suspected` (server nghi có
- * tin bị lọt trong lúc mất kết nối) tô đỏ: đó là chỗ kho có thể đang thiếu tin
- * mà không ai biết nếu không nhìn vào đây.
+ * Khoảng listener không nghe được tin trong 7 ngày, mỗi khoảng một dòng: giờ, lý do, thời lượng.
+ * Khoảng dưới 2 phút (khởi động lại daemon, chớp mạng) gộp thành một dòng đếm; khoảng nghi mất tin
+ * (`suspected`) tô đỏ - đó là chỗ kho có thể đang thiếu tin mà không ai biết nếu không nhìn vào đây.
  */
 export function ListenerGapsPanel({ gaps }: { gaps: ListenerGap[] }) {
   const tz = useArchiveTimeZone();
+  const [expanded, setExpanded] = useState(false);
+  const now = Date.now();
   const suspected = gaps.filter((g) => g.suspected).length;
+  const notable = gaps.filter((g) => !isQuickGap(g, now));
+  const quickCount = gaps.length - notable.length;
+  const shown = expanded ? gaps : notable.slice(0, GAPS_SHOWN);
+  const canExpand = gaps.length > shown.length || expanded;
   return (
     <SectionCard
       icon={IconClock}
@@ -24,55 +61,66 @@ export function ListenerGapsPanel({ gaps }: { gaps: ListenerGap[] }) {
       {gaps.length === 0 ? (
         <EmptyState text="Không có khoảng mất kết nối nào." />
       ) : (
-        <ul className="space-y-2">
-          {gaps.map((g, i) => (
-            <li
-              key={`${g.from}-${i}`}
-              className={`rounded-xl border px-3 py-2.5 text-[13px] ${
-                g.suspected
-                  ? "border-red-200 bg-red-50 text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200"
-                  : "border-line bg-tile/40 text-ink"
-              }`}
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-medium">
-                  {formatDateTime(g.from, tz)} - {g.to ? formatDateTime(g.to, tz) : "vẫn đang mất"}
-                </span>
-                <span className="text-[12px] opacity-80">{formatDuration(g.from, g.to)}</span>
-              </div>
-              <div className="mt-0.5 text-[12px] opacity-80">
-                {g.suspected ? "Nghi có tin bị lọt trong khoảng này" : "Không thấy dấu hiệu mất tin"}
-                {g.asleep && " · máy ngủ / daemon bị treo"}
-                {g.closeCode !== null && ` · mã đóng ${g.closeCode}`}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <>
+          {shown.length > 0 && (
+            <ul className="divide-y divide-line">
+              {shown.map((g, i) => {
+                const reason = gapReason(g);
+                return (
+                  <li
+                    key={`${g.from}-${i}`}
+                    className={`flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-[13px] ${g.suspected ? "text-red-700 dark:text-red-300" : "text-ink"}`}
+                  >
+                    <span className="whitespace-nowrap font-medium tabular-nums">{gapRange(g, tz)}</span>
+                    <Badge tone={reason.tone}>{reason.label}</Badge>
+                    <span className="ml-auto whitespace-nowrap text-[12px] tabular-nums text-ink-soft">{formatDuration(g.from, g.to)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-ink-soft">
+            <span>{expanded ? "" : hiddenSummary(notable.length - shown.length, quickCount)}</span>
+            {canExpand && <ToggleMore expanded={expanded} total={gaps.length} onToggle={() => setExpanded((v) => !v)} />}
+          </div>
+        </>
       )}
     </SectionCard>
   );
 }
 
+/** Lần mất / có kết nối gần nhất của phiên Zalo (bỏ "Đăng nhập" - luôn đi liền "Đã kết nối") */
 export function ConnectionEventsPanel({ events }: { events: ConnectionEvent[] }) {
   const tz = useArchiveTimeZone();
+  const [expanded, setExpanded] = useState(false);
+  const visible = visibleConnectionEvents(events);
+  const shown = expanded ? visible : visible.slice(0, EVENTS_SHOWN);
   return (
-    <SectionCard icon={IconSignal} title="Sự kiện kết nối" subtitle="20 sự kiện gần nhất của phiên Zalo">
-      {events.length === 0 ? (
+    <SectionCard icon={IconSignal} title="Sự kiện kết nối" subtitle="Mất / có kết nối gần nhất của phiên Zalo">
+      {visible.length === 0 ? (
         <EmptyState text="Chưa có sự kiện nào." />
       ) : (
-        <ul className="divide-y divide-line">
-          {events.map((e, i) => {
-            const info = eventKindInfo(e.kind);
-            return (
-              <li key={`${e.at}-${i}`} className="flex flex-wrap items-start gap-x-3 gap-y-1 py-2 text-[13px]">
-                <span className="shrink-0 whitespace-nowrap tabular-nums text-ink-soft">{formatDateTime(e.at, tz)}</span>
-                <Badge tone={info.tone}>{info.label}</Badge>
-                {e.code !== null && <span className="text-ink-soft">mã {e.code}</span>}
-                {e.detail && <span className="min-w-0 basis-full break-words text-[12px] text-ink-soft sm:basis-auto sm:flex-1">{e.detail}</span>}
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          <ul className="divide-y divide-line">
+            {shown.map((e, i) => {
+              const info = eventKindInfo(e.kind);
+              const detail = shortEventDetail(e.detail);
+              return (
+                <li key={`${e.at}-${i}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-[13px]">
+                  <span className="shrink-0 whitespace-nowrap tabular-nums text-ink-soft">{formatDateTime(e.at, tz)}</span>
+                  <Badge tone={info.tone}>{info.label}</Badge>
+                  {e.code !== null && <span className="text-ink-soft">mã {e.code}</span>}
+                  {detail && <span className="min-w-0 break-words text-[12px] text-ink-soft">{detail}</span>}
+                </li>
+              );
+            })}
+          </ul>
+          {visible.length > EVENTS_SHOWN && (
+            <div className="mt-2 flex justify-end">
+              <ToggleMore expanded={expanded} total={visible.length} onToggle={() => setExpanded((v) => !v)} />
+            </div>
+          )}
+        </>
       )}
     </SectionCard>
   );

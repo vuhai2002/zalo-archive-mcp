@@ -45,7 +45,8 @@ export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
         nowIso: now.toISOString(),
         staleAfterMs: HEARTBEAT_STALE_MS,
       }),
-      recentEvents: recentConnectionEvents(db, 20),
+      // Dư ra để còn đủ dòng sau khi dashboard bỏ "Đăng nhập" (mỗi lần khởi động lại ghi 3 sự kiện)
+      recentEvents: recentConnectionEvents(db, 40),
     };
     return c.json(body);
   });
