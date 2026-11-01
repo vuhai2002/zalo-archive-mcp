@@ -53,6 +53,16 @@ Thông báo nhóm (`msg_type = 'group_event'`): sự kiện nhóm của zca-js v
 (`storage/system-notice-display.ts`) dựng lại từ dữ liệu gốc theo danh bạ hiện tại - tên gợi nhớ, tên in
 đậm, avatar nhỏ người được nhắc tới - nên chữ lưu lúc chưa biết tên (mã số) vẫn hiện đúng.
 
+Lấy lại media Zalo đã xóa từ Zalo PC: Zalo xóa ảnh / video / file khỏi máy chủ sau khoảng 2 tuần, nên
+tin cũ (đồng bộ điện thoại) thường không còn file. Zalo PC trên máy đã tải nhiều file trong số đó vào
+`%LOCALAPPDATA%\ZaloPC\<UID>\ZaloDownloads` dưới dạng file thường: ảnh / video ở
+`resource\<g<mã nhóm> | mã người>\<picture | Cache | video>\<cliMsgId>_<người gửi>_<hội thoại>...`, file
+đính kèm ở `file\<md5>`. `media/zalo-pc-media-index.ts` dò theo tên file, `media/import-media-from-zalo-pc.ts`
+chép sang kho (CHỈ ĐỌC thư mục Zalo PC), kiểm chữ ký ảnh / MP4 / MD5, ảnh lấy bản JPEG xem trước làm file
+hiện + giữ bản gốc HD cạnh (`<sha>.orig.jxl`), chỉ có JXL thì đổi PNG; đánh `done` kèm
+`attachments.recovered_from = 'zalo_pc'` (migration 19). Chạy theo nút trên trang Tài khoản Zalo. Không dùng
+`fileNoise` (Zalo PC biến đổi nội dung) và không đụng DB Zalo PC.
+
 Parser sai: sửa code, `pnpm replay-journal` dựng lại (giữ `source`/`received_at` của lần đầu).
 
 ## Luồng gửi
@@ -150,7 +160,11 @@ heartbeat (mỗi phút) thấy hai nhịp cách nhau quá 3 phút theo giờ má
 
 - Không đọc DB Zalo PC; lịch sử cũ (sau này) qua đồng bộ điện thoại chính thức của Zalo Web.
 - Nối lại ở tầng app (`retryOnClose:false`), chớp-tắt quá ngưỡng thì dừng hẳn và đòi đăng nhập lại.
-- Mã 3000 (phiên Zalo Web khác mở) thì chờ lâu, không giằng co.
+- Mã 3000 (phiên Zalo Web khác mở) thì chờ lâu, không giằng co. Riêng lần 3000 đầu tiên kể từ lần kết nối
+  đứng gần nhất thì thử lại sau `RECONNECT_DUPLICATE_FIRST_RETRY_SECONDS` (60): Zalo cũng trả 3000
+  "NOT_AUTHENTICATED" lúc vừa mở máy, Zalo PC khởi động cùng lúc. Dashboard hiện mã đóng + giờ tự nối lại
+  và nút "Nối lại ngay" (`POST /api/session/reconnect`). Kết nối đóng giữa lượt lấy bù thì giữ nguyên mốc
+  (trang không về vì mất kết nối, không phải Zalo chê mốc) và lần nối sau xin lại ngay.
 - Một daemon mỗi thư mục `data/` (file khóa pid `data/daemon.lock`), một listener mỗi lúc.
 - Không bắt người dùng sửa `.env`: mọi thứ cần để dùng (mật khẩu, nick, khóa) làm trên dashboard
   hoặc tự sinh; `.env` chỉ còn các núm vận hành có mặc định.

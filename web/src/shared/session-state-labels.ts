@@ -1,4 +1,5 @@
 import type { SessionState, SessionStatus } from "../archive-api-types";
+import { formatClock } from "./format-archive-time";
 import type { BadgeTone } from "./ui-bits";
 
 /** Nhãn tiếng Việt cho từng trạng thái phiên Zalo - dùng chung sidebar + trang Tài khoản */
@@ -46,3 +47,13 @@ export const TONE_DOT_CLASS: Record<BadgeTone, string> = {
   blue: "bg-zalo-500",
   gray: "bg-slate-300 dark:bg-slate-600",
 };
+
+/**
+ * Listener đang chờ tự nối lại (Zalo vừa đóng kết nối): "Zalo đóng kết nối (mã 3000 - NOT_AUTHENTICATED),
+ * kho tự nối lại lúc 08:30". null khi không ở tình huống đó (đang kết nối, đã dừng, cần đăng nhập lại...).
+ */
+export function listenerRetryText(s: SessionStatus | null, timeZone: string): string | null {
+  if (!s || s.state !== "running" || s.listenerConnected || !s.listenerRetryAt) return null;
+  const why = s.listenerCloseCode !== null ? ` (mã ${s.listenerCloseCode}${s.listenerCloseReason ? ` - ${s.listenerCloseReason}` : ""})` : "";
+  return `Zalo đóng kết nối nghe tin${why}, kho tự nối lại lúc ${formatClock(s.listenerRetryAt, timeZone)}`;
+}

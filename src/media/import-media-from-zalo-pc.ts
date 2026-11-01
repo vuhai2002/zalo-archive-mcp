@@ -1,0 +1,168 @@
+import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import type { DatabaseSync } from "node:sqlite";
+import type { Logger } from "pino";
+import { failedAttachmentsForRecovery, markAttachmentRecovered, type RecoveryCandidate } from "../storage/attachment-local-recovery-store.js";
+import { chooseExtension, mediaRelativePath } from "./media-file-naming.js";
+import { placeDownloadedFile, saveJxlPhotoAsPng, type SavedMedia } from "./save-jxl-photo-as-png.js";
+import { buildZaloPcMediaIndex, findZaloPcMedia, type ZaloPcMediaMatch } from "./zalo-pc-media-index.js";
+import { convertJxlToPng } from "./zalo-jxl-photo.js";
+
+/**
+ * Lấy lại ảnh / video / file mà kho không tải được (Zalo đã xóa khỏi máy chủ) từ bản Zalo PC đã tải về máy.
+ * Nguồn chỉ được MỞ ĐỂ ĐỌC rồi chép sang thư mục media của kho - không ghi, đổi tên, xóa gì của Zalo PC
+ * (CLAUDE.md). Mỗi bản chép được kiểm trước khi nhận: ảnh phải đúng chữ ký ảnh, video phải là MP4, file đính
+ * kèm phải đúng MD5 Zalo ghi trong tin. Ảnh: bản JPEG xem trước làm file hiện trên dashboard, bản gốc HD
+ * (JXL) giữ ngay cạnh; chỉ có bản JXL thì đổi sang PNG như lúc tải. Chạy từng file, nhường vòng lặp sự kiện
+ * giữa các file để daemon vẫn nghe tin.
+ */
+export const ZALO_PC_SOURCE = "zalo_pc";
+
+export type { ZaloPcImportProgress } from "../dashboard/dashboard-api-contract.js";
+import type { ZaloPcImportProgress } from "../dashboard/dashboard-api-contract.js";
+
+type Copied = { tempFile: string; sha256: string; md5: string; sizeBytes: number; head: Buffer };
+type Sniffed = "jpeg" | "png" | "gif" | "webp" | "jxl" | "mp4" | null;
+
+const IMAGE: Record<string, { ext: string; mime: string }> = {
+  jpeg: { ext: ".jpg", mime: "image/jpeg" },
+  png: { ext: ".png", mime: "image/png" },
+  gif: { ext: ".gif", mime: "image/gif" },
+  webp: { ext: ".webp", mime: "image/webp" },
+};
+
+function sniff(h: Buffer): Sniffed {
+  if (h[0] === 0xff && h[1] === 0xd8 && h[2] === 0xff) return "jpeg";
+  if (h.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "png";
+  if (h.subarray(0, 4).toString("latin1") === "GIF8") return "gif";
+  if (h.subarray(0, 4).toString("latin1") === "RIFF" && h.subarray(8, 12).toString("latin1") === "WEBP") return "webp";
+  if ((h[0] === 0xff && h[1] === 0x0a) || h.subarray(4, 8).toString("latin1") === "JXL ") return "jxl";
+  if (h.subarray(4, 8).toString("latin1") === "ftyp") return "mp4";
+  return null;
+}
+
+/** Chép nguồn (mở chỉ để đọc) sang file tạm của kho, vừa chép vừa băm sha256 + md5 và giữ 16 byte đầu */
+async function copyIntoTemp(src: string, tempDir: string): Promise<Copied> {
+  fs.mkdirSync(tempDir, { recursive: true });
+  const tempFile = path.join(tempDir, `${crypto.randomUUID()}.part`);
+  const sha = crypto.createHash("sha256");
+  const md5 = crypto.createHash("md5");
+  let sizeBytes = 0;
+  let head = Buffer.alloc(0);
+  const meter = new Transform({
+    transform(chunk: Buffer, _enc, done) {
+      if (head.length < 16) head = Buffer.concat([head, chunk.subarray(0, 16 - head.length)]);
+      sizeBytes += chunk.length;
+      sha.update(chunk);
+      md5.update(chunk);
+      done(null, chunk);
+    },
+  });
+  try {
+    await pipeline(fs.createReadStream(src, { flags: "r" }), meter, fs.createWriteStream(tempFile, { mode: 0o600 }));
+  } catch (err) {
+    fs.rmSync(tempFile, { force: true });
+    throw err;
+  }
+  return { tempFile, sha256: sha.digest("hex"), md5: md5.digest("hex"), sizeBytes, head };
+}
+
+function place(mediaDir: string, c: Copied, ext: string, mime: string | null): SavedMedia {
+  const rel = mediaRelativePath(c.sha256, ext);
+  placeDownloadedFile(c.tempFile, path.join(mediaDir, rel));
+  return { rel, sha256: c.sha256, sizeBytes: c.sizeBytes, mime };
+}
+
+type StoreOptions = { mediaDir: string; tempDir: string; convertJxl: (bytes: Uint8Array) => Uint8Array };
+
+/** Chép + kiểm + cất một bản Zalo PC; null nếu bản đó không đúng loại / không đúng MD5 (không nhận) */
+async function storeMatch(o: StoreOptions, c: RecoveryCandidate, match: ZaloPcMediaMatch): Promise<SavedMedia | null> {
+  if (match.kind === "photo") return storePhoto(o, match);
+  const copied = await copyIntoTemp(match.file, o.tempDir);
+  if (match.kind === "video") return sniff(copied.head) === "mp4" ? place(o.mediaDir, copied, ".mp4", "video/mp4") : reject(copied);
+  if (copied.md5 !== match.md5) return reject(copied);
+  return place(o.mediaDir, copied, chooseExtension({ kind: "file", fileName: c.fileName, mime: null, url: "" }), null);
+}
+
+/** Ảnh: bản xem trước (JPEG) làm file hiện, bản gốc HD giữ cạnh; không có / hỏng bản xem trước thì dùng bản gốc */
+async function storePhoto(o: StoreOptions, match: Extract<ZaloPcMediaMatch, { kind: "photo" }>): Promise<SavedMedia | null> {
+  if (match.preview) {
+    const preview = await copyIntoTemp(match.preview, o.tempDir);
+    const image = imageType(preview.head);
+    if (image) {
+      const saved = place(o.mediaDir, preview, image.ext, image.mime);
+      if (match.original) await keepOriginalBeside(o, saved.rel, match.original);
+      return saved;
+    }
+    reject(preview);
+  }
+  if (!match.original) return null;
+  const original = await copyIntoTemp(match.original, o.tempDir);
+  if (sniff(original.head) === "jxl") {
+    try {
+      return saveJxlPhotoAsPng({ tempFile: original.tempFile, mediaDir: o.mediaDir, convert: o.convertJxl });
+    } catch {
+      // Không đổi được sang PNG thì vẫn giữ bản JXL: kho không mất ảnh, chỉ trình duyệt không hiện (như lúc tải)
+      return place(o.mediaDir, original, ".jxl", "image/jxl");
+    }
+  }
+  const image = imageType(original.head);
+  return image ? place(o.mediaDir, original, image.ext, image.mime) : reject(original);
+}
+
+const imageType = (head: Buffer) => {
+  const type = sniff(head);
+  return type ? IMAGE[type] : undefined;
+};
+
+function reject(c: Copied): null {
+  fs.rmSync(c.tempFile, { force: true });
+  return null;
+}
+
+/** Bản gốc HD đặt cạnh file hiện: cùng tên, thêm `.orig` + đuôi của bản gốc (vd `<sha>.orig.jxl`) */
+async function keepOriginalBeside(o: StoreOptions, mainRel: string, original: string): Promise<void> {
+  const copied = await copyIntoTemp(original, o.tempDir);
+  const type = sniff(copied.head);
+  const ext = type === "jxl" ? ".jxl" : imageType(copied.head)?.ext;
+  if (!ext) return void reject(copied);
+  placeDownloadedFile(copied.tempFile, path.join(o.mediaDir, mainRel.replace(/\.[a-z0-9]+$/i, `.orig${ext}`)));
+}
+
+export async function importMediaFromZaloPc(o: {
+  db: DatabaseSync;
+  mediaDir: string;
+  downloadsDir: string;
+  selfUid: string;
+  log: Logger;
+  convertJxl?: (bytes: Uint8Array) => Uint8Array;
+  shouldAbort?: () => boolean;
+  onProgress?: (p: ZaloPcImportProgress) => void;
+}): Promise<ZaloPcImportProgress> {
+  const index = buildZaloPcMediaIndex(o.downloadsDir);
+  const candidates = failedAttachmentsForRecovery(o.db);
+  const p: ZaloPcImportProgress = { total: candidates.length, processed: 0, recovered: 0, notFound: 0, rejected: 0, failed: 0 };
+  const store: StoreOptions = { mediaDir: o.mediaDir, tempDir: path.join(o.mediaDir, ".tmp"), convertJxl: o.convertJxl ?? convertJxlToPng };
+  o.onProgress?.({ ...p });
+  for (const c of candidates) {
+    if (o.shouldAbort?.()) break;
+    const match = findZaloPcMedia(index, c, o.selfUid);
+    try {
+      const saved = match ? await storeMatch(store, c, match) : null;
+      if (!match) p.notFound++;
+      else if (!saved) p.rejected++;
+      else if (markAttachmentRecovered(o.db, c.id, { localPath: saved.rel, sha256: saved.sha256, sizeBytes: saved.sizeBytes, mime: saved.mime }, ZALO_PC_SOURCE, new Date().toISOString())) p.recovered++;
+    } catch (err) {
+      p.failed++;
+      o.log.warn({ id: c.id, kind: c.kind, err }, "Không chép được bản Zalo PC của file");
+    }
+    p.processed++;
+    o.onProgress?.({ ...p });
+    // Đổi JXL sang PNG chặn vài giây: nhường vòng lặp sự kiện giữa các file để listener vẫn chạy
+    await new Promise((r) => setImmediate(r));
+  }
+  return p;
+}

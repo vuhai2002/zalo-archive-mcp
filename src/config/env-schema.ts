@@ -42,6 +42,8 @@ export const envSchema = z
     RECONNECT_BASE_DELAY_SECONDS: int(5, 1, 3600),
     RECONNECT_MAX_DELAY_SECONDS: int(300, 1, 86400),
     RECONNECT_DUPLICATE_WAIT_MINUTES: int(15, 1, 1440),
+    /** Lần 3000 đầu tiên (thường gặp lúc vừa mở máy) thử lại sau chừng này giây; bị lại mới chờ phút ở trên */
+    RECONNECT_DUPLICATE_FIRST_RETRY_SECONDS: int(60, 5, 3600),
     RECONNECT_GIVE_UP_AFTER_FLAPS: int(8, 2, 100),
 
     // Đăng nhập Zalo (cookie hoặc QR) cách nhau tối thiểu bấy nhiêu giây: tránh đăng nhập dồn dập
@@ -80,6 +82,12 @@ export const envSchema = z
     MEDIA_RENEW_MIN_GAP_SECONDS: int(4, 1, 3600),
     MEDIA_RENEW_MAX_GAP_SECONDS: int(10, 1, 3600),
     MEDIA_RENEW_DAILY_CAP: int(200, 1, 10000),
+    /**
+     * Thư mục dữ liệu cục bộ của Zalo PC (chứa `<UID>\ZaloDownloads`) để lấy lại ảnh / video Zalo đã
+     * xóa khỏi máy chủ. Bỏ trống = `%LOCALAPPDATA%\ZaloPC` (Windows tự có biến LOCALAPPDATA).
+     */
+    ZALO_PC_DATA_DIR: z.string().min(1).optional(),
+    LOCALAPPDATA: z.string().min(1).optional(),
 
     // Cổng gửi - MẶC ĐỊNH (dashboard sửa được, phần sửa lưu trong DB và đè lên đây).
     // Tin lẻ: chỉ cách nhau tối thiểu vài giây. Lô (gửi nhiều người): nhịp ngẫu nhiên,

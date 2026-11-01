@@ -10,6 +10,9 @@ import { createSilentLogger } from "../shared/logger.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { ZaloSessionManager, type SessionIdentity, type SessionIo } from "./zalo-session-manager.js";
 
+/** Khối lưu trữ giả: listener không hẹn nối lại */
+const NO_RETRY = { listenerRetry: () => ({ retryAt: null, closeCode: null, closeReason: null }), reconnectListenerNow: () => false };
+
 /** Promise mở tay để điều khiển đúng lúc nào "đăng nhập xong" */
 function deferred<T>() {
   let resolve!: (v: T) => void;
@@ -44,7 +47,7 @@ function setup(withCredentials = true) {
     persistSessionCredentials: () => fs.writeFileSync(paths.credentialsFile, "cookie"),
     startArchiveDaemon: () => {
       archivesStarted++;
-      return { stop: () => void archivesStopped++, isListenerConnected: () => true };
+      return { stop: () => void archivesStopped++, isListenerConnected: () => true, ...NO_RETRY };
     },
   };
   const m = new ZaloSessionManager({

@@ -9,6 +9,7 @@ import { recordConnectionEvent } from "../storage/connection-event-store.js";
 import { getMeta, setMeta } from "../storage/thread-directory-store.js";
 import { loginWithStoredCredentials, persistSessionCredentials, startQrLoginForWeb } from "../zalo/zalo-session-login.js";
 import { startArchiveDaemon, type ArchiveHandle } from "./start-archive-daemon.js";
+import type { ListenerRetryInfo } from "../zalo/listener-reconnect-timer.js";
 
 /** Các hàm chạm Zalo thật - tiêm vào được để test vòng đời phiên mà không cần mạng */
 export type SessionIo = {
@@ -29,6 +30,9 @@ export type NickSessionStatus = {
   selfUid: string | null;
   displayName: string | null;
   listenerConnected: boolean;
+  listenerRetryAt: string | null;
+  listenerCloseCode: number | null;
+  listenerCloseReason: string | null;
   lastError: string | null;
   lastHeartbeatAt: string | null;
 };
@@ -78,6 +82,7 @@ export class ZaloSessionManager {
       selfUid: getMeta(this.d.db, "self_uid"),
       displayName: this.displayName ?? getMeta(this.d.db, "self_display_name"),
       listenerConnected: this.archive?.isListenerConnected() ?? false,
+      ...retryFields(this.archive?.listenerRetry() ?? null),
       lastError: this.lastError,
       lastHeartbeatAt: getMeta(this.d.db, "listener_heartbeat_at"),
     };
@@ -121,6 +126,11 @@ export class ZaloSessionManager {
   }
 
   /** Dừng listener + các khối, giữ cookie để chạy lại sau. Hủy luôn lần đăng nhập đang dở. */
+  /** Nối listener lại ngay (đang chờ tự nối lại sau khi Zalo đóng kết nối). false nếu không có gì để nối. */
+  reconnectNow(): boolean {
+    return this.archive?.reconnectListenerNow() ?? false;
+  }
+
   stop(): void {
     this.gen++;
     this.archive?.stop();
@@ -183,4 +193,9 @@ export class ZaloSessionManager {
     this.state = state;
     setMeta(this.d.db, "daemon_session_state", state);
   }
+}
+
+/** Lần nối lại đang hẹn của listener, đặt tên như trong trạng thái phiên */
+function retryFields(r: ListenerRetryInfo | null): Pick<NickSessionStatus, "listenerRetryAt" | "listenerCloseCode" | "listenerCloseReason"> {
+  return { listenerRetryAt: r?.retryAt ?? null, listenerCloseCode: r?.closeCode ?? null, listenerCloseReason: r?.closeReason ?? null };
 }

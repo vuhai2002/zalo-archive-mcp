@@ -35,6 +35,11 @@ export type MissedMessageRequester = {
   onPage: (queue: ReplayQueue, page: unknown) => void;
   /** Tin / cảm xúc nhận trực tiếp: đẩy mốc của hàng chờ đó lên nếu hàng chờ đã lấy bù xong */
   onLiveEvent: (queue: ReplayQueue, msgId: unknown) => void;
+  /**
+   * Kết nối vừa đóng: bỏ các lượt xin đang dở (trang không về là vì mất kết nối, KHÔNG phải Zalo chê mốc -
+   * giữ nguyên mốc). Lượt chưa xong thì lần kết nối sau xin lại ngay, không chờ `minIntervalMs`.
+   */
+  onDisconnected: () => void;
   stop: () => void;
 };
 
@@ -76,6 +81,13 @@ export function createMissedMessageRequester(
     }, ms);
     timers.add(t);
     return t;
+  };
+
+  const clearAll = () => {
+    for (const t of timers) clearTimeout(t);
+    timers.clear();
+    for (const q of QUEUES) delete run[q];
+    caughtUp.clear();
   };
 
   const persist = () => {
@@ -185,11 +197,12 @@ export function createMissedMessageRequester(
       if (typeof msgId === "string" || typeof msgId === "number") advance(queue, String(msgId));
     },
 
-    stop: () => {
-      for (const t of timers) clearTimeout(t);
-      timers.clear();
-      for (const q of QUEUES) delete run[q];
-      caughtUp.clear();
+    onDisconnected: () => {
+      const unfinished = timers.size > 0 || QUEUES.some((q) => run[q]);
+      clearAll();
+      if (unfinished) lastRequestAt = Number.NEGATIVE_INFINITY;
     },
+
+    stop: () => clearAll(),
   };
 }

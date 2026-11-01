@@ -9,7 +9,7 @@ import { createDashboardApp } from "./create-dashboard-app.js";
 export function startDashboardServer(ctx: DashboardAppContext, log: Logger): () => void {
   const { DASHBOARD_HOST: host, DASHBOARD_PORT: port } = ctx.env;
   const allowedHosts = [`${host}:${port}`, `127.0.0.1:${port}`, `localhost:${port}`];
-  const app = createDashboardApp(ctx, { webDistDir: path.join(PROJECT_ROOT, "web", "dist"), allowedHosts });
+  const app = createDashboardApp(ctx, { webDistDir: path.join(PROJECT_ROOT, "web", "dist"), allowedHosts, log });
   const server = serve({ fetch: app.fetch, hostname: host, port }, () => {
     log.info(`Dashboard: http://${host === "0.0.0.0" ? "127.0.0.1" : host}:${port}`);
   });

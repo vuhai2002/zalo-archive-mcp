@@ -8,6 +8,7 @@ import { useConfirmDialog } from "../../shared/confirm-dialog";
 import { IconSignal } from "../../shared/dashboard-icons";
 import { BTN_PRIMARY, ErrorNote, SectionCard } from "../../shared/ui-bits";
 import { MobileHistorySyncCard } from "./mobile-history-sync-card";
+import { ZaloPcMediaImportCard } from "./zalo-pc-media-import-card";
 import { nickLabel, ZaloNickListCard } from "./zalo-nick-list-card";
 import { ZaloQrLoginPanel } from "./zalo-qr-login-panel";
 import { ZaloSessionStatusCard, type SessionAction } from "./zalo-session-status-card";
@@ -140,6 +141,7 @@ export function ZaloAccountPage() {
       )}
 
       {session.account && <MobileHistorySyncCard confirm={confirm} />}
+      {session.account && <ZaloPcMediaImportCard confirm={confirm} />}
 
       {confirmDialog}
     </div>

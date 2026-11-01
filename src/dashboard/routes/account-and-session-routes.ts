@@ -40,6 +40,7 @@ export function accountAndSessionRoutes(ctx: DashboardAppContext): Hono {
   app.post("/session/login-qr", (c) => act(c, () => accounts.startQrLogin()));
   app.post("/session/start", (c) => act(c, () => accounts.startActive()));
   app.post("/session/stop", (c) => act(c, () => accounts.stopActive()));
+  app.post("/session/reconnect", (c) => act(c, () => void accounts.reconnectActive()));
   app.post("/session/logout", (c) => act(c, () => accounts.logoutActive()));
   return app;
 }

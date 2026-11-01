@@ -323,4 +323,9 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   UPDATE attachments SET renewed_at = NULL
   WHERE kind = 'file' AND status = 'failed' AND renewed_at IS NOT NULL AND last_error LIKE '%Tham số không hợp lệ%';
   `,
+  // 19: file lấy lại từ bản Zalo PC đã tải về máy (Zalo đã xóa khỏi máy chủ): ghi nguồn để biết file nào không
+  // phải tải từ máy chủ Zalo. NULL = tải bình thường
+  `
+  ALTER TABLE attachments ADD COLUMN recovered_from TEXT;
+  `,
 ];

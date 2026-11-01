@@ -14,6 +14,9 @@ import { ZaloAccountManager } from "./zalo-account-manager.js";
 import { LoginCooldownError } from "./zalo-login-cooldown.js";
 import type { SessionIo } from "./zalo-session-manager.js";
 
+/** Khối lưu trữ giả: listener không hẹn nối lại */
+const NO_RETRY = { listenerRetry: () => ({ retryAt: null, closeCode: null, closeReason: null }), reconnectListenerNow: () => false };
+
 function deferred<T>() {
   let resolve!: (v: T) => void;
   let reject!: (e: unknown) => void;
@@ -61,7 +64,7 @@ function setup(opts: { registry?: AccountRegistry } = {}) {
     startArchiveDaemon: (d) => {
       const id = path.basename(d.paths.root);
       running.add(id);
-      return { stop: () => void running.delete(id), isListenerConnected: () => true };
+      return { stop: () => void running.delete(id), isListenerConnected: () => true, ...NO_RETRY };
     },
   };
   const m = new ZaloAccountManager({

@@ -157,6 +157,29 @@ describe("archive listener", () => {
     }
   });
 
+  it("Zalo đóng kết nối: báo giờ tự nối lại + mã đóng; bấm 'Nối lại ngay' thì nối luôn; nối được thì hết hẹn", () => {
+    mock.timers.enable({ apis: ["setTimeout", "Date"], now: Date.parse("2026-03-01T02:00:24.000Z") });
+    try {
+      const { listener, handle } = setup(5);
+      listener.emit("connected");
+      listener.emit("closed", 3000, "NOT_AUTHENTICATED");
+      const info = handle.retryInfo();
+      assert.deepEqual([info.closeCode, info.closeReason], [3000, "NOT_AUTHENTICATED"]);
+      // Bộ test đặt chờ phiên trùng 60 giây (cộng jitter tối đa 3 giây)
+      const wait = Date.parse(String(info.retryAt)) - Date.parse("2026-03-01T02:00:24.000Z");
+      assert.ok(wait >= 60_000 && wait <= 63_000, `hẹn nối lại sau ${wait} ms`);
+      assert.equal(listener.starts, 1);
+      assert.equal(handle.reconnectNow(), true);
+      assert.equal(listener.starts, 2, "nối lại ngay, không chờ giờ hẹn");
+      assert.equal(handle.retryInfo().retryAt, null);
+      assert.equal(handle.reconnectNow(), false, "không có lần nối lại nào đang hẹn");
+      listener.emit("connected");
+      assert.equal(handle.retryInfo().retryAt, null);
+    } finally {
+      mock.timers.reset();
+    }
+  });
+
   it("mất mạng kéo dài (lỗi DNS, chưa mở được kết nối): thử lại mãi, không tự tắt daemon", () => {
     mock.timers.enable({ apis: ["setTimeout", "Date"] });
     try {

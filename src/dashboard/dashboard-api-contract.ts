@@ -263,3 +263,17 @@ export type SettingsResponse = {
   settings: SendSettings;
   killSwitch: { killed: boolean; reason: string | null; changedAt: string };
 };
+
+/** Lấy lại media Zalo đã xóa từ bản Zalo PC đã tải về máy (chỉ đọc thư mục Zalo PC) */
+export type ZaloPcImportProgress = { total: number; processed: number; recovered: number; notFound: number; rejected: number; failed: number };
+export type ZaloPcMediaImportStatus = {
+  /** Thư mục ZaloDownloads của nick (null khi không xác định được) */
+  downloadsDir: string | null;
+  /** Có thư mục đó trên máy */
+  available: boolean;
+  running: boolean;
+  startedAt: string | null;
+  finishedAt: string | null;
+  progress: ZaloPcImportProgress | null;
+  error: string | null;
+};

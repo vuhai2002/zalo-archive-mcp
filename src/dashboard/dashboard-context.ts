@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import type { Logger } from "pino";
 import type { AccountPaths } from "../config/account-paths.js";
 import type { AppEnv } from "../config/env-schema.js";
 import type { DashboardAuth } from "./dashboard-auth.js";
@@ -13,6 +14,8 @@ export type AccountControl = {
   startQrLogin: () => void;
   startActive: () => Promise<void>;
   stopActive: () => void;
+  /** Nối listener lại ngay (đang chờ tự nối lại); false nếu không có gì để nối */
+  reconnectActive: () => boolean;
   logoutActive: () => void;
   switchTo: (id: string) => Promise<void>;
   /** Nick ở chế độ Chỉ đọc; nick lạ coi như chỉ đọc */
@@ -46,4 +49,6 @@ export type DashboardContext = {
   paths: AccountPaths;
   /** Đọc lại mỗi lần hỏi: bật / tắt Chỉ đọc trên dashboard là ăn ngay */
   readOnly: () => boolean;
+  /** Log của dashboard (việc chạy nền như lấy media từ Zalo PC ghi vào đây) */
+  log?: Logger;
 };

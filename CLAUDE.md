@@ -45,8 +45,14 @@ nằm trong mục "Câu hỏi còn mở" hoặc có bằng chứng mới.
   thao tác Zalo bóp mạnh nhất (xem report).
 - **Mọi thử nghiệm rủi ro chạy trên NICK PHỤ trước** (pha 0), rồi mới lên nick chính.
 - **1 listener/account.** Không chạy app này và zalo-agent trên CÙNG một tài khoản.
-- **Không đọc / giải mã DB Zalo PC** (SQLCipher + XOR). Backfill lịch sử cũ nếu làm thì qua
-  cổng debug của Zalo PC (kiểu ZaloBackup), một lần, có hỏi người dùng trước.
+- **Dữ liệu Zalo PC trên máy: được ĐỌC và lấy về kho, tuyệt đối KHÔNG sửa** (người dùng chốt
+  2026-11-01). Không ghi, đổi tên, xóa, di chuyển, khóa file nào trong thư mục của Zalo PC
+  (`%LOCALAPPDATA%\ZaloPC\<UID>\ZaloDownloads`, `%APPDATA%\ZaloData`); chỉ mở để đọc rồi chép
+  sang kho. Media Zalo PC đã tải (ảnh, video, file thường) là file thường, ghép với tin theo tên
+  file - đây là đường lấy lại media mà Zalo đã xóa khỏi máy chủ.
+- **Không giải mã** DB Zalo PC (SQLCipher + XOR) và không gỡ lớp "nhiễu" của file trong
+  `fileNoise` - vượt lớp bảo vệ của ứng dụng, chỉ làm khi người dùng bảo rõ. Backfill lịch sử tin
+  nếu làm thì qua cổng debug của Zalo PC (kiểu ZaloBackup), một lần, có hỏi người dùng trước.
 - Không commit `data/`, `.env`, cookie/credential, file media, DB.
 
 ## Quy ước

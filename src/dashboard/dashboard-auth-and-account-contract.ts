@@ -79,6 +79,11 @@ export type SessionStatus = {
   selfUid: string | null;
   displayName: string | null;
   listenerConnected: boolean;
+  /** Listener đang chờ tự nối lại: giờ hẹn (ISO); null khi đang kết nối / không hẹn */
+  listenerRetryAt: string | null;
+  /** Mã + lý do Zalo đóng kết nối lần gần nhất (vd 3000 "NOT_AUTHENTICATED") */
+  listenerCloseCode: number | null;
+  listenerCloseReason: string | null;
   /** PNG base64 KHÔNG có tiền tố data:, chỉ có khi state = "qr_pending" */
   qrImageBase64: string | null;
   qrStatus: QrStatus | null;

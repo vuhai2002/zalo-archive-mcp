@@ -10,6 +10,7 @@ import { describeListenerError, isNetworkErrorCode } from "./listener-error-deta
 import type { ReplayQueue } from "../storage/offline-replay-cursor-store.js";
 import { attachControlsQueueListener } from "./offline-group-event-replay.js";
 import { createMissedMessageRequester } from "./offline-message-replay.js";
+import { ListenerReconnectTimer, type ListenerRetryInfo } from "./listener-reconnect-timer.js";
 import { ReconnectPlanner, type ReconnectPlannerOptions } from "./reconnect-planner.js";
 import { messageToRaw, undoToRaw } from "./zalo-event-to-raw.js";
 
@@ -27,7 +28,14 @@ export type ArchiveListenerOptions = {
   onFriendListChanged?: () => void;
 };
 
-export type ArchiveListenerHandle = { stop: () => void; isConnected: () => boolean };
+export type ArchiveListenerHandle = {
+  stop: () => void;
+  isConnected: () => boolean;
+  /** Lần nối lại đang hẹn + lý do kết nối bị đóng (dashboard hiện) */
+  retryInfo: () => ListenerRetryInfo;
+  /** Nối lại ngay thay vì chờ giờ hẹn; false nếu không có lần nối lại nào đang hẹn */
+  reconnectNow: () => boolean;
+};
 
 /** Mã giả khi `start()` ném (không phải close code thật) */
 const START_THREW_CODE = -1;
@@ -47,7 +55,7 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
   const planner = new ReconnectPlanner(opts.reconnect);
   let stopped = false;
   let connected = false;
-  let timer: ReturnType<typeof setTimeout> | null = null;
+  const retry = new ListenerReconnectTimer();
   let lastErrorRecordedAt = 0;
   // Lỗi gần nhất TRƯỚC lần đóng này, để phân biệt mất mạng với phiên bị từ chối
   let lastErrorCode: string | null = null;
@@ -132,6 +140,7 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
   listener.on("connected", () => {
     connected = true;
     lastErrorCode = null;
+    retry.clear();
     planner.markConnected(Date.now());
     recordConnectionEvent(db, "connected");
     setMeta(db, "listener_heartbeat_at", new Date().toISOString());
@@ -154,7 +163,10 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
     connected = false;
     const networkOutage = isNetworkErrorCode(lastErrorCode);
     lastErrorCode = null;
+    // Lượt lấy bù đang dở không về được vì kết nối đã đóng - không phải Zalo chê mốc
+    missed?.onDisconnected();
     if (stopped) return;
+    retry.noteClosed(code, reason || (networkOutage ? "mất mạng" : null));
     recordConnectionEvent(db, "closed", { code, detail: reason || (networkOutage ? "mất mạng" : null) });
     const decision = planner.markClosed(Date.now(), code, Math.floor(Math.random() * JITTER_MS), networkOutage);
     if (decision.action === "give_up") {
@@ -170,8 +182,7 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
       { code, closeReason: reason, delayMs: decision.delayMs, why: decision.reason, flaps: decision.flaps },
       "Listener bị đóng - sẽ nối lại",
     );
-    timer = setTimeout(() => {
-      timer = null;
+    retry.schedule(decision.delayMs, () => {
       if (stopped) return;
       try {
         listener.start({ retryOnClose: false });
@@ -179,7 +190,7 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
         log.error({ err }, "start() ném khi nối lại");
         onClosed(START_THREW_CODE, err instanceof Error ? err.message : String(err));
       }
-    }, decision.delayMs);
+    });
   };
   listener.on("closed", onClosed);
 
@@ -187,9 +198,15 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
 
   return {
     isConnected: () => connected,
+    retryInfo: () => retry.info(),
+    reconnectNow: () => {
+      if (stopped || connected) return false;
+      log.info("Người dùng bấm nối lại ngay");
+      return retry.fireNow();
+    },
     stop: () => {
       stopped = true;
-      if (timer) clearTimeout(timer);
+      retry.clear();
       missed?.stop();
       detachControlsQueue();
       try {

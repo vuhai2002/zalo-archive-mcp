@@ -155,6 +155,29 @@ describe("xin bù tin + cảm xúc lỡ", () => {
       assert.deepEqual(readReplayCursors(db), { group_events: "8400012772399" });
     }));
 
+  it("kết nối đóng giữa lúc xin (vd Zalo đóng ngay sau khi nối): giữ mốc, nối lại là xin lại ngay từ mốc", () =>
+    withTimers(() => {
+      const db = openArchiveDatabase(":memory:");
+      saveReplayCursors(db, { user_messages: "8400006000112", group_events: "1775300000000" });
+      const { r, sent, advanceClock } = setup(db);
+      r.onConnected();
+      r.onDisconnected();
+      mock.timers.tick(60_000);
+      assert.deepEqual(sent.map((s) => s.cmd), [510], "các hàng chờ chưa bắt đầu thì thôi, không gửi lên kết nối đã đóng");
+      assert.deepEqual(readReplayCursors(db), { user_messages: "8400006000112", group_events: "1775300000000" }, "không bỏ mốc");
+
+      advanceClock(60_000); // nối lại sau 1 phút - vẫn trong minIntervalMs nhưng lượt trước chưa xong
+      r.onConnected();
+      startAll();
+      assert.deepEqual(sent.slice(1).map((s) => [s.cmd, s.lastId]), [
+        [510, "8400006000112"],
+        [511, null],
+        [610, null],
+        [611, null],
+        [603, "1775300000000"],
+      ]);
+    }));
+
   it("xin từ mốc mà Zalo không trả lời: bỏ mốc đó, lần sau xin từ đầu như trước", () =>
     withTimers(() => {
       const db = openArchiveDatabase(":memory:");

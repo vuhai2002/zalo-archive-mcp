@@ -34,3 +34,13 @@ export function accountPaths(dataDir: string, accountId: string): AccountPaths {
     qrImageFile: path.join(root, "qr-login.png"),
   };
 }
+
+/**
+ * Thư mục Zalo PC lưu media đã tải của một nick: `<ZALO_PC_DATA_DIR hoặc %LOCALAPPDATA%\ZaloPC>\<UID>\ZaloDownloads`.
+ * Kho CHỈ ĐỌC thư mục này (CLAUDE.md). null khi không biết thư mục gốc (không phải Windows, chưa đặt biến).
+ */
+export function zaloPcDownloadsDir(env: AppEnv, uid: string): string | null {
+  const root = env.ZALO_PC_DATA_DIR ?? (env.LOCALAPPDATA ? path.join(env.LOCALAPPDATA, "ZaloPC") : null);
+  if (!root || !/^\d+$/.test(uid)) return null;
+  return path.join(root, uid, "ZaloDownloads");
+}

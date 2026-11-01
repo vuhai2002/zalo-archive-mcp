@@ -53,6 +53,17 @@ describe("ReconnectPlanner", () => {
     assert.deepEqual(d, { action: "reconnect", delayMs: 900_005, reason: "duplicate_session", flaps: 0 });
   });
 
+  it("lần 3000 đầu tiên (vừa mở máy) thử lại sau 1 phút; bị lại mới chờ lâu; kết nối đứng lại thì tính lại từ đầu", () => {
+    const p = new ReconnectPlanner({ ...opts, duplicateFirstRetryMs: 60_000 });
+    p.markConnected(0);
+    assert.deepEqual(p.markClosed(100, 3000, 5), { action: "reconnect", delayMs: 60_005, reason: "duplicate_session", flaps: 1 });
+    p.markConnected(60_100);
+    assert.deepEqual(p.markClosed(60_200, 3000, 5), { action: "reconnect", delayMs: 900_005, reason: "duplicate_session", flaps: 2 });
+    p.markConnected(1_000_000);
+    const again = p.markClosed(2_000_000, 3000, 0);
+    assert.deepEqual(again, { action: "reconnect", delayMs: 60_000, reason: "duplicate_session", flaps: 0 }, "đã đứng đủ lâu: lần 3000 kế là lần đầu");
+  });
+
   it("đóng hai lần không có kết nối xen giữa thì lần sau không được tính là đứng", () => {
     const p = new ReconnectPlanner(opts);
     p.markConnected(0);

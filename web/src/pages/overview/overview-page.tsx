@@ -9,7 +9,7 @@ import { IconChat, IconGrid, IconMessage, IconUsers } from "../../shared/dashboa
 import { formatDateTime } from "../../shared/format-archive-time";
 import { formatFileSize } from "../../shared/format-file-size";
 import { SelectMenu } from "../../shared/select-menu";
-import { SESSION_STATE_LABEL } from "../../shared/session-state-labels";
+import { listenerRetryText, SESSION_STATE_LABEL } from "../../shared/session-state-labels";
 import { ErrorNote, formatNumber, LoadingText, SectionCard, StatCard } from "../../shared/ui-bits";
 import { DailyMessageBarChart } from "./daily-message-bar-chart";
 import { OutboxCountsPanel, StorageBreakdownPanel, TopThreadsPanel } from "./overview-breakdown-panels";
@@ -47,7 +47,7 @@ export function OverviewPage() {
       {notListening && session && (
         <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[13px] text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
           <span className="font-semibold">Kho đang không nhận tin mới</span> - phiên Zalo:{" "}
-          {session.state === "running" ? "listener chưa kết nối" : SESSION_STATE_LABEL[session.state]}.{" "}
+          {session.state === "running" ? (listenerRetryText(session, tz) ?? "listener chưa kết nối") : SESSION_STATE_LABEL[session.state]}.{" "}
           <Link to="/zalo" className="font-medium underline underline-offset-2">
             Mở trang Tài khoản Zalo
           </Link>

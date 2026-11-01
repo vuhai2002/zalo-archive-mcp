@@ -91,6 +91,9 @@ export class ZaloAccountManager {
       selfUid: nick?.selfUid ?? null,
       displayName: nick?.displayName ?? null,
       listenerConnected: nick?.listenerConnected ?? false,
+      listenerRetryAt: nick?.listenerRetryAt ?? null,
+      listenerCloseCode: nick?.listenerCloseCode ?? null,
+      listenerCloseReason: nick?.listenerCloseReason ?? null,
       qrImageBase64: qr.imageBase64,
       qrStatus: qr.status,
       lastError: qr.error ?? nick?.lastError ?? null,
@@ -125,6 +128,11 @@ export class ZaloAccountManager {
   stopActive(): void {
     this.qr.cancel();
     this.activeSession()?.stop();
+  }
+
+  /** Nối listener của nick đang chạy lại ngay (đang chờ tự nối lại); false nếu không có gì để nối */
+  reconnectActive(): boolean {
+    return this.activeSession()?.reconnectNow() ?? false;
   }
 
   logoutActive(): void {

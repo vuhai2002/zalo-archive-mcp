@@ -41,6 +41,9 @@ export async function createDashboardHarness(opts: { passwordSet?: boolean; acco
     selfUid: null,
     displayName: null,
     listenerConnected: false,
+    listenerRetryAt: null,
+    listenerCloseCode: null,
+    listenerCloseReason: null,
     qrImageBase64: null,
     qrStatus: null,
     lastError: null,
@@ -61,6 +64,7 @@ export async function createDashboardHarness(opts: { passwordSet?: boolean; acco
       if (state.cooldown) throw new LoginCooldownError(12);
     },
     stopActive: () => {},
+    reconnectActive: () => false,
     logoutActive: () => {},
     mobileSync: () => state.mobileSync,
     switchTo: async (id) => {

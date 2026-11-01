@@ -5,10 +5,10 @@ import type { ConfirmOptions } from "../../shared/confirm-dialog";
 import { ContactAvatar } from "../../shared/contact-avatar";
 import { IconLogout } from "../../shared/dashboard-icons";
 import { formatDateTime } from "../../shared/format-archive-time";
-import { SESSION_STATE_LABEL, sessionTone } from "../../shared/session-state-labels";
+import { listenerRetryText, SESSION_STATE_LABEL, sessionTone } from "../../shared/session-state-labels";
 import { Badge, BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY, InfoTile, SectionCard } from "../../shared/ui-bits";
 
-export type SessionAction = "qr" | "start" | "stop" | "logout";
+export type SessionAction = "qr" | "start" | "stop" | "logout" | "reconnect";
 
 /** Thẻ "Nick đang dùng": ai, đang nghe tin không, và các nút Chạy / Dừng / Đăng xuất / quét lại QR */
 export function ZaloSessionStatusCard({
@@ -30,6 +30,8 @@ export function ZaloSessionStatusCard({
   const canStart = (s.state === "stopped" || needsRelogin) && s.account?.hasCredentials === true;
   const canStop = s.state === "running" || s.state === "logging_in";
   const canLogout = s.account?.hasCredentials === true && s.state !== "qr_pending";
+  // Zalo vừa đóng kết nối, kho đang chờ tự nối lại: nói rõ, không cần đăng nhập lại
+  const waiting = listenerRetryText(s, timeZone);
 
   async function stop() {
     const ok = await confirm({
@@ -69,11 +71,23 @@ export function ZaloSessionStatusCard({
         <InfoTile
           label="Listener"
           value={s.listenerConnected ? "Đang kết nối" : "Không kết nối"}
-          hint={s.listenerConnected ? "Tin mới đang vào kho" : "Tin mới chưa vào kho"}
+          hint={
+            s.listenerConnected
+              ? "Tin mới đang vào kho"
+              : s.listenerRetryAt
+                ? `Tự nối lại lúc ${formatDateTime(s.listenerRetryAt, timeZone)}`
+                : "Tin mới chưa vào kho"
+          }
         />
         <InfoTile label="Nhịp gần nhất" value={formatDateTime(s.lastHeartbeatAt, timeZone)} />
       </div>
 
+      {waiting && (
+        <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[13px] leading-relaxed text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          {waiting}. Không cần đăng nhập lại - thường gặp lúc vừa mở máy (Zalo PC khởi động cùng lúc) hoặc khi có phiên Zalo Web
+          khác. Muốn nhanh thì bấm <b>Nối lại ngay</b>; tin trong lúc mất kết nối được Zalo gửi bù khi nối lại.
+        </div>
+      )}
       {needsRelogin && (
         <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] leading-relaxed text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
           {s.state === "gave_up"
@@ -97,6 +111,11 @@ export function ZaloSessionStatusCard({
         {canStart && (
           <button type="button" className={BTN_SECONDARY} disabled={busy !== null} onClick={() => onRun("start", api.sessionStart)}>
             <IconPlay size={16} /> {busy === "start" ? "Đang chạy..." : "Chạy"}
+          </button>
+        )}
+        {waiting && (
+          <button type="button" className={BTN_PRIMARY} disabled={busy !== null} onClick={() => onRun("reconnect", api.sessionReconnect)}>
+            <IconPlay size={16} /> {busy === "reconnect" ? "Đang nối lại..." : "Nối lại ngay"}
           </button>
         )}
         {canStop && (

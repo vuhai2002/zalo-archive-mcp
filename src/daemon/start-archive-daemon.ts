@@ -13,6 +13,7 @@ import { recordSuspendGap } from "../storage/connection-event-store.js";
 import { HEARTBEAT_STALE_MS } from "../storage/daemon-liveness.js";
 import path from "node:path";
 import { startArchiveListener } from "../zalo/archive-listener.js";
+import type { ListenerRetryInfo } from "../zalo/listener-reconnect-timer.js";
 import { MobileSyncSession } from "../zalo/mobile-sync/mobile-sync-session.js";
 import { startKeepAliveLoop } from "../zalo/keep-alive-loop.js";
 import { startDirectoryLookupLoop } from "./directory-lookup-loop.js";
@@ -33,6 +34,10 @@ export type DaemonDeps = {
 export type ArchiveHandle = {
   stop: () => void;
   isListenerConnected: () => boolean;
+  /** Lần nối lại listener đang hẹn + lý do kết nối bị đóng */
+  listenerRetry: () => ListenerRetryInfo;
+  /** Nối listener lại ngay thay vì chờ giờ hẹn; false nếu không có lần nối lại nào đang hẹn */
+  reconnectListenerNow: () => boolean;
   /** Đồng bộ lịch sử từ điện thoại cho phiên này (chỉ chạy khi người dùng bấm trên dashboard) */
   mobileSync?: MobileSyncSession;
 };
@@ -71,6 +76,7 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
       baseDelayMs: env.RECONNECT_BASE_DELAY_SECONDS * 1000,
       maxDelayMs: env.RECONNECT_MAX_DELAY_SECONDS * 1000,
       duplicateWaitMs: env.RECONNECT_DUPLICATE_WAIT_MINUTES * 60_000,
+      duplicateFirstRetryMs: env.RECONNECT_DUPLICATE_FIRST_RETRY_SECONDS * 1000,
       giveUpAfterFlaps: env.RECONNECT_GIVE_UP_AFTER_FLAPS,
     },
     offlineReplay: env.OFFLINE_REPLAY_ENABLED ? { minIntervalMs: env.OFFLINE_REPLAY_MIN_INTERVAL_MINUTES * 60_000 } : null,
@@ -182,6 +188,8 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
 
   return {
     isListenerConnected: listener.isConnected,
+    listenerRetry: listener.retryInfo,
+    reconnectListenerNow: listener.reconnectNow,
     mobileSync,
     stop: () => {
       for (const stop of stops.reverse()) {

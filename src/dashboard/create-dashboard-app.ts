@@ -13,6 +13,8 @@ import { mediaFileRoute } from "./routes/media-file-route.js";
 import { threadSharedMediaRoute } from "./routes/thread-shared-media-route.js";
 import { archiveLiveEventsRoute } from "./routes/archive-live-events-route.js";
 import { outboxAndSettingsRoutes } from "./routes/outbox-and-settings-routes.js";
+import type { Logger } from "pino";
+import { zaloPcMediaRoutes } from "./routes/zalo-pc-media-routes.js";
 
 const CONTENT_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -36,6 +38,7 @@ function accountScopedApi(ctx: DashboardContext): Hono {
   api.route("/", threadSharedMediaRoute(ctx));
   api.route("/", archiveLiveEventsRoute(ctx));
   api.route("/", attachmentRetryRoute(ctx));
+  api.route("/", zaloPcMediaRoutes(ctx));
   // Route /api lạ phải 404 JSON, không rơi xuống trang SPA bên dưới
   api.all("*", (c) => c.json({ error: "Không có route này" }, 404));
   return api;
@@ -48,7 +51,7 @@ function accountScopedApi(ctx: DashboardContext): Hono {
  * Route theo nick (kho, gửi, cài đặt, media) chạy trên DB của nick ĐANG DÙNG: mỗi
  * nick một bộ route dựng một lần, đổi nick thì yêu cầu kế tiếp đi sang bộ của nick mới.
  */
-export function createDashboardApp(ctx: DashboardAppContext, opts: { webDistDir: string; allowedHosts: string[] }): Hono {
+export function createDashboardApp(ctx: DashboardAppContext, opts: { webDistDir: string; allowedHosts: string[]; log?: Logger }): Hono {
   const app = new Hono();
   app.use("*", hostGuard(opts.allowedHosts));
   app.use("*", async (c, next) => {
@@ -72,7 +75,7 @@ export function createDashboardApp(ctx: DashboardAppContext, opts: { webDistDir:
     let scoped = perAccount.get(active.account.id);
     if (!scoped) {
       const id = active.account.id;
-      scoped = accountScopedApi({ db: active.db, env: ctx.env, paths: active.paths, readOnly: () => ctx.accounts.isReadOnly(id) });
+      scoped = accountScopedApi({ db: active.db, env: ctx.env, paths: active.paths, readOnly: () => ctx.accounts.isReadOnly(id), log: opts.log });
       perAccount.set(active.account.id, scoped);
     }
     return scoped.fetch(c.req.raw);
