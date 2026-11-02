@@ -334,4 +334,11 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   `
   CREATE INDEX attachments_renew_ok ON attachments (kind, renewed_at) WHERE original_url IS NOT NULL;
   `,
+  // 21: gif ở bản chép Tenor của Zalo (media-ten.z-cdn.me) mà Zalo đã xóa (404) bị đóng là hết hạn. Nay hỏng thì
+  // tải bản gốc cùng đường dẫn trên media.tenor.com: xếp tải lại một lần
+  `
+  UPDATE attachments SET status = 'pending', attempts = 0, needs_renew = 0, renewed_at = NULL, last_error = NULL,
+    next_attempt_at = NULL
+  WHERE kind = 'gif' AND status = 'failed' AND remote_url LIKE 'https://media-ten.z-cdn.me/%';
+  `,
 ];

@@ -24,6 +24,8 @@ describe("parseEnv", () => {
       "flchat.vn",
       "dlmd.me",
       "mdchat.me",
+      "media-ten.z-cdn.me",
+      "media.tenor.com",
     ]);
     assert.equal(env.CREDENTIALS_ENCRYPTION_KEY, undefined);
   });

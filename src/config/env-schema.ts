@@ -66,9 +66,11 @@ export const envSchema = z
     MEDIA_MAX_MEGABYTES: int(1024, 1, 4096),
     MEDIA_MAX_ATTEMPTS: int(5, 1, 50),
     MEDIA_DOWNLOAD_TIMEOUT_MINUTES: int(15, 1, 240),
+    // Ảnh gif chọn trong Zalo nằm ở media-ten.z-cdn.me (bản Zalo của Tenor), một số ở media.tenor.com:
+    // chỉ cho đúng hai host này, không mở cả tên miền
     MEDIA_ALLOWED_HOST_SUFFIXES: z
       .string()
-      .default("zdn.vn,zadn.vn,zalo.me,zaloapp.com,zalo.vn,dlfl.vn,flchat.vn,dlmd.me,mdchat.me")
+      .default("zdn.vn,zadn.vn,zalo.me,zaloapp.com,zalo.vn,dlfl.vn,flchat.vn,dlmd.me,mdchat.me,media-ten.z-cdn.me,media.tenor.com")
       .transform((s) =>
         s
           .split(",")

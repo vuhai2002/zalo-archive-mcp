@@ -13,7 +13,8 @@ import { downloadToTempFile, type DownloadOutcome } from "./download-to-file.js"
 import type { MediaLinkRenewer } from "./media-link-renewer.js";
 import { chooseExtension, mediaRelativePath } from "./media-file-naming.js";
 import { placeDownloadedFile, saveJxlPhotoAsPng, type SavedMedia } from "./save-jxl-photo-as-png.js";
-import { convertJxlToPng, looksLikeJxl, zaloJxlVariantUrl } from "./zalo-jxl-photo.js";
+import { convertJxlToPng, looksLikeJxl } from "./zalo-jxl-photo.js";
+import { fallbackSourceUrl } from "./media-fallback-source-url.js";
 
 export type MediaWorkerOptions = {
   db: DatabaseSync;
@@ -107,22 +108,22 @@ export class MediaDownloadWorker {
     }
 
     let result = await this.fetchToTemp(item.remoteUrl);
-    let jxlError: string | null = null;
-    // Bản JPG trên CDN ảnh Zalo hỏng (Zalo giữ gốc ở JXL, khâu đổi ra JPG lỗi): thử bản JXL gốc
-    const jxlUrl = !result.ok && result.status === "failed" && item.kind === "photo" ? zaloJxlVariantUrl(item.remoteUrl) : null;
-    if (jxlUrl) {
-      const viaJxl = await this.fetchToTemp(jxlUrl);
-      if (viaJxl.ok) {
-        result = viaJxl;
-        this.o.log.info({ id: item.id }, "Bản JPG hỏng, đã tải bản JXL gốc của ảnh");
+    let fallbackError: string | null = null;
+    // Link trên CDN Zalo hỏng mà nơi khác còn bản gốc (ảnh: JXL gốc, gif: Tenor gốc): thử bản đó
+    const fallback = !result.ok && result.status === "failed" ? fallbackSourceUrl(item.kind, item.remoteUrl) : null;
+    if (fallback) {
+      const viaFallback = await this.fetchToTemp(fallback.url);
+      if (viaFallback.ok) {
+        result = viaFallback;
+        this.o.log.info({ id: item.id, kind: item.kind }, `Link trên CDN Zalo hỏng, đã tải bản ${fallback.label} gốc`);
       } else {
-        jxlError = viaJxl.error;
+        fallbackError = `bản ${fallback.label}: ${viaFallback.error}`;
       }
     }
 
     if (!result.ok) {
-      // Ghi kèm "JXL" khi đã thử: lần khởi động sau không xếp lại ảnh này lần nữa
-      let error = jxlError ? `${result.error} (bản JXL: ${jxlError})` : result.error;
+      // Ghi kèm bản dự phòng đã thử (vd "JXL"): lần khởi động sau không xếp lại ảnh này lần nữa
+      let error = fallbackError ? `${result.error} (${fallbackError})` : result.error;
       if (result.expired && this.o.renewer?.scheduleAfterExpiry(item, error, now)) return 1_000;
       if (result.expired && item.renewedAt) error = `Link đã xin lại vẫn hỏng: ${error}`;
       this.retryOrFail(item, now, { ...result, error });
