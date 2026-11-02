@@ -130,13 +130,15 @@ export function requeueNowAllowedAttachments(db: DatabaseSync, isAllowed: (url: 
 /**
  * Ảnh trên CDN Zalo hỏng hết lượt TRƯỚC khi kho biết thử bản JXL gốc: đưa về hàng đợi
  * để tải lại (lần này có thử JXL). Ảnh đã thử JXL rồi (lỗi có chữ "JXL") thì không xếp
- * lại nữa - tránh mỗi lần khởi động lại gọi CDN cho ảnh hỏng hẳn. Chạy lúc khởi động.
+ * lại nữa - tránh mỗi lần khởi động lại gọi CDN cho ảnh hỏng hẳn. Ảnh đã qua bước xin lại
+ * link (`renewed_at`: Zalo đã xóa, bị từ chối, xin lại không được) cũng không: CDN treo cả
+ * phút mỗi lần cho ảnh đã xóa, kho tải từng file một nên cả hàng đợi đứng theo. Chạy lúc khởi động.
  */
 export function requeueJxlRecoverablePhotos(db: DatabaseSync): number {
   const r = db
     .prepare(
       `UPDATE attachments SET status = 'pending', attempts = 0, last_error = NULL, next_attempt_at = NULL
-       WHERE status = 'failed' AND kind = 'photo' AND remote_url LIKE '%zdn.vn/jpg/%'
+       WHERE status = 'failed' AND kind = 'photo' AND remote_url LIKE '%zdn.vn/jpg/%' AND renewed_at IS NULL
          AND (last_error IS NULL OR last_error NOT LIKE '%JXL%')`,
     )
     .run();

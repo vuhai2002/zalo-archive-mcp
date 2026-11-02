@@ -91,9 +91,10 @@ export class MediaDownloadWorker {
   }
 
   private async download(item: PendingAttachment, now: Date): Promise<number> {
-    // Tin cũ (vd đồng bộ toàn bộ lịch sử) mà Zalo đã xóa file: đóng luôn, không gọi máy chủ - lấy lại từ Zalo PC
+    // Tin cũ (vd đồng bộ toàn bộ lịch sử) mà Zalo đã xóa file: đóng luôn, không gọi máy chủ - lấy lại từ Zalo PC.
+    // Kể cả file đã qua bước xin lại link mà bị đưa lại hàng đợi; file Zalo đã cấp link mới thì hàm dưới tự bỏ qua
     const oldDays = this.o.assumeDeletedAfterDays ?? 0;
-    if (oldDays > 0 && !item.needsRenew && !item.renewedAt && isOldFileDeletedByZalo(this.o.db, item.id, now, oldDays)) {
+    if (oldDays > 0 && !item.needsRenew && isOldFileDeletedByZalo(this.o.db, item.id, now, oldDays)) {
       markAttachmentDeletedByZalo(this.o.db, item.id, now);
       this.o.log.debug({ id: item.id, kind: item.kind }, "File tin cũ Zalo đã xóa - không tải");
       return 0;

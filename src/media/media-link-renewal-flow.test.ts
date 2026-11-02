@@ -20,7 +20,11 @@ const T0 = new Date("2026-10-29T08:00:00.000Z");
 const pdf = () => new Response("%PDF-1.4", { headers: { "content-type": "application/pdf" } });
 
 /** Kho có một tin file; CDN trả theo bảng `routes`; renewlink giả trả `renewReply` */
-function setup(routes: Record<string, () => Response>, renewReply: unknown = { fileUrl: NEW }, opts: { replies?: RenewLinkReplyWaiter; afterCall?: () => void } = {}) {
+function setup(
+  routes: Record<string, () => Response>,
+  renewReply: unknown = { fileUrl: NEW },
+  opts: { replies?: RenewLinkReplyWaiter; afterCall?: () => void; dailyCap?: number } = {},
+) {
   const db = openArchiveDatabase(":memory:");
   const raw = JSON.stringify({ msgType: "share.file", content: { href: OLD, title: "báo cáo.pdf" } });
   upsertMessage(
@@ -39,7 +43,7 @@ function setup(routes: Record<string, () => Response>, renewReply: unknown = { f
     db,
     call: async (input) => (calls.push(input), opts.afterCall?.(), renewReply),
     replies: opts.replies,
-    pacing: { minGapSeconds: 4, maxGapSeconds: 10, dailyCap: 200, timeZone: "Asia/Ho_Chi_Minh" },
+    pacing: { minGapSeconds: 4, maxGapSeconds: 10, dailyCap: opts.dailyCap ?? 200, timeZone: "Asia/Ho_Chi_Minh" },
     log: createSilentLogger(),
     random: () => 0,
   });
@@ -165,5 +169,38 @@ describe("xin lại link: loại không hỗ trợ và hẹn trả sau", () => {
     await g.worker.tick();
     assert.equal(g.calls.length, 0);
     assert.match(String(g.row().last_error), /không cấp lại link cho loại file này/);
+  });
+
+  it("tin thoại hết hạn: đóng ngay lúc hỏng, không chờ lượt, không tính vào trần ngày", async () => {
+    const t = setup({}, { fileUrl: NEW }, { dailyCap: 1 });
+    t.db.prepare("UPDATE attachments SET kind = 'voice'").run();
+    await t.worker.tick();
+    assert.deepEqual([t.row().status, t.row().needs_renew, t.row().next_attempt_at], ["failed", 0, null]);
+    assert.match(String(t.row().last_error), /không cấp lại link cho loại file này/);
+    assert.equal(t.calls.length, 0);
+
+    // Một file thật đang chờ lượt: trần 1 lượt/ngày vẫn còn nguyên cho nó (tin thoại vừa đóng không phải lệnh gọi Zalo)
+    const pdfUrl = "https://f1.dlfl.vn/old/hop-dong.pdf";
+    upsertMessage(
+      t.db,
+      sampleMessage({ msgId: "2000", cliMsgId: "1700000000999", msgType: "share.file", attachments: [{ kind: "file", remoteUrl: pdfUrl, fileName: "hop-dong.pdf", declaredSize: null }] }),
+      { source: "mobile_sync", receivedAt: T0.toISOString() },
+    );
+    t.db.prepare("UPDATE attachments SET status = 'pending', needs_renew = 1, next_attempt_at = '2026-10-31T00:00:00.000Z' WHERE remote_url = ?").run(pdfUrl);
+    t.renewer.requeueExpired(T0);
+    assert.equal((t.db.prepare("SELECT next_attempt_at FROM attachments WHERE remote_url = ?").get(pdfUrl) as { next_attempt_at: string }).next_attempt_at, T0.toISOString());
+  });
+
+  it("khởi động lại: tin thoại đang chờ lượt thì đóng luôn; tin thoại hỏng 404 từ trước không được xếp lượt", () => {
+    const queued = setup({});
+    queued.db.prepare("UPDATE attachments SET kind = 'voice', status = 'pending', needs_renew = 1, next_attempt_at = '2026-11-03T17:00:00.000Z'").run();
+    queued.renewer.requeueExpired(T0);
+    assert.deepEqual([queued.row().status, queued.row().needs_renew, queued.row().next_attempt_at], ["failed", 0, null]);
+    assert.match(String(queued.row().last_error), /không cấp lại link cho loại file này/);
+
+    const old = setup({});
+    old.db.prepare("UPDATE attachments SET kind = 'voice', status = 'failed', last_error = 'HTTP 404'").run();
+    assert.equal(old.renewer.requeueExpired(T0), 0);
+    assert.equal(old.row().status, "failed");
   });
 });

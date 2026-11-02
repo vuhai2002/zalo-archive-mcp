@@ -5,6 +5,9 @@ import type { DatabaseSync } from "node:sqlite";
  * Mỗi file chỉ được xin tự động một lần: `renewed_at` khác NULL là đã xin rồi.
  */
 
+/** Đóng file mà Zalo không cấp lại link cho loại của nó - kho không gọi Zalo cho file này */
+export const UNRENEWABLE_KIND_ERROR = "Link hết hạn, Zalo không cấp lại link cho loại file này";
+
 /** Đưa file vào hàng đợi với cờ xin lại link, tới mốc `slotIso` mới được giành */
 export function scheduleAttachmentRenewal(db: DatabaseSync, id: number, opts: { slotIso: string; error: string }): void {
   db.prepare(
@@ -64,15 +67,19 @@ export const EXPIRED_LINK_ERROR = /^HTTP (403|404|410)\b|Link hết hạn/;
 /**
  * File hỏng hẳn vì link hết hạn TRƯỚC khi kho biết xin lại link: xếp vào hàng xin lại, mỗi
  * file một lượt do `allocate` cấp (đã giãn nhịp + trần ngày). `skip` trả true cho file không cần
- * xếp (vd Zalo đã xóa - nơi gọi tự đóng file đó). Chạy lúc khởi động.
+ * xếp (vd Zalo đã xóa - nơi gọi tự đóng file đó; loại Zalo không cấp lại link). Chạy lúc khởi động.
  */
-export function requeueExpiredForRenewal(db: DatabaseSync, allocate: () => string, skip: (id: number) => boolean = () => false): number {
+export function requeueExpiredForRenewal(
+  db: DatabaseSync,
+  allocate: () => string,
+  skip: (id: number, kind: string) => boolean = () => false,
+): number {
   const rows = db
-    .prepare("SELECT id, last_error FROM attachments WHERE status = 'failed' AND renewed_at IS NULL ORDER BY id")
-    .all() as Array<{ id: number; last_error: string | null }>;
+    .prepare("SELECT id, kind, last_error FROM attachments WHERE status = 'failed' AND renewed_at IS NULL ORDER BY id")
+    .all() as Array<{ id: number; kind: string; last_error: string | null }>;
   let n = 0;
   for (const r of rows) {
-    if (!r.last_error || !EXPIRED_LINK_ERROR.test(r.last_error) || skip(r.id)) continue;
+    if (!r.last_error || !EXPIRED_LINK_ERROR.test(r.last_error) || skip(r.id, r.kind)) continue;
     scheduleAttachmentRenewal(db, r.id, { slotIso: allocate(), error: r.last_error });
     n++;
   }
@@ -110,10 +117,27 @@ export function rescheduleRenewal(db: DatabaseSync, id: number, slotIso: string)
   db.prepare("UPDATE attachments SET next_attempt_at = ? WHERE id = ?").run(slotIso, id);
 }
 
-/** Số lệnh xin lại link đã gửi Zalo từ `sinceIso` (thành công hay không; trừ file đóng vì `skipError` mà không gọi) */
-export function renewCallsSince(db: DatabaseSync, sinceIso: string, skipError: string): number {
+/**
+ * File đang chờ lượt xin lại link mà loại của nó không nằm trong `renewableKinds` (tin thoại, gif...):
+ * đóng luôn, trả lại lượt. Trả số file vừa đóng.
+ */
+export function closeQueuedUnrenewable(db: DatabaseSync, renewableKinds: readonly string[], nowIso: string): number {
   const r = db
-    .prepare("SELECT COUNT(*) AS n FROM attachments WHERE renewed_at >= ? AND (last_error IS NULL OR last_error != ?)")
-    .get(sinceIso, skipError) as { n: number };
+    .prepare(
+      `UPDATE attachments SET status = 'failed', needs_renew = 0, renewed_at = ?, last_error = ?, next_attempt_at = NULL
+       WHERE status = 'pending' AND needs_renew = 1 AND kind NOT IN (${renewableKinds.map(() => "?").join(", ")})`,
+    )
+    .run(nowIso, UNRENEWABLE_KIND_ERROR, ...renewableKinds);
+  return Number(r.changes);
+}
+
+/** Số lệnh xin lại link đã gửi Zalo từ `sinceIso` (thành công hay không; trừ file đóng vì `skipErrors` mà không gọi) */
+export function renewCallsSince(db: DatabaseSync, sinceIso: string, skipErrors: readonly string[]): number {
+  const r = db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM attachments
+       WHERE renewed_at >= ? AND (last_error IS NULL OR last_error NOT IN (${skipErrors.map(() => "?").join(", ")}))`,
+    )
+    .get(sinceIso, ...skipErrors) as { n: number };
   return r.n;
 }

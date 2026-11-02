@@ -153,6 +153,39 @@ describe("bỏ qua file Zalo đã xóa khi xin lại link", () => {
     assert.equal(status(recent)?.status, "failed");
   });
 
+  it("file cũ đã đóng rồi bị đưa lại hàng đợi vẫn đóng ngay, không tải; file Zalo đã cấp link mới thì vẫn tải", async () => {
+    const db = openArchiveDatabase(":memory:");
+    withRefusedPhotos(db);
+    // Bị đưa về hàng đợi sau khi đã đóng: dấu "đã xin lại link" (renewed_at) vẫn còn
+    const requeued = addMedia(db, "requeued", "2024-05-01T03:00:00.000Z");
+    markAttachmentDeletedByZalo(db, requeued, NOW);
+    db.prepare("UPDATE attachments SET status = 'pending', attempts = 0, last_error = NULL WHERE id = ?").run(requeued);
+    // Zalo từng cấp link mới (10 ngày trước), lần tải bằng link đó chưa xong
+    const renewed = addMedia(db, "renewed", "2024-05-02T03:00:00.000Z");
+    db.prepare("UPDATE attachments SET original_url = remote_url, remote_url = 'https://photo-stal.zdn.vn/renewed-new.jpg', renewed_at = ? WHERE id = ?").run(
+      new Date(NOW.getTime() - 10 * 86_400_000).toISOString(),
+      renewed,
+    );
+    const fetched: string[] = [];
+    const w = new MediaDownloadWorker({
+      db,
+      mediaDir: fs.mkdtempSync(path.join(os.tmpdir(), "zam-requeued-")),
+      log: createSilentLogger(),
+      allowedHostSuffixes: ["zdn.vn"],
+      maxBytes: 1024,
+      maxAttempts: 1,
+      downloadTimeoutMs: 60_000,
+      fetchImpl: (async (url: string) => (fetched.push(String(url)), new Response("", { status: 404 }))) as unknown as typeof fetch,
+      now: () => NOW,
+      assumeDeletedAfterDays: 40,
+    });
+    await w.tick();
+    await w.tick();
+    const row = db.prepare("SELECT status, last_error FROM attachments WHERE id = ?").get(requeued);
+    assert.deepEqual([row?.status, row?.last_error], ["failed", DELETED_BY_ZALO_ERROR]);
+    assert.deepEqual(fetched.map((u) => u.split("/").at(-1)), ["renewed-new.jpg"]);
+  });
+
   it("dashboard biết file Zalo đã xóa (đóng luôn hoặc bị từ chối 1001) để hiện 'Ảnh đã hết hạn', file hỏng khác thì không", () => {
     const db = openArchiveDatabase(":memory:");
     withRefusedPhotos(db);

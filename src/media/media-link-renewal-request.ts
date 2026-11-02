@@ -15,6 +15,9 @@ export function renewableMediaType(kind: string): number | null {
   return RENEW_MEDIA_TYPE[kind] ?? null;
 }
 
+/** Các loại file Zalo cấp lại link (còn lại - tin thoại, gif... - Zalo không cấp) */
+export const RENEWABLE_KINDS: readonly string[] = Object.keys(RENEW_MEDIA_TYPE);
+
 const httpUrl = (v: unknown): string | undefined =>
   typeof v === "string" && /^https?:\/\//i.test(v.trim()) ? v.trim() : undefined;
 

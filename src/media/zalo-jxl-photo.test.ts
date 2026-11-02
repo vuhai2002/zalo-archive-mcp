@@ -8,6 +8,7 @@ import { sampleMessage } from "../storage/archive-store-test-helpers.js";
 import { getAttachment, requeueJxlRecoverablePhotos } from "../storage/attachment-queue-store.js";
 import { upsertMessage } from "../storage/message-write-store.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
+import { DELETED_BY_ZALO_ERROR } from "../storage/zalo-deleted-media-store.js";
 import { MediaDownloadWorker } from "./media-download-worker.js";
 import { convertJxlToPng, looksLikeJxl, zaloJxlVariantUrl } from "./zalo-jxl-photo.js";
 
@@ -95,5 +96,9 @@ describe("ảnh JPEG XL của Zalo", () => {
     s.db.prepare("UPDATE attachments SET last_error = 'HTTP 500' WHERE id = 1").run();
     assert.equal(requeueJxlRecoverablePhotos(s.db), 1);
     assert.equal(s.att().status, "pending");
+
+    // Ảnh đã qua bước xin lại link (Zalo đã xóa, bị từ chối, xin lại không được) thì không xếp lại
+    s.db.prepare("UPDATE attachments SET status = 'failed', last_error = ?, renewed_at = '2026-11-02T05:00:00.000Z' WHERE id = 1").run(DELETED_BY_ZALO_ERROR);
+    assert.equal(requeueJxlRecoverablePhotos(s.db), 0);
   });
 });

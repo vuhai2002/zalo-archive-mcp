@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { Logger } from "pino";
 import { randomGapMs } from "../outbox/send-policy.js";
 import {
+  closeQueuedUnrenewable,
   getAttachmentRenewContext,
   markAttachmentRenewFailed,
   recordAttachmentRenewed,
@@ -10,6 +11,7 @@ import {
   requeueExpiredForRenewal,
   rescheduleRenewal,
   scheduleAttachmentRenewal,
+  UNRENEWABLE_KIND_ERROR,
 } from "../storage/attachment-renewal-store.js";
 import type { PendingAttachment } from "../storage/attachment-queue-store.js";
 import {
@@ -20,7 +22,7 @@ import {
 } from "../storage/zalo-deleted-media-store.js";
 import type { RenewLinkReplyWaiter } from "../zalo/renew-link-control-listener.js";
 import type { RenewMediaLinkInput } from "../zalo/zca-renew-media-link-api.js";
-import { pickRenewedUrl, readRenewReply, renewableMediaType, renewMsgInfoFromRawJson } from "./media-link-renewal-request.js";
+import { pickRenewedUrl, readRenewReply, RENEWABLE_KINDS, renewableMediaType, renewMsgInfoFromRawJson } from "./media-link-renewal-request.js";
 import { allocateRenewSlot, restartRenewSchedule, type RenewPacing } from "./media-link-renew-schedule.js";
 
 export type MediaLinkRenewerOptions = {
@@ -67,6 +69,11 @@ export class MediaLinkRenewer {
   /** Link vừa hỏng vì hết hạn: xếp hàng xin lại nếu file chưa từng được xin. Trả false nếu đã xin rồi. */
   scheduleAfterExpiry(item: PendingAttachment, error: string, now: Date): boolean {
     if (item.renewedAt) return false;
+    // Tin thoại, gif...: Zalo không cấp lại link cho các loại này - đóng luôn, không chiếm lượt của ngày
+    if (renewableMediaType(item.kind) === null) {
+      markAttachmentRenewFailed(this.o.db, item.id, UNRENEWABLE_KIND_ERROR, now.toISOString());
+      return true;
+    }
     if (this.closeIfDeletedByZalo(item.id, now)) return true;
     const slot = allocateRenewSlot(this.o.db, this.o.pacing, now, this.o.random);
     scheduleAttachmentRenewal(this.o.db, item.id, { slotIso: slot.toISOString(), error });
@@ -82,14 +89,17 @@ export class MediaLinkRenewer {
   requeueExpired(now: Date): number {
     const { db, pacing, random, log } = this.o;
     const closed = closeQueuedRenewalsDeletedByZalo(db, now);
-    restartRenewSchedule(db, pacing, now, (since) => renewCallsSince(db, since, DELETED_BY_ZALO_ERROR));
+    const unrenewable = closeQueuedUnrenewable(db, RENEWABLE_KINDS, now.toISOString());
+    restartRenewSchedule(db, pacing, now, (since) => renewCallsSince(db, since, [DELETED_BY_ZALO_ERROR, UNRENEWABLE_KIND_ERROR]));
     const queued = queuedRenewalsNewestFirst(db);
     for (const id of queued) rescheduleRenewal(db, id, allocateRenewSlot(db, pacing, now, random).toISOString());
-    if (closed > 0 || queued.length > 0) log.info({ closed, queued: queued.length }, "Hàng chờ xin lại link: đóng file Zalo đã xóa, cấp lại lượt cho phần còn lại");
+    if (closed > 0 || unrenewable > 0 || queued.length > 0) {
+      log.info({ closed, unrenewable, queued: queued.length }, "Hàng chờ xin lại link: đóng file Zalo đã xóa / loại Zalo không cấp lại link, cấp lại lượt cho phần còn lại");
+    }
     return requeueExpiredForRenewal(
       db,
       () => allocateRenewSlot(db, pacing, now, random).toISOString(),
-      (id) => this.closeIfDeletedByZalo(id, now),
+      (id, kind) => renewableMediaType(kind) === null || this.closeIfDeletedByZalo(id, now),
     );
   }
 
@@ -120,8 +130,8 @@ export class MediaLinkRenewer {
     const ctx = getAttachmentRenewContext(this.o.db, item.id);
     if (!ctx) return fail("Không tìm thấy tin gốc của file");
     const mediaType = renewableMediaType(ctx.kind);
-    // Gif, voice...: Zalo không cấp lại link cho các loại này - không gọi cho phí lượt
-    if (mediaType === null) return fail("Link hết hạn, Zalo không cấp lại link cho loại file này");
+    // Gif, voice... (người dùng bấm Thử lại): Zalo không cấp lại link cho các loại này - không gọi cho phí lượt
+    if (mediaType === null) return fail(UNRENEWABLE_KIND_ERROR);
 
     const msgInfo = renewMsgInfoFromRawJson(ctx.kind, ctx.rawJson, ctx.originalUrl ?? ctx.remoteUrl);
     // Link trả sau được ghép theo link gốc đã gửi: đăng ký chờ TRƯỚC khi gọi
