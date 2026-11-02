@@ -131,6 +131,20 @@ export type ArchivedMessage = {
   album: { id: string; index: number; total: number } | null;
   /** Thẻ link như Zalo (chỉ link http(s)): hiện thay cho chữ ghép "tiêu đề / link / mô tả" */
   link: { url: string; title: string | null; description: string | null; domain: string } | null;
+  /**
+   * Danh thiếp Zalo: tên, avatar, số điện thoại (nếu người gửi kèm), ảnh mã QR - ảnh chỉ link https CDN Zalo.
+   * `threadId` khi người đó có hội thoại 1-1 trong kho (nút mở hội thoại)
+   */
+  contactCard: {
+    userId: string;
+    name: string;
+    avatarUrl: string | null;
+    phone: string | null;
+    qrUrl: string | null;
+    threadId: string | null;
+  } | null;
+  /** Tin trả lời: ô trích dẫn. `id` = số tin gốc trong kho (bấm để nhảy tới); null khi tin gốc không có trong kho */
+  quote: { id: number | null; senderName: string | null; isSelf: boolean; text: string } | null;
   /** Tin video: thời lượng (ms) + kích thước, để vẽ ô đúng tỉ lệ và hiện "00:33" như Zalo */
   video: { durationMs: number | null; width: number | null; height: number | null } | null;
   /** Thông báo nhóm (`group_event`): avatar nhỏ đứng trước câu - người được nhắc tới, hoặc ảnh Zalo gửi kèm */

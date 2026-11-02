@@ -17,6 +17,7 @@ import type { ListenerRetryInfo } from "../zalo/listener-reconnect-timer.js";
 import { MobileSyncSession } from "../zalo/mobile-sync/mobile-sync-session.js";
 import { startKeepAliveLoop } from "../zalo/keep-alive-loop.js";
 import { startDirectoryLookupLoop } from "./directory-lookup-loop.js";
+import { applyPastMyDocumentsDeletes } from "./my-documents-past-deletes-backfill.js";
 
 export type DaemonDeps = {
   api: API;
@@ -71,6 +72,7 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
     api,
     db,
     journalDir: d.paths.journalDir,
+    mediaDir: d.paths.mediaDir,
     log: log.child({ part: "listener" }),
     reconnect: {
       baseDelayMs: env.RECONNECT_BASE_DELAY_SECONDS * 1000,
@@ -84,6 +86,9 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
     onFriendListChanged: directory.requestFriendSync,
   });
   stops.push(listener.stop);
+  void applyPastMyDocumentsDeletes({ db, journalDir: d.paths.journalDir, mediaDir: d.paths.mediaDir, log }).catch((err: unknown) =>
+    log.warn({ err }, "Chưa áp dụng được lệnh xóa cũ trong My Documents - lần khởi động sau thử lại"),
+  );
 
   // Heartbeat: lần khởi động sau biết tiến trình chết lúc nào; MCP biết daemon còn sống để gửi.
   // Hai nhịp cách quá xa (theo giờ máy) là máy vừa ngủ dậy: ghi bù khoảng không nghe đó.

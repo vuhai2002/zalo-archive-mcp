@@ -38,6 +38,7 @@ function setup(giveUpAfterFlaps = 3, offlineReplay: { minIntervalMs: number } | 
     api: { listener } as unknown as API,
     db,
     journalDir,
+    mediaDir: path.join(journalDir, "media"),
     log: createSilentLogger(),
     reconnect: { baseDelayMs: 1000, maxDelayMs: 4000, duplicateWaitMs: 60_000, giveUpAfterFlaps },
     offlineReplay,

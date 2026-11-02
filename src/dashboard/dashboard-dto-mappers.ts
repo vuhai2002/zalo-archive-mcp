@@ -26,6 +26,8 @@ export function toArchivedMessage(m: MessageRow): ArchivedMessage {
     call: m.call,
     album: m.album,
     link: m.link,
+    contactCard: m.contactCard,
+    quote: m.quote,
     video: m.video,
     noticeAvatar: m.noticeAvatar,
     reactions: m.reactions,

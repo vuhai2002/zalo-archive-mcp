@@ -31,7 +31,11 @@ dùng ghi ở `data/accounts.json`); daemon, MCP và lệnh CLI đều theo nick
 3. `archive-event-ingestor.ts` chuẩn hóa (`normalize-zalo-event.ts`) rồi `upsertMessage`:
    khử trùng theo `msg_id`, cập nhật FTS (chữ đã bỏ dấu), thêm đính kèm `pending` (mỗi tin tối đa
    một đính kèm mỗi loại: cùng ảnh tới lại với link khác thì không thêm), áp lệnh thu hồi tới trước,
-   cập nhật hội thoại.
+   cập nhật hội thoại. Lệnh "xóa ở phía tôi" (`chat.delete`): kho vẫn giữ tin, trừ My Documents
+   (mã `loginInfo.send2me_id`, lưu meta `my_documents_thread_id` lúc đăng nhập) - ở đó tin bị xóa hẳn
+   (cả đính kèm, file không tin nào dùng chung) và mã tin ghi vào `deleted_messages` để lấy bù / đồng bộ
+   điện thoại sau không đưa vào lại (`my-documents-deletion-store.ts`, người dùng chốt 03/11/2026). Lệnh
+   xóa cũ nằm trong nhật ký được áp dụng một lần lúc khởi động (`my-documents-past-deletes-backfill.ts`).
 4. `media-download-worker.ts` tải từng đính kèm (chỉ host CDN Zalo, kiểm mỗi bước redirect),
    lưu theo sha256.
 5. Link hết hạn (403/404/410, hoặc CDN trả 200 kèm trang báo hết hạn): `media-link-renewer.ts`

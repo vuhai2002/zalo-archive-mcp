@@ -1,10 +1,12 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ThreadKind } from "../archive/archived-message-types.js";
 import { callNoticeOf } from "../archive/zalo-call-message-text.js";
+import { contactCardOf, type ContactCard } from "../archive/zalo-contact-card.js";
 import { withZaloEmoticons } from "../archive/zalo-emoticon-emoji.js";
 import { linkPreviewOf, type LinkPreview } from "../archive/zalo-link-preview.js";
 import { photoAlbumOf, type PhotoAlbum } from "../archive/zalo-photo-album.js";
 import { videoInfoOf, type VideoInfo } from "../archive/zalo-video-info.js";
+import { quotePreviewFromRaw, resolveQuotePreviews, type QuotePreview } from "./message-quote-preview.js";
 import { reactionSummaries, type ReactionSummary } from "./message-reaction-store.js";
 import { parseTextStyles, type TextStyleSpan } from "./message-text-styles.js";
 import { createNoticeRenderer, type NoticeAvatar } from "./system-notice-display.js";
@@ -56,6 +58,10 @@ export type MessageRow = {
   album: PhotoAlbum | null;
   /** Thẻ link (recommened.link): URL, tiêu đề, mô tả, tên miền; null với tin khác */
   link: LinkPreview | null;
+  /** Danh thiếp (recommened.user); `threadId` khi người đó có hội thoại 1-1 trong kho */
+  contactCard: (ContactCard & { threadId: string | null }) | null;
+  /** Tin trả lời: tin gốc để hiện ô trích dẫn (và nhảy tới khi có trong kho) */
+  quote: QuotePreview | null;
   /** Tin video: thời lượng + kích thước (vẽ ô đúng tỉ lệ, hiện "00:33"); null với tin khác */
   video: VideoInfo | null;
   /** Thông báo nhóm: avatar nhỏ đứng trước câu (người được nhắc tới); null với tin khác */
@@ -78,13 +84,16 @@ export const MESSAGE_COLUMNS = `m.id, m.msg_id, m.thread_id, m.thread_type, m.se
     THEN json_extract(m.raw_json, '$.content.params') END AS photo_params,
   CASE WHEN m.msg_type = 'chat.video.msg' AND json_valid(m.raw_json)
     THEN json_extract(m.raw_json, '$.content.params') END AS video_params,
-  CASE WHEN m.msg_type = 'group_event' THEN m.raw_json END AS notice_raw`;
+  CASE WHEN m.msg_type = 'group_event' THEN m.raw_json END AS notice_raw,
+  CASE WHEN m.quote_msg_id IS NOT NULL AND json_valid(m.raw_json) THEN json_extract(m.raw_json, '$.quote') END AS quote_raw`;
 /** Avatar người gửi lấy từ danh bạ người */
 export const SENDER_JOIN = "LEFT JOIN contacts c ON c.user_id = m.sender_id";
 
 // Dữ liệu gốc của thông báo nhóm, giữ tạm từ lúc đọc dòng SQL tới lúc dựng câu (cần danh bạ) trong
 // `withAttachments` - không đưa vào MessageRow để khỏi lộ ra API
 const noticeRawOf = new WeakMap<MessageRow, string>();
+// Dữ liệu trích dẫn Zalo gửi kèm tin trả lời: dựng ô trích dẫn cần mã của mình (biết "Bạn") nên cũng chờ tới đó
+const quoteRawOf = new WeakMap<MessageRow, string>();
 
 export function toMessageRow(r: Record<string, unknown>): MessageRow {
   // Mã biểu cảm (":d") đổi sang emoji lúc đọc, định dạng chữ dời theo; DB giữ chữ gốc
@@ -92,6 +101,7 @@ export function toMessageRow(r: Record<string, unknown>): MessageRow {
   // Tin chat.recommended: cuộc gọi (câu đã dựng sẵn ở text) hoặc thẻ link
   const rec = parseRecommendedContent(r.rec_content);
   const call = callNoticeOf(rec?.action, rec?.params);
+  const card = contactCardOf(rec);
   const row: MessageRow = {
     id: Number(r.id),
     msgId: String(r.msg_id),
@@ -111,26 +121,34 @@ export function toMessageRow(r: Record<string, unknown>): MessageRow {
     call: call ? { missedIncoming: call.missedIncoming } : null,
     album: photoAlbumOf(r.photo_params),
     link: linkPreviewOf(rec),
+    contactCard: card ? { ...card, threadId: null } : null,
+    quote: null,
     video: videoInfoOf(r.video_params),
     noticeAvatar: null,
     reactions: [],
     attachments: [],
   };
   if (typeof r.notice_raw === "string") noticeRawOf.set(row, r.notice_raw);
+  if (typeof r.quote_raw === "string") quoteRawOf.set(row, r.quote_raw);
   return row;
 }
 
 /** Gắn đính kèm + cảm xúc cho các tin vừa đọc */
 export function withAttachments(db: DatabaseSync, messages: MessageRow[]): MessageRow[] {
   if (messages.length === 0) return messages;
-  const reactions = reactionSummaries(db, messages.map((m) => m.msgId), getMeta(db, "self_uid"));
+  const selfUid = getMeta(db, "self_uid");
+  const reactions = reactionSummaries(db, messages.map((m) => m.msgId), selfUid);
   const noticeOf = createNoticeRenderer(db);
+  const userThread = db.prepare("SELECT 1 FROM threads WHERE thread_id = ? AND thread_type = 'user'");
   for (const m of messages) {
     m.reactions = reactions.get(m.msgId) ?? [];
     // Thông báo nhóm: câu như Zalo theo danh bạ hiện tại (tên gợi nhớ, tên mới biết), tên in đậm
     const notice = noticeOf(m.msgType, noticeRawOf.get(m) ?? null);
     if (notice) Object.assign(m, { text: notice.text, textStyles: notice.textStyles, noticeAvatar: notice.avatar });
+    m.quote = quotePreviewFromRaw(quoteRawOf.get(m), selfUid);
+    if (m.contactCard && userThread.get(m.contactCard.userId)) m.contactCard.threadId = m.contactCard.userId;
   }
+  resolveQuotePreviews(db, messages);
   const stmt = db.prepare(
     `SELECT id, msg_id, kind, status, file_name, local_path, size_bytes, mime, needs_renew, renewed_at, last_error, sha256
      FROM attachments WHERE msg_id = ? ORDER BY id`,

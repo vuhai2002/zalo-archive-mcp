@@ -2,9 +2,11 @@ import type { DatabaseSync } from "node:sqlite";
 import type { MessageSource, NormalizedMessage, NormalizedRecall } from "../archive/archived-message-types.js";
 import { inTransaction } from "../shared/db-transaction.js";
 import { noteContactSeen } from "./contact-store.js";
+import { isDeletedMessage } from "./my-documents-deletion-store.js";
 import { findCliMsgIdTwin, isProvisionalMsgId, promoteProvisionalTwin } from "./provisional-message-id-twin.js";
 import { foldVietnameseForSearch } from "../shared/fold-vietnamese-for-search.js";
 
+/** `id` = 0 khi tin đã bị xóa hẳn (My Documents) - không ghi lại */
 export type UpsertResult = { id: number; inserted: boolean };
 
 /**
@@ -17,6 +19,8 @@ export type UpsertResult = { id: number; inserted: boolean };
  *
  * Tin id tạm từ điện thoại (`mb_...`) được ghép với bản id thật của cùng tin: tới sau
  * bản thật thì bỏ qua, tới trước thì bản thật tới sau nâng nó lên id thật.
+ *
+ * Tin người dùng đã xóa hẳn (My Documents - `my-documents-deletion-store.ts`) thì không ghi lại.
  */
 export function upsertMessage(
   db: DatabaseSync,
@@ -24,6 +28,7 @@ export function upsertMessage(
   meta: { source: MessageSource; receivedAt: string },
 ): UpsertResult {
   return inTransaction(db, () => {
+    if (isDeletedMessage(db, msg.msgId)) return { id: 0, inserted: false };
     let existing = db.prepare("SELECT id FROM messages WHERE msg_id = ?").get(msg.msgId) as
       | { id: number }
       | undefined;

@@ -1,4 +1,3 @@
-import type { ArchivedMessage } from "../../archive-api-types";
 import { MessageBubble } from "./message-bubble";
 import type { MessageLayout } from "./message-grouping";
 import type { ChatItem } from "./photo-album-grouping";
@@ -13,19 +12,20 @@ export function ChatItemRow({
   layout,
   highlighted,
   isGroup,
-  quoted,
   timeZone,
   onMediaLoad,
   onMediaRetried,
+  onJumpToMessage,
 }: {
   item: ChatItem;
   layout: MessageLayout;
   highlighted: boolean;
   isGroup: boolean;
-  quoted: ArchivedMessage | undefined;
   timeZone: string;
   onMediaLoad: () => void;
   onMediaRetried: () => void;
+  /** Bấm ô trích dẫn: nhảy tới tin gốc */
+  onJumpToMessage: (id: number) => void;
 }) {
   return (
     <>
@@ -42,12 +42,12 @@ export function ChatItemRow({
           msg={m}
           album={album}
           isGroup={isGroup}
-          quoted={quoted}
           timeZone={timeZone}
           first={layout.firstInGroup}
           last={layout.lastInGroup}
           onMediaLoad={onMediaLoad}
           onMediaRetried={onMediaRetried}
+          onJumpToMessage={onJumpToMessage}
         />
       </div>
     </>

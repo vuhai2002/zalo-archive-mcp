@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ArchivedMessage, AttachmentInfo, TextStyleSpan } from "../../archive-api-types";
 import { sourceLabel } from "../../shared/archive-status-labels";
 import { ContactAvatar } from "../../shared/contact-avatar";
@@ -5,6 +6,9 @@ import { formatClock, formatDateTime } from "../../shared/format-archive-time";
 import { MessageAlbumGrid } from "./message-album-grid";
 import { MessageAttachmentView } from "./message-attachment-view";
 import { MessageCallCard } from "./message-call-card";
+import { MessageContactCard } from "./message-contact-card";
+import { MessageQuoteBlock } from "./message-quote-block";
+import { RecalledNote, RecalledShownLabel } from "./message-recalled-note";
 import { useMediaViewer } from "./media-viewer-context";
 import { viewerItemFromMessage } from "./media-viewer-items";
 import { MessageLinkCard } from "./message-link-card";
@@ -29,33 +33,35 @@ function textStylesOf(msg: ArchivedMessage): TextStyleSpan[] {
  * - tin mình bên phải nền xanh nhạt, tin người khác bên trái nền trắng;
  * - avatar (và tên, trong nhóm) chỉ ở tin ĐẦU cụm, giờ chỉ ở tin CUỐI cụm;
  * - ảnh / gif / sticker không kèm chữ thì hiện trần, giờ là viên nhỏ bên dưới;
- * - tin hệ thống (vd đã đồng ý kết bạn) nằm giữa khung.
+ * - tin hệ thống (vd đã đồng ý kết bạn) nằm giữa khung;
+ * - tin đã thu hồi hiện "Tin nhắn đã được thu hồi", bấm con mắt mới hiện nội dung kho đã lưu.
  * Chữ do người khác gửi: chỉ dựng từ chữ thuần + định dạng đã lọc, không HTML.
  */
 export function MessageBubble({
   msg,
   isGroup,
-  quoted,
   timeZone,
   first,
   last,
   onMediaLoad,
   onMediaRetried,
+  onJumpToMessage,
   album = null,
 }: {
   msg: ArchivedMessage;
   /** Album ảnh (đã gộp, xếp theo vị trí): hiện khung lưới thay cho ảnh lẻ của `msg` */
   album?: ArchivedMessage[] | null;
   isGroup: boolean;
-  /** Tin được trích dẫn nếu đang có trong danh sách đã tải; không có thì chỉ hiện dấu "trả lời" */
-  quoted: ArchivedMessage | undefined;
   timeZone: string;
   first: boolean;
   last: boolean;
   onMediaLoad: () => void;
   /** Vừa bấm Thử lại trên một file hỏng */
   onMediaRetried: () => void;
+  /** Bấm ô trích dẫn: nhảy tới tin gốc */
+  onJumpToMessage?: (id: number) => void;
 }) {
+  const [revealed, setRevealed] = useState(false);
   const self = msg.isSelf;
   // Bấm ảnh / video: mở cửa sổ xem của hội thoại (ngoài khung chat thì không có, ảnh mở thẻ mới)
   const viewer = useMediaViewer();
@@ -64,6 +70,8 @@ export function MessageBubble({
     return item ? () => viewer?.open(item) : undefined;
   };
   const recalled = msg.recalledAt !== null;
+  // Tin đã thu hồi: mặc định giấu nội dung như Zalo
+  const hidden = recalled && !revealed;
   const name = msg.senderName?.trim() || msg.senderId;
   const timeTitle = `${formatDateTime(msg.sentAt, timeZone)}${msg.source !== "live" ? ` · ${sourceLabel(msg.source)}` : ""}`;
 
@@ -73,11 +81,15 @@ export function MessageBubble({
   const hasText = !hasSticker && msg.text.trim().length > 0;
   // Ảnh / gif / sticker không chữ, không trích dẫn: hiện trần như Zalo, không khung bong bóng.
   // Album luôn hiện trần; chú thích (nếu có) nằm dưới khung lưới
+  // Danh thiếp cũng là khung riêng như Zalo, không nằm trong bong bóng
   const bare =
-    !!album || (!hasText && !msg.quoteMsgId && msg.attachments.length > 0 && msg.attachments.every((a) => VISUAL_KINDS.has(a.kind)));
+    !hidden &&
+    (!!album ||
+      !!msg.contactCard ||
+      (!hasText && !msg.quoteMsgId && msg.attachments.length > 0 && msg.attachments.every((a) => VISUAL_KINDS.has(a.kind))));
   const albumCaption = album ? album.map((m) => m.text.trim()).filter(Boolean).join("\n") : "";
   const showName = isGroup && !self && first;
-  const showMeta = last || recalled;
+  const showMeta = last || (recalled && revealed);
 
   const meta = (
     <div className="mt-1 flex items-center gap-2 text-[11px] text-chat-time">
@@ -86,10 +98,8 @@ export function MessageBubble({
           {formatClock(msg.sentAt, timeZone)}
         </span>
       )}
-      {recalled && (
-        <span className="font-medium text-red-600 dark:text-red-400" title={`Thu hồi lúc ${formatDateTime(msg.recalledAt, timeZone)}`}>
-          Đã thu hồi
-        </span>
+      {recalled && revealed && (
+        <RecalledShownLabel title={`Thu hồi lúc ${formatDateTime(msg.recalledAt, timeZone)}`} onHide={() => setRevealed(false)} />
       )}
     </div>
   );
@@ -108,7 +118,9 @@ export function MessageBubble({
             {/* Ảnh trong nhóm: tên người gửi trong một viên nhỏ phía trên ảnh, như Zalo PC */}
             {showName && <div className="mb-1 rounded-full bg-bubble px-2.5 py-0.5 text-[12px] text-chat-time shadow-sm">{name}</div>}
             <div className={`space-y-1 ${recalled ? "opacity-70" : ""}`}>
-              {album ? (
+              {msg.contactCard ? (
+                <MessageContactCard card={msg.contactCard} />
+              ) : album ? (
                 <MessageAlbumGrid album={album} onMediaLoad={onMediaLoad} onMediaRetried={onMediaRetried} />
               ) : (
                 msg.attachments.map((att) => (
@@ -133,39 +145,34 @@ export function MessageBubble({
           <div
             className={`min-w-0 max-w-full rounded-lg px-3.5 py-2.5 text-[15px] leading-[1.5] text-chat-ink ${
               self ? "border border-bubble-self-line bg-bubble-self" : "border border-black/5 bg-bubble shadow-[0_1px_1px_rgba(0,0,0,0.05)] dark:border-white/5"
-            } ${recalled ? "opacity-75" : ""}`}
+            } ${recalled && revealed ? "opacity-75" : ""}`}
           >
             {showName && <div className="mb-1 text-[12px] text-chat-time">{name}</div>}
-            {msg.quoteMsgId && (
-              <div className="mb-1.5 rounded-md border-l-2 border-zalo-500 bg-black/[0.04] px-2 py-1 text-[12.5px] dark:bg-white/5">
-                {quoted ? (
-                  <>
-                    <div className="font-semibold">{quoted.isSelf ? "Bạn" : quoted.senderName?.trim() || quoted.senderId}</div>
-                    <div className="line-clamp-2 whitespace-pre-wrap text-chat-time [overflow-wrap:anywhere]">{quoted.text}</div>
-                  </>
-                ) : (
-                  <span className="italic text-chat-time">Trả lời một tin (chưa tải trong khung này)</span>
-                )}
-              </div>
-            )}
-            {msg.attachments.length > 0 && (
-              <div className={`space-y-1.5 ${hasText ? "mb-1.5" : ""}`}>
-                {msg.attachments.map((att) => (
-                  <MessageAttachmentView key={att.id} att={att} onMediaLoad={onMediaLoad} onRetried={onMediaRetried} onOpen={openOf(att)} video={msg.video} />
-                ))}
-              </div>
-            )}
-            {msg.link ? (
-              <MessageLinkCard link={msg.link} />
-            ) : msg.call ? (
-              <MessageCallCard text={msg.text} missed={msg.call.missedIncoming} />
+            {hidden ? (
+              <RecalledNote onReveal={() => setRevealed(true)} />
             ) : (
-              hasText && <RichMessageText text={msg.text} styles={textStylesOf(msg)} />
+              <>
+                {msg.quoteMsgId && <MessageQuoteBlock quote={msg.quote} onJump={onJumpToMessage} />}
+                {msg.attachments.length > 0 && (
+                  <div className={`space-y-1.5 ${hasText ? "mb-1.5" : ""}`}>
+                    {msg.attachments.map((att) => (
+                      <MessageAttachmentView key={att.id} att={att} onMediaLoad={onMediaLoad} onRetried={onMediaRetried} onOpen={openOf(att)} video={msg.video} />
+                    ))}
+                  </div>
+                )}
+                {msg.link ? (
+                  <MessageLinkCard link={msg.link} />
+                ) : msg.call ? (
+                  <MessageCallCard text={msg.text} missed={msg.call.missedIncoming} />
+                ) : (
+                  hasText && <RichMessageText text={msg.text} styles={textStylesOf(msg)} />
+                )}
+              </>
             )}
             {showMeta && meta}
           </div>
         )}
-        {!bare && <MessageReactionPill reactions={msg.reactions} />}
+        {!bare && !hidden && <MessageReactionPill reactions={msg.reactions} />}
       </div>
     </div>
   );

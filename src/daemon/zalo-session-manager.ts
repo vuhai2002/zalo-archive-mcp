@@ -6,6 +6,7 @@ import type { AccountPaths } from "../config/account-paths.js";
 import type { AppEnv } from "../config/env-schema.js";
 import type { SessionState } from "../dashboard/dashboard-api-contract.js";
 import { recordConnectionEvent } from "../storage/connection-event-store.js";
+import { MY_DOCUMENTS_META_KEY } from "../storage/my-documents-deletion-store.js";
 import { getMeta, setMeta } from "../storage/thread-directory-store.js";
 import { loginWithStoredCredentials, persistSessionCredentials, startQrLoginForWeb } from "../zalo/zalo-session-login.js";
 import { startArchiveDaemon, type ArchiveHandle } from "./start-archive-daemon.js";
@@ -156,6 +157,10 @@ export class ZaloSessionManager {
     this.displayName = info?.profile?.displayName?.trim() || null;
     setMeta(this.d.db, "self_uid", selfUid);
     if (this.displayName) setMeta(this.d.db, "self_display_name", this.displayName);
+    // Mã hội thoại My Documents (Zalo cấp lúc đăng nhập): tin xóa ở đó thì kho xóa hẳn. Không đọc được thì
+    // thôi (kho nhận My Documents theo ảnh thư mục trong hồ sơ) - không được làm hỏng lượt đăng nhập
+    const myDocuments = String((api.getContext?.() as { loginInfo?: { send2me_id?: unknown } } | undefined)?.loginInfo?.send2me_id ?? "").trim();
+    if (/^\d+$/.test(myDocuments)) setMeta(this.d.db, MY_DOCUMENTS_META_KEY, myDocuments);
     recordConnectionEvent(this.d.db, "login", { detail: `uid ${selfUid}` });
     this.d.log.info({ selfUid, displayName: this.displayName }, "Đã đăng nhập Zalo");
     this.d.onIdentity?.({ uid: selfUid, displayName: this.displayName, avatarUrl: info?.profile?.avatar?.trim() || null });

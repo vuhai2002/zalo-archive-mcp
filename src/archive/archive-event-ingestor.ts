@@ -2,11 +2,13 @@ import type { DatabaseSync } from "node:sqlite";
 import type { Logger } from "pino";
 import { applyReaction } from "../storage/message-reaction-store.js";
 import { recordRecall, upsertMessage } from "../storage/message-write-store.js";
+import { deleteMessagesForGood, myDocumentsThreadId } from "../storage/my-documents-deletion-store.js";
 import { getMeta } from "../storage/thread-directory-store.js";
 import { groupEventNotice, normalizeReaction } from "../zalo/normalize-reaction-and-group-event.js";
 import {
   isLocalDeletePayload,
   isRecallPayload,
+  localDeleteTargets,
   normalizeMessage,
   normalizeRecall,
   type RawListenerMessage,
@@ -26,7 +28,8 @@ export type ArchiveEvent =
   | { kind: "old_reactions"; reactions: unknown[] }
   | { kind: "group_event"; event: unknown };
 
-export type IngestStats = { stored: number; recalls: number; reactions: number; skipped: number };
+/** `orphanFiles`: file media (trong thư mục media) của tin vừa xóa hẳn mà không tin nào còn dùng - nơi gọi xóa file */
+export type IngestStats = { stored: number; recalls: number; reactions: number; skipped: number; deleted: number; orphanFiles: string[] };
 
 const contactName = (db: DatabaseSync, uid: string) =>
   (db.prepare("SELECT COALESCE(alias, display_name) AS display_name FROM contacts WHERE user_id = ?").get(uid) as { display_name: string | null } | undefined)?.display_name ?? null;
@@ -47,7 +50,7 @@ export function ingestArchiveEvent(
   log: Logger,
   sourceOverride?: MessageSource,
 ): IngestStats {
-  const stats: IngestStats = { stored: 0, recalls: 0, reactions: 0, skipped: 0 };
+  const stats: IngestStats = { stored: 0, recalls: 0, reactions: 0, skipped: 0, deleted: 0, orphanFiles: [] };
   const receivedIso = receivedAt.toISOString();
 
   const storeOne = (raw: RawListenerMessage, source: MessageSource) => {
@@ -60,8 +63,15 @@ export function ingestArchiveEvent(
         } else stats.skipped++;
         return;
       }
-      // Lệnh "xóa ở phía tôi": không phải tin, bỏ qua (vẫn còn trong nhật ký thô)
-      if (isLocalDeletePayload(raw.data)) return void stats.skipped++;
+      // Lệnh "xóa ở phía tôi": không phải tin. Trong My Documents thì xóa hẳn tin đó; nơi khác kho vẫn giữ
+      if (isLocalDeletePayload(raw.data)) {
+        const targets = raw.isSelf && raw.threadId === myDocumentsThreadId(db) ? localDeleteTargets(raw.data) : [];
+        if (targets.length === 0) return void stats.skipped++;
+        const r = deleteMessagesForGood(db, raw.threadId, targets, receivedIso);
+        stats.deleted += r.deleted;
+        stats.orphanFiles.push(...r.orphanFiles);
+        return;
+      }
       const msg = normalizeMessage(raw, receivedAt);
       if (!msg) {
         stats.skipped++;

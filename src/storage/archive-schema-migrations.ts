@@ -341,4 +341,13 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
     next_attempt_at = NULL
   WHERE kind = 'gif' AND status = 'failed' AND remote_url LIKE 'https://media-ten.z-cdn.me/%';
   `,
+  // 22: tin người dùng xóa trong My Documents bị xóa hẳn khỏi kho; ghi nhớ mã tin để lấy bù / đồng bộ điện thoại
+  // sau không đưa tin đó vào lại
+  `
+  CREATE TABLE deleted_messages (
+    msg_id     TEXT PRIMARY KEY,
+    thread_id  TEXT NOT NULL,
+    deleted_at TEXT NOT NULL
+  );
+  `,
 ];

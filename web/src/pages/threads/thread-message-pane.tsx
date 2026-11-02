@@ -14,11 +14,9 @@ import { ThreadChatHeader } from "./thread-chat-header";
 import { ThreadInfoPanel } from "./thread-info-panel";
 import { ThreadSearchPanel } from "./thread-search-panel";
 import { useChatSidePanel } from "./use-chat-side-panel";
+import { nextStickToBottom } from "./stick-to-bottom-scroll";
 import { scrollToMessage, useMessageJump, type MessageFocus, type ScrollIntent } from "./use-message-jump";
 import { useThreadMessages } from "./use-thread-messages";
-
-/** Cách đáy dưới ngần này coi như "đang đọc tin mới nhất" - ảnh tải xong thì kéo theo xuống đáy */
-const STICK_PX = 80;
 
 export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: string; focus: MessageFocus | null; onBack: () => void }) {
   const tz = useArchiveTimeZone();
@@ -30,6 +28,7 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
   const scrollRef = useRef<HTMLDivElement>(null);
   const intent = useRef<ScrollIntent | null>(initialFocusId ? { kind: "message", id: initialFocusId } : { kind: "bottom" });
   const stickToBottom = useRef(!initialFocusId);
+  const lastScrollTop = useRef(0);
   const side = useChatSidePanel();
   const jump = useMessageJump({ focus, jumpTo: t.jumpTo, intent, scrollRef, stickToBottom });
 
@@ -99,12 +98,16 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
     setTimeout(() => void refreshLatest(), 20_000);
   }, [refreshLatest]);
 
+  const { keepJumpTargetInView } = jump;
   const onMediaLoad = useCallback(() => {
     const el = scrollRef.current;
     if (el && stickToBottom.current) el.scrollTop = el.scrollHeight;
-  }, []);
+    else keepJumpTargetInView();
+  }, [keepJumpTargetInView]);
 
-  const byMsgId = useMemo(() => new Map(t.messages.map((m) => [m.msgId, m] as const)), [t.messages]);
+  // Bấm ô trích dẫn: nhảy tới tin gốc như bấm kết quả tìm (tin xa thì tải đoạn quanh nó)
+  const { jumpToMessage } = jump;
+  const jumpToQuoted = useCallback((id: number) => void jumpToMessage(id), [jumpToMessage]);
   const isGroup = t.thread?.threadType === "group";
   // Ảnh cùng album gộp thành một mục trước khi xếp cụm / vạch giờ
   const items = useMemo(() => collapseAlbums(t.messages), [t.messages]);
@@ -127,7 +130,14 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
         ref={scrollRef}
         onScroll={(e) => {
           const el = e.currentTarget;
-          stickToBottom.current = t.atLatest && el.scrollHeight - el.scrollTop - el.clientHeight < STICK_PX;
+          stickToBottom.current = nextStickToBottom({
+            stick: stickToBottom.current,
+            atLatest: t.atLatest,
+            scrollTop: el.scrollTop,
+            prevScrollTop: lastScrollTop.current,
+            distanceFromBottom: el.scrollHeight - el.scrollTop - el.clientHeight,
+          });
+          lastScrollTop.current = el.scrollTop;
         }}
         className="scrollbar-stable min-h-0 flex-1 overflow-y-auto bg-chat px-3 pb-4 pt-3 sm:px-6"
       >
@@ -154,10 +164,10 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
             layout={layouts[i]!}
             highlighted={itemHasMessage(item, jump.highlightId)}
             isGroup={isGroup}
-            quoted={item.msg.quoteMsgId ? byMsgId.get(item.msg.quoteMsgId) : undefined}
             timeZone={tz}
             onMediaLoad={onMediaLoad}
             onMediaRetried={afterMediaRetried}
+            onJumpToMessage={jumpToQuoted}
           />
         ))}
         {/* Đang xem đoạn cũ (nhảy từ kết quả tìm): cuộn xuống là tải tiếp tin mới hơn */}

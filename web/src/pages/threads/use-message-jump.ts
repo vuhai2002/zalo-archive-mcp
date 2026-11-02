@@ -34,10 +34,21 @@ export function useMessageJump(o: {
   const [highlightId, setHighlightId] = useState<number | null>(o.focus?.messageId ?? null);
   // Lần mở đầu (focus có sẵn lúc dựng khung chat) do trang đầu tải quanh tin đó, không nhảy thêm
   const handledKey = useRef(o.focus?.key ?? null);
+  // Ảnh quanh tin vừa nhảy tới tải xong SAU khi cuộn làm khung dãn ra, đẩy tin đó khỏi màn hình: trong
+  // lúc tin còn tô nền, mỗi lần một ảnh tải xong thì kéo tin về giữa lại
+  const pinned = useRef<{ id: number; until: number } | null>(
+    o.focus ? { id: o.focus.messageId, until: Date.now() + HIGHLIGHT_MS } : null,
+  );
+
+  const keepJumpTargetInView = useCallback(() => {
+    const p = pinned.current;
+    if (p && Date.now() < p.until) scrollToMessage(scrollRef.current, p.id);
+  }, [scrollRef]);
 
   const jumpToMessage = useCallback(
     async (id: number) => {
       setHighlightId(id);
+      pinned.current = { id, until: Date.now() + HIGHLIGHT_MS };
       stickToBottom.current = false;
       intent.current = { kind: "message", id };
       const alreadyShown = await jumpTo(id);
@@ -62,5 +73,5 @@ export function useMessageJump(o: {
     return () => clearTimeout(t);
   }, [highlightId]);
 
-  return { highlightId, jumpToMessage, clearHighlight: () => setHighlightId(null) };
+  return { highlightId, jumpToMessage, keepJumpTargetInView, clearHighlight: () => setHighlightId(null) };
 }

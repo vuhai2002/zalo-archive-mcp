@@ -29,10 +29,26 @@ function str(value: unknown): string | null {
 
 /**
  * Lệnh "xóa ở phía tôi" (`chat.delete`, nội dung là danh sách `globalDelMsgId`) Zalo đồng bộ giữa
- * các máy của mình: không phải tin nhắn, không ghi thành tin. Kho lưu trữ vẫn giữ tin gốc nếu có.
+ * các máy của mình: không phải tin nhắn, không ghi thành tin. Kho lưu trữ vẫn giữ tin gốc nếu có -
+ * trừ My Documents (xem `my-documents-deletion-store.ts`).
  */
 export function isLocalDeletePayload(data: Record<string, unknown>): boolean {
   return data.msgType === "chat.delete";
+}
+
+/**
+ * Mã các tin mình vừa xóa ở phía mình trong lệnh `chat.delete` (`actionType` 0). Lệnh `actionType` 1 là
+ * trưởng / phó nhóm xóa tin của thành viên - không phải mình xóa, không lấy.
+ */
+export function localDeleteTargets(data: Record<string, unknown>): string[] {
+  if (!Array.isArray(data.content)) return [];
+  const ids: string[] = [];
+  for (const entry of data.content) {
+    const e = entry as Record<string, unknown> | null;
+    const id = e && Number(e.actionType) === 0 ? str(e.globalDelMsgId) : null;
+    if (id && /^\d+$/.test(id)) ids.push(id);
+  }
+  return ids;
 }
 
 /** Tin này thực chất là lệnh thu hồi (có trong `old_messages`, lib không tách ra như tin live) */

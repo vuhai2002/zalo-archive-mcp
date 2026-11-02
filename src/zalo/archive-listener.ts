@@ -3,6 +3,7 @@ import type { Logger } from "pino";
 import { ThreadType, type API } from "zca-js";
 import { ingestArchiveEvent, type ArchiveEvent } from "../archive/archive-event-ingestor.js";
 import { appendJournal } from "../archive/raw-event-journal.js";
+import { removeOrphanMediaFiles } from "../media/remove-orphan-media-files.js";
 import { recordConnectionEvent } from "../storage/connection-event-store.js";
 import { getMeta, setMeta } from "../storage/thread-directory-store.js";
 import { applyFriendEvent, applyGroupEvent, applyReplayedGroupEvent } from "./directory-event-handlers.js";
@@ -18,6 +19,8 @@ export type ArchiveListenerOptions = {
   api: API;
   db: DatabaseSync;
   journalDir: string;
+  /** Thư mục file media: xóa file của tin bị xóa hẳn (My Documents) */
+  mediaDir: string;
   log: Logger;
   reconnect: ReconnectPlannerOptions;
   /** Xin bù tin lỡ khi kết nối; null = tắt */
@@ -81,6 +84,10 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
     journal(event.kind, event);
     const stats = ingestArchiveEvent(db, event, new Date(), log);
     log.debug({ kind: event.kind, ...stats }, "Đã ghi sự kiện");
+    if (stats.deleted > 0) {
+      safely("delete", () => removeOrphanMediaFiles(opts.mediaDir, stats.orphanFiles));
+      log.info({ deleted: stats.deleted, files: stats.orphanFiles.length }, "Đã xóa hẳn tin bạn xóa trong My Documents");
+    }
   };
 
   listener.on("message", (m) => {
