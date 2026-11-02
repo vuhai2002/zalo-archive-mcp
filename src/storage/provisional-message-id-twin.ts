@@ -19,13 +19,17 @@ type StoredTwin = { id: number; msg_id: string };
  * Bản khác đã có trong kho của cùng tin. Tin tới mang id tạm: bản nào cũng tính. Tin tới mang
  * id thật: chỉ tính bản id tạm (hai id thật khác nhau là hai tin khác nhau).
  */
+// Dấu `+` chặn SQLite dùng chỉ mục cho cột đó. Thiếu nó, SQLite chọn chỉ mục người gửi
+// (`messages_sender`) và quét hết tin của người gửi cho MỖI tin ghi vào: tin mình gửi có thể
+// rất nhiều, nên mỗi lần dò chậm hẳn và lần đồng bộ toàn bộ lịch sử điện thoại chậm theo.
+// Chỉ mục hội thoại + cliMsgId gần như trỏ thẳng một tin.
+export const CLI_MSG_ID_TWIN_QUERY = `SELECT id, msg_id FROM messages
+       WHERE thread_id = ? AND cli_msg_id = ? AND +thread_type = ? AND +sender_id = ? AND msg_id <> ?`;
+
 export function findCliMsgIdTwin(db: DatabaseSync, msg: NormalizedMessage): StoredTwin | undefined {
   if (!msg.cliMsgId) return undefined;
   const rows = db
-    .prepare(
-      `SELECT id, msg_id FROM messages
-       WHERE thread_id = ? AND cli_msg_id = ? AND thread_type = ? AND sender_id = ? AND msg_id <> ?`,
-    )
+    .prepare(CLI_MSG_ID_TWIN_QUERY)
     .all(msg.threadId, msg.cliMsgId, msg.threadType, msg.senderId, msg.msgId) as StoredTwin[];
   const incomingProvisional = isProvisionalMsgId(msg.msgId);
   return rows.find((r) => incomingProvisional || isProvisionalMsgId(r.msg_id));

@@ -17,6 +17,7 @@ const JPEG = (tag: string) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0
 const JXL = (tag: string) => Buffer.concat([Buffer.from([0xff, 0x0a]), Buffer.from(`jxl ${tag}`)]);
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
 const MP4 = Buffer.concat([Buffer.from([0, 0, 0, 0x20]), Buffer.from("ftypisom video")]);
+const MP4_OLD = Buffer.concat([Buffer.from([0, 0, 0, 0x20]), Buffer.from("ftypisom video kiểu cũ")]);
 const md5 = (b: Buffer | string) => crypto.createHash("md5").update(b).digest("hex");
 const PDF = Buffer.from("%PDF-1.4 báo cáo");
 
@@ -33,6 +34,9 @@ function fakeZaloDownloads(): string {
   put("resource/g900/Cache/333_55_g900_n", Buffer.from("không phải ảnh")); // bản xem trước hỏng, có bản gốc JPEG
   put("resource/g900/picture/333_55_g900_cccc.jpg", JPEG("gốc 333"));
   put("resource/77/video/444_77_77", MP4); // video 1-1
+  put("video/group/9001", MP4_OLD); // video kiểu cũ (tên = mã tin), không có bản trong resource
+  put("resource/77/video/445_77_77", MP4); // có cả bản resource lẫn bản kiểu cũ: dùng bản resource
+  put("video/9002", MP4_OLD);
   put("resource/77/picture/555_100_77_dddd.jpg", JPEG("mình gửi 555")); // ảnh mình gửi trong 1-1
   put(`file/${md5(PDF)}`, PDF); // file thường, đúng MD5
   put(`file/group/${md5("nội dung khác")}`, Buffer.from("bị đổi")); // tên MD5 không khớp nội dung
@@ -67,7 +71,7 @@ function failedMedia(db: ReturnType<typeof openArchiveDatabase>, o: Partial<Norm
 describe("lấy lại media từ bản Zalo PC đã tải về máy", () => {
   it("ghép theo mã tin phía client + người gửi + hội thoại (nhóm g<mã>, 1-1, tin mình gửi); file theo MD5, bỏ fileNoise", () => {
     const index = buildZaloPcMediaIndex(fakeZaloDownloads());
-    const owner = { threadType: "group" as const, threadId: "900", senderId: "55", isSelf: false, checksum: null };
+    const owner = { threadType: "group" as const, threadId: "900", senderId: "55", isSelf: false, checksum: null, msgId: "1" };
     const photo = findZaloPcMedia(index, { ...owner, kind: "photo", cliMsgId: "111" }, SELF);
     assert.deepEqual([photo?.kind, !!(photo as { original: string }).original, !!(photo as { preview: string }).preview], ["photo", true, true]);
     assert.equal(findZaloPcMedia(index, { ...owner, kind: "photo", cliMsgId: "999" }, SELF), null);
@@ -75,6 +79,17 @@ describe("lấy lại media từ bản Zalo PC đã tải về máy", () => {
     assert.equal(findZaloPcMedia(index, { ...owner, kind: "photo", cliMsgId: "555", threadType: "user", threadId: "77", senderId: "?", isSelf: true }, SELF)?.kind, "photo");
     assert.equal(findZaloPcMedia(index, { ...owner, kind: "file", cliMsgId: null, checksum: md5(PDF).toUpperCase() }, SELF)?.kind, "file");
     assert.equal(index.plainFiles.size, 2, "chỉ file/ và file/group/, không lấy fileNoise");
+  });
+
+  it("video kiểu cũ (video/<mã tin>, video/group/<mã tin>) ghép theo mã tin Zalo, chỉ khi resource không có", () => {
+    const index = buildZaloPcMediaIndex(fakeZaloDownloads());
+    const owner = { kind: "video", threadType: "group" as const, threadId: "900", senderId: "55", isSelf: false, checksum: null };
+    const old = findZaloPcMedia(index, { ...owner, cliMsgId: null, msgId: "9001" }, SELF);
+    assert.ok(old?.kind === "video" && old.file.endsWith(path.join("video", "group", "9001")));
+    const both = findZaloPcMedia(index, { ...owner, threadType: "user", threadId: "77", senderId: "77", cliMsgId: "445", msgId: "9002" }, SELF);
+    assert.ok(both?.kind === "video" && both.file.includes("resource"), "có bản resource thì dùng bản resource");
+    assert.equal(findZaloPcMedia(index, { ...owner, kind: "photo", cliMsgId: null, msgId: "9001" }, SELF), null, "ảnh không ghép theo mã tin");
+    assert.equal(index.videosByMsgId.size, 2);
   });
 
   it("chép sang kho, kiểm loại / MD5, đánh đã tải kèm nguồn zalo_pc; không đụng gì thư mục Zalo PC", async () => {
@@ -91,11 +106,12 @@ describe("lấy lại media từ bản Zalo PC đã tải về máy", () => {
     failedMedia(db, { ...group, msgId: "m666", cliMsgId: "666", kind: "file", checksum: md5(PDF) });
     failedMedia(db, { ...group, msgId: "m777", cliMsgId: "777", kind: "file", checksum: md5("nội dung khác") });
     failedMedia(db, { ...group, msgId: "m888", cliMsgId: "888", kind: "photo" }); // Zalo PC chưa từng tải
+    failedMedia(db, { ...group, msgId: "9001", cliMsgId: "901", kind: "video" }); // chỉ có bản kiểu cũ
 
     const mediaDir = fs.mkdtempSync(path.join(os.tmpdir(), "zam-media-"));
     const result = await importMediaFromZaloPc({ db, mediaDir, downloadsDir: dl, selfUid: SELF, log: createSilentLogger(), convertJxl: () => PNG });
 
-    assert.deepEqual(result, { total: 8, processed: 8, recovered: 6, notFound: 1, rejected: 1, failed: 0 });
+    assert.deepEqual(result, { total: 9, processed: 9, recovered: 7, notFound: 1, rejected: 1, failed: 0 });
     const row = (msgId: string) =>
       db.prepare("SELECT status, local_path, mime, recovered_from, last_error FROM attachments WHERE msg_id = ?").get(msgId) as Record<string, string | null>;
     const ext = (msgId: string) => path.extname(String(row(msgId).local_path));
@@ -107,6 +123,7 @@ describe("lấy lại media từ bản Zalo PC đã tải về máy", () => {
     assert.deepEqual(fs.readFileSync(main111.replace(/\.jpg$/, ".orig.jxl")), JXL("gốc 111"));
     assert.ok(fs.existsSync(path.join(mediaDir, String(row("m222").local_path)).replace(/\.png$/, ".jxl")));
     assert.deepEqual(fs.readFileSync(path.join(mediaDir, String(row("m333").local_path))), JPEG("gốc 333"), "bản xem trước hỏng thì dùng bản gốc");
+    assert.deepEqual(fs.readFileSync(path.join(mediaDir, String(row("9001").local_path))), MP4_OLD, "video kiểu cũ");
     assert.deepEqual([row("m777").status, row("m888").status], ["failed", "failed"], "sai MD5 / không có bản thì giữ nguyên");
     assert.deepEqual(fs.readdirSync(path.join(mediaDir, ".tmp")), [], "không để lại file tạm");
     assert.deepEqual(snapshot(dl), before, "thư mục Zalo PC không bị đổi gì");

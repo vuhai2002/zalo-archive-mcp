@@ -8,6 +8,7 @@ import {
   markAttachmentFailed,
   type PendingAttachment,
 } from "../storage/attachment-queue-store.js";
+import { isOldFileDeletedByZalo, markAttachmentDeletedByZalo } from "../storage/zalo-deleted-media-store.js";
 import { downloadToTempFile, type DownloadOutcome } from "./download-to-file.js";
 import type { MediaLinkRenewer } from "./media-link-renewer.js";
 import { chooseExtension, mediaRelativePath } from "./media-file-naming.js";
@@ -28,6 +29,8 @@ export type MediaWorkerOptions = {
   convertJxl?: (bytes: Uint8Array) => Uint8Array;
   /** Xin Zalo cấp lại link khi link hết hạn; không có thì link hết hạn là hỏng hẳn */
   renewer?: MediaLinkRenewer;
+  /** File của tin cũ hơn chừng này ngày mà Zalo đã xóa thì khỏi gọi máy chủ (0 / bỏ trống = luôn thử tải) */
+  assumeDeletedAfterDays?: number;
 };
 
 const IDLE_MS = 10_000;
@@ -88,6 +91,13 @@ export class MediaDownloadWorker {
   }
 
   private async download(item: PendingAttachment, now: Date): Promise<number> {
+    // Tin cũ (vd đồng bộ toàn bộ lịch sử) mà Zalo đã xóa file: đóng luôn, không gọi máy chủ - lấy lại từ Zalo PC
+    const oldDays = this.o.assumeDeletedAfterDays ?? 0;
+    if (oldDays > 0 && !item.needsRenew && !item.renewedAt && isOldFileDeletedByZalo(this.o.db, item.id, now, oldDays)) {
+      markAttachmentDeletedByZalo(this.o.db, item.id, now);
+      this.o.log.debug({ id: item.id, kind: item.kind }, "File tin cũ Zalo đã xóa - không tải");
+      return 0;
+    }
     if (item.needsRenew && this.o.renewer) {
       const renewed = await this.o.renewer.renew(item, now);
       if (renewed.kind === "wait") return 0;

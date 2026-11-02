@@ -141,6 +141,7 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
       maxBytes: env.MEDIA_MAX_MEGABYTES * 1024 * 1024,
       maxAttempts: env.MEDIA_MAX_ATTEMPTS,
       downloadTimeoutMs: env.MEDIA_DOWNLOAD_TIMEOUT_MINUTES * 60_000,
+      assumeDeletedAfterDays: env.MEDIA_ASSUME_DELETED_AFTER_DAYS,
     });
     const swept = media.sweepTempFiles();
     if (swept > 0) log.info({ swept }, "Đã xóa file media tải dở từ lần chạy trước");

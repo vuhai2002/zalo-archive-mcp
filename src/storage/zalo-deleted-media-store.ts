@@ -42,6 +42,19 @@ export function isDeletedByZalo(db: DatabaseSync, attachmentId: number, now: Dat
   return !recentSuccess;
 }
 
+/**
+ * Trước khi tải: file của tin cũ hơn `minAgeDays` ngày mà quy tắc trên đã coi là Zalo xóa thì khỏi gọi máy chủ.
+ * Máy chủ Zalo gần như không còn trả file cũ quá vài tuần; đồng bộ toàn bộ lịch sử mà vẫn thử từng file thì mất nhiều ngày gọi vô ích, file của tin mới
+ * phải xếp sau. Loại file chưa từng bị Zalo từ chối (vd sticker) thì vẫn tải như thường.
+ */
+export function isOldFileDeletedByZalo(db: DatabaseSync, attachmentId: number, now: Date, minAgeDays: number): boolean {
+  const row = db
+    .prepare("SELECT m.sent_at FROM attachments a JOIN messages m ON m.msg_id = a.msg_id WHERE a.id = ?")
+    .get(attachmentId) as { sent_at: string } | undefined;
+  if (!row || Date.parse(row.sent_at) > now.getTime() - minAgeDays * 86_400_000) return false;
+  return isDeletedByZalo(db, attachmentId, now);
+}
+
 /** Đóng hẳn file Zalo đã xóa, không gọi Zalo (đánh `renewed_at` để lúc khởi động không xếp lại) */
 export function markAttachmentDeletedByZalo(db: DatabaseSync, id: number, now: Date): void {
   db.prepare(

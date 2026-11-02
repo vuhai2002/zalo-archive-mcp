@@ -138,22 +138,27 @@ export async function downloadBackupFile(opts: BackupDownloadOptions): Promise<{
     const where = `${url.host}${url.pathname}`;
     if (!zaloHost) opts.log?.(`host tải không thuộc Zalo (${url.host}) → không gửi cookie phiên`);
 
-    let lastStatus = 0;
-    let lastDetail = '';
+    // Lỗi của lần tải ĐẦU (kèm cookie phiên như Zalo PC) mới là lỗi thật; lần không cookie chỉ là đường lui
+    // và máy chủ Zalo luôn từ chối (HTTP 400) - báo lỗi đó thì che mất lỗi thật (vd 404: chưa có file)
+    let firstStatus = 0;
+    let firstDetail = '';
     for (const cookie of cookies) {
         if (opts.shouldAbort?.()) throw new DownloadAbortedError();
         const res = await get(url, zaloDownloadHeaders(opts.userAgent, cookie), opts.agent, MAX_REDIRECTS);
         const status = res.statusCode || 0;
         if (status >= 200 && status < 300) return saveResponse(res, opts);
 
-        lastStatus = status;
-        lastDetail = await readSnippet(res);
+        const detail = await readSnippet(res);
+        if (!firstStatus) {
+            firstStatus = status;
+            firstDetail = detail;
+        }
         opts.log?.(`tải ${where} (${cookie ? 'cookie phiên' : 'không cookie'}) → HTTP ${status} `
-            + `${res.headers['content-type'] || ''} ${lastDetail.slice(0, 300)}`);
+            + `${res.headers['content-type'] || ''} ${detail.slice(0, 300)}`);
         // Chỉ thử cách khác với lỗi 4xx (cookie/phiên); 5xx/khác thì dừng luôn.
         if (status < 400 || status >= 500) break;
     }
-    throw new Error(`Tải bản sao lưu thất bại (HTTP ${lastStatus}${serverMessage(lastDetail)})`);
+    throw new Error(`Tải bản sao lưu thất bại (HTTP ${firstStatus}${serverMessage(firstDetail)})`);
 }
 
 async function saveResponse(res: http.IncomingMessage, opts: BackupDownloadOptions): Promise<{ bytes: number }> {

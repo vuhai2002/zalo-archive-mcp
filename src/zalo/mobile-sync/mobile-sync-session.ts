@@ -4,13 +4,14 @@ import type { DatabaseSync } from "node:sqlite";
 import type { Logger } from "pino";
 import type { API } from "zca-js";
 import { decryptBackupKey, extractZdbBackup, generateSyncKeyPair, verifyChecksum } from "./decrypt-zdb-backup.js";
-import { downloadBackupFile } from "./download-mobile-backup.js";
+import { describeBackupInfo, downloadBackupWithRetry } from "./download-mobile-backup-with-retry.js";
 import { importMobileBackupFiles, MobileSyncCancelled } from "./import-mobile-backup-files.js";
 import {
   SyncEventType,
   type MobileSyncStage,
   type MobileSyncStats,
   type MobileSyncStatus,
+  type SyncDbInfo,
   type SyncEvent,
   type TSyncEventSyncMsgInfo,
 } from "./mobile-sync-types.js";
@@ -139,7 +140,8 @@ export class MobileSyncSession {
     const stats = emptyStats();
     const workDir = path.join(this.d.workDir, String(started));
     try {
-      const dbInfo = typeof info.db_info === "string" ? (JSON.parse(info.db_info || "{}") as Record<string, unknown>) : (info.db_info ?? {});
+      const dbInfo = typeof info.db_info === "string" ? (JSON.parse(info.db_info || "{}") as SyncDbInfo) : (info.db_info ?? {});
+      this.d.log.info({ backup: describeBackupInfo(info, dbInfo) }, "Điện thoại đã gửi bản sao lưu");
       if (Number(dbInfo.db_format ?? 0) !== 1) {
         throw new Error(`Định dạng sao lưu chưa hỗ trợ (db_format=${String(dbInfo.db_format)}). Cập nhật Zalo trên điện thoại rồi thử lại.`);
       }
@@ -148,15 +150,21 @@ export class MobileSyncSession {
       this.setStage("downloading", "Đang tải dữ liệu từ máy chủ Zalo...");
       const ctx = this.d.api.getContext() as unknown as { userAgent: string; cookie: { getCookieString: (u: string) => Promise<string> } };
       const cookie = await ctx.cookie.getCookieString("https://chat.zalo.me/").catch(() => "");
-      await downloadBackupFile({
+      const download = {
         url: String(info.url || ""),
         userAgent: ctx.userAgent,
         sessionCookie: cookie,
         destPath: cryptPath,
         expectedSize: Number(info.file_size) || 0,
-        onProgress: (p) => this.setProgress(p),
+        onProgress: (p: number) => this.setProgress(p),
         shouldAbort: () => this.cancelled,
-        log: (m) => this.d.log.warn(m),
+        log: (m: string) => this.d.log.warn(m),
+      };
+      await downloadBackupWithRetry(download, {
+        onRetry: (retry, of, err) => {
+          this.d.log.warn({ retry, of, error: err.message }, "Tải bản sao lưu hỏng - thử lại sau 5 giây");
+          this.setStage("downloading", `Máy chủ Zalo chưa trả bản sao lưu - thử lại sau 5 giây (lần ${retry}/${of})...`);
+        },
       });
       if ((await verifyChecksum(cryptPath, info.checksum_code || info.checksum)) === false) this.d.log.warn("Checksum bản sao lưu không khớp, vẫn thử giải mã");
       if (this.cancelled) throw new MobileSyncCancelled();

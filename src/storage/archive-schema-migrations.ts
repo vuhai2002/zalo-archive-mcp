@@ -328,4 +328,10 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE attachments ADD COLUMN recovered_from TEXT;
   `,
+  // 20: hỏi "7 ngày qua còn xin lại được file cùng loại không" (quy tắc file Zalo đã xóa) phải quét cả bảng
+  // đính kèm: đồng bộ toàn bộ lịch sử ra rất nhiều file thì mỗi lần hỏi chậm hẳn. Chỉ mục riêng
+  // cho file đã được Zalo cấp link mới (rất ít)
+  `
+  CREATE INDEX attachments_renew_ok ON attachments (kind, renewed_at) WHERE original_url IS NOT NULL;
+  `,
 ];

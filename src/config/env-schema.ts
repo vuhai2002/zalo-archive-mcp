@@ -82,6 +82,9 @@ export const envSchema = z
     MEDIA_RENEW_MIN_GAP_SECONDS: int(4, 1, 3600),
     MEDIA_RENEW_MAX_GAP_SECONDS: int(10, 1, 3600),
     MEDIA_RENEW_DAILY_CAP: int(200, 1, 10000),
+    // File của tin cũ hơn chừng này ngày mà Zalo đã xóa (Zalo đã từ chối file cùng loại mới hơn) thì không
+    // gọi máy chủ nữa: máy chủ không còn trả file quá ~30 ngày. 0 = luôn thử tải
+    MEDIA_ASSUME_DELETED_AFTER_DAYS: int(40, 0, 3650),
     /**
      * Thư mục dữ liệu cục bộ của Zalo PC (chứa `<UID>\ZaloDownloads`) để lấy lại ảnh / video Zalo đã
      * xóa khỏi máy chủ. Bỏ trống = `%LOCALAPPDATA%\ZaloPC` (Windows tự có biến LOCALAPPDATA).

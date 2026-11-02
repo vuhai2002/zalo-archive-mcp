@@ -4,6 +4,7 @@ import { sampleMessage } from "./archive-store-test-helpers.js";
 import { readThread, searchMessages } from "./message-read-queries.js";
 import { recordRecall, upsertMessage } from "./message-write-store.js";
 import { openArchiveDatabase } from "./open-archive-database.js";
+import { CLI_MSG_ID_TWIN_QUERY } from "./provisional-message-id-twin.js";
 
 const ME = "u-me";
 const at = (source: "live" | "old_messages" | "mobile_sync") => ({ source, receivedAt: "2026-10-29T08:00:00.000Z" });
@@ -73,5 +74,15 @@ describe("tin id tạm từ điện thoại", () => {
     upsertMessage(db, { ...fromPhone, senderId: "u-lan", isSelf: false }, at("mobile_sync"));
     upsertMessage(db, { ...real, msgId: "8400002000109" }, at("live"));
     assert.deepEqual(rows(db).map((r) => r.msg_id), ["8400002000108", "mb_1700000000103", "8400002000109"]);
+  });
+
+  it("dò bản trùng bằng chỉ mục hội thoại + cliMsgId, không quét hết tin của một người gửi", () => {
+    const db = openArchiveDatabase(":memory:");
+    const plan = db
+      .prepare(`EXPLAIN QUERY PLAN ${CLI_MSG_ID_TWIN_QUERY}`)
+      .all("t", "c", "user", ME, "m")
+      .map((r) => String((r as { detail: unknown }).detail))
+      .join(" | ");
+    assert.match(plan, /USING INDEX messages_thread_cli \(thread_id=\? AND cli_msg_id=\?\)/);
   });
 });

@@ -46,6 +46,10 @@ dùng ghi ở `data/accounts.json`); daemon, MCP và lệnh CLI đều theo nick
    7 ngày qua chưa cấp lại được file cùng loại nào cũ hơn, thì đóng file luôn, không xếp lượt, không gọi
    Zalo. Lúc khởi động: đóng các file đang chờ lượt mà Zalo đã xóa, trả lại lượt của chúng, cấp lượt mới
    cho phần còn lại theo tin mới nhất trước (file mới dễ cứu hơn), trần ngày vẫn tính số lệnh đã gửi.
+   File của tin cũ hơn `MEDIA_ASSUME_DELETED_AFTER_DAYS` (mặc định 40) ngày mà quy tắc trên coi là Zalo đã xóa
+   thì đóng ngay khi tới lượt tải, không gọi máy chủ: máy chủ Zalo gần như không còn trả
+   file cũ quá vài tuần, đồng bộ toàn bộ lịch sử mà vẫn thử từng file thì mất nhiều ngày và file của tin mới phải xếp
+   sau. Chỉ mục riêng cho file đã được cấp link mới (migration 20) giữ mỗi lần kiểm rất nhanh.
 
 Thông báo nhóm (`msg_type = 'group_event'`): sự kiện nhóm của zca-js và tin webchat `msginfo.actionlist`
 ("X vừa yêu cầu tham gia nhóm.", "X xác nhận: tham gia <lịch hẹn>."). Câu theo mẫu tiếng Việt của Zalo Web
@@ -57,7 +61,8 @@ Lấy lại media Zalo đã xóa từ Zalo PC: Zalo xóa ảnh / video / file kh
 tin cũ (đồng bộ điện thoại) thường không còn file. Zalo PC trên máy đã tải nhiều file trong số đó vào
 `%LOCALAPPDATA%\ZaloPC\<UID>\ZaloDownloads` dưới dạng file thường: ảnh / video ở
 `resource\<g<mã nhóm> | mã người>\<picture | Cache | video>\<cliMsgId>_<người gửi>_<hội thoại>...`, file
-đính kèm ở `file\<md5>`. `media/zalo-pc-media-index.ts` dò theo tên file, `media/import-media-from-zalo-pc.ts`
+đính kèm ở `file\<md5>`; video kiểu cũ (Zalo PC trước khoảng 07/2026) ở `video\<mã tin>` / `video\group\<mã tin>`,
+phần lớn trùng bản trong `resource`, chỉ dùng khi `resource` không có. `media/zalo-pc-media-index.ts` dò theo tên file, `media/import-media-from-zalo-pc.ts`
 chép sang kho (CHỈ ĐỌC thư mục Zalo PC), kiểm chữ ký ảnh / MP4 / MD5, ảnh lấy bản JPEG xem trước làm file
 hiện + giữ bản gốc HD cạnh (`<sha>.orig.jxl`), chỉ có JXL thì đổi PNG; đánh `done` kèm
 `attachments.recovered_from = 'zalo_pc'` (migration 19). Chạy theo nút trên trang Tài khoản Zalo. Không dùng

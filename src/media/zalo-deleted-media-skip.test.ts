@@ -107,6 +107,52 @@ describe("bỏ qua file Zalo đã xóa khi xin lại link", () => {
     assert.deepEqual([status(queued)?.status, status(fresh)?.status, status(fresh)?.needs_renew], ["failed", "pending", 1]);
   });
 
+  it("tin cũ hơn mốc ngày (đồng bộ toàn bộ lịch sử): Zalo đã xóa thì đóng luôn, không gọi máy chủ; tin mới hơn mốc, sticker, hay tắt mốc thì vẫn tải", async () => {
+    const db = openArchiveDatabase(":memory:");
+    withRefusedPhotos(db);
+    const ancient = addMedia(db, "ancient", "2024-05-01T03:00:00.000Z");
+    const recent = addMedia(db, "recent", "2026-10-01T03:00:00.000Z"); // 30 ngày tuổi: dưới mốc 40 ngày
+    upsertMessage(
+      db,
+      sampleMessage({
+        msgId: "stk",
+        sentAt: "2024-05-01T04:00:00.000Z",
+        msgType: "chat.sticker",
+        attachments: [{ kind: "sticker", remoteUrl: "https://zalo-api.zadn.vn/stk.webp", fileName: null, declaredSize: null }],
+      }),
+      live,
+    );
+    const fetched: string[] = [];
+    const worker = (assumeDeletedAfterDays: number) =>
+      new MediaDownloadWorker({
+        db,
+        mediaDir: fs.mkdtempSync(path.join(os.tmpdir(), "zam-old-")),
+        log: createSilentLogger(),
+        allowedHostSuffixes: ["zdn.vn", "zadn.vn"],
+        maxBytes: 1024,
+        maxAttempts: 1,
+        downloadTimeoutMs: 60_000,
+        fetchImpl: (async (url: string) => (fetched.push(String(url)), new Response("", { status: 404 }))) as unknown as typeof fetch,
+        now: () => NOW,
+        assumeDeletedAfterDays,
+      });
+    const status = (id: number) => db.prepare("SELECT status, last_error FROM attachments WHERE id = ?").get(id);
+
+    const w = worker(40);
+    assert.equal(await w.tick(), 0, "đóng không cần chờ: hàng đợi dọn nhanh");
+    assert.deepEqual([status(ancient)?.status, status(ancient)?.last_error], ["failed", DELETED_BY_ZALO_ERROR]);
+    assert.equal(fetched.length, 0, "không gọi máy chủ");
+    await w.tick();
+    await w.tick();
+    assert.deepEqual(fetched.map((u) => u.split("/").at(-1)), ["recent.jpg", "stk.webp"], "dưới mốc ngày và sticker vẫn thử tải");
+
+    const off = addMedia(db, "off", "2024-05-02T03:00:00.000Z");
+    await worker(0).tick();
+    assert.ok(fetched.at(-1)?.includes("/off"), "tắt mốc (0) thì luôn thử tải");
+    assert.notEqual(status(off)?.last_error, DELETED_BY_ZALO_ERROR);
+    assert.equal(status(recent)?.status, "failed");
+  });
+
   it("dashboard biết file Zalo đã xóa (đóng luôn hoặc bị từ chối 1001) để hiện 'Ảnh đã hết hạn', file hỏng khác thì không", () => {
     const db = openArchiveDatabase(":memory:");
     withRefusedPhotos(db);

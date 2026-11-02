@@ -8,14 +8,22 @@ import path from "node:path";
  * - ảnh / video: `resource/<hội thoại>/<picture | Cache | video>/<cliMsgId>_<người gửi>_<hội thoại>[_<hậu tố>]`,
  *   hội thoại = `g<mã nhóm>` hoặc mã người kia (1-1), người gửi = mã người gửi (tin mình gửi là mã mình).
  *   `picture` = bản gốc HD (thường JPEG XL), `Cache/<...>_n` = bản JPEG xem trước (nhỏ hơn), `video` = MP4;
+ * - video kiểu cũ (Zalo PC trước khoảng 07/2026): `video/<mã tin>` (1-1) hoặc `video/group/<mã tin>`, tên là mã
+ *   tin Zalo (msgId). Đa số trùng bản trong `resource`, chỉ dùng khi `resource` không có;
  * - file đính kèm: `file/<md5>` hoặc `file/group/<md5>`, tên là checksum MD5 Zalo ghi trong tin. File trong
  *   `fileNoise` bị Zalo PC biến đổi nội dung (dài hơn bản gốc 6 byte, MD5 khác) - không dùng.
  */
 export type ZaloPcMessageMedia = { picture?: string; preview?: string; video?: string };
-export type ZaloPcMediaIndex = { byMessage: Map<string, ZaloPcMessageMedia>; plainFiles: Map<string, string> };
+export type ZaloPcMediaIndex = {
+  byMessage: Map<string, ZaloPcMessageMedia>;
+  plainFiles: Map<string, string>;
+  /** Video kiểu cũ theo mã tin Zalo */
+  videosByMsgId: Map<string, string>;
+};
 
 const MESSAGE_FILE = /^(\d+)_(\d+)_(g?\d+)(?:_(.+))?$/;
 const MD5_NAME = /^[a-f0-9]{32}$/i;
+const MSG_ID_NAME = /^\d+$/;
 
 export const zaloPcMessageKey = (cliMsgId: string, senderUid: string, conversation: string) => `${cliMsgId}_${senderUid}_${conversation}`;
 
@@ -55,11 +63,17 @@ export function buildZaloPcMediaIndex(downloadsDir: string): ZaloPcMediaIndex {
   for (const dir of [path.join(downloadsDir, "file"), path.join(downloadsDir, "file", "group")]) {
     for (const f of listEntries(dir)) if (f.isFile() && MD5_NAME.test(f.name)) plainFiles.set(f.name.toLowerCase(), path.join(dir, f.name));
   }
-  return { byMessage, plainFiles };
+  const videosByMsgId = new Map<string, string>();
+  for (const dir of [path.join(downloadsDir, "video"), path.join(downloadsDir, "video", "group")]) {
+    for (const f of listEntries(dir)) if (f.isFile() && MSG_ID_NAME.test(f.name)) videosByMsgId.set(f.name, path.join(dir, f.name));
+  }
+  return { byMessage, plainFiles, videosByMsgId };
 }
 
 export type ZaloPcMediaOwner = {
   kind: string;
+  /** Mã tin Zalo (msgId) - tên video kiểu cũ */
+  msgId: string;
   threadId: string;
   threadType: "user" | "group";
   senderId: string;
@@ -81,13 +95,16 @@ export function findZaloPcMedia(index: ZaloPcMediaIndex, owner: ZaloPcMediaOwner
     const file = MD5_NAME.test(md5) ? index.plainFiles.get(md5) : undefined;
     return file ? { kind: "file", file, md5 } : null;
   }
-  if (!owner.cliMsgId) return null;
   const conversation = owner.threadType === "group" ? `g${owner.threadId}` : owner.threadId;
-  const media = index.byMessage.get(zaloPcMessageKey(owner.cliMsgId, owner.isSelf ? selfUid : owner.senderId, conversation));
-  if (!media) return null;
+  const media = owner.cliMsgId
+    ? index.byMessage.get(zaloPcMessageKey(owner.cliMsgId, owner.isSelf ? selfUid : owner.senderId, conversation))
+    : undefined;
   if (owner.kind === "photo" || owner.kind === "gif") {
-    return media.picture || media.preview ? { kind: "photo", original: media.picture ?? null, preview: media.preview ?? null } : null;
+    return media?.picture || media?.preview ? { kind: "photo", original: media.picture ?? null, preview: media.preview ?? null } : null;
   }
-  if (owner.kind === "video") return media.video ? { kind: "video", file: media.video } : null;
+  if (owner.kind === "video") {
+    const file = media?.video ?? index.videosByMsgId.get(owner.msgId);
+    return file ? { kind: "video", file } : null;
+  }
   return null;
 }

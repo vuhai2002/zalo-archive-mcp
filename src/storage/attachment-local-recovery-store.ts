@@ -7,6 +7,8 @@ import type { DatabaseSync } from "node:sqlite";
 export type RecoveryCandidate = {
   id: number;
   kind: string;
+  /** Mã tin Zalo (msgId) của tin chứa file */
+  msgId: string;
   fileName: string | null;
   threadId: string;
   threadType: "user" | "group";
@@ -31,7 +33,7 @@ function checksumOf(params: unknown): string | null {
 export function failedAttachmentsForRecovery(db: DatabaseSync): RecoveryCandidate[] {
   const rows = db
     .prepare(
-      `SELECT a.id, a.kind, a.file_name, m.thread_id, m.thread_type, m.sender_id, m.is_self, m.cli_msg_id,
+      `SELECT a.id, a.kind, a.msg_id, a.file_name, m.thread_id, m.thread_type, m.sender_id, m.is_self, m.cli_msg_id,
          CASE WHEN a.kind = 'file' AND json_valid(m.raw_json) THEN json_extract(m.raw_json, '$.content.params') END AS params
        FROM attachments a JOIN messages m ON m.msg_id = a.msg_id
        WHERE a.status = 'failed' AND a.kind IN ('photo', 'gif', 'video', 'file')
@@ -41,6 +43,7 @@ export function failedAttachmentsForRecovery(db: DatabaseSync): RecoveryCandidat
   return rows.map((r) => ({
     id: Number(r.id),
     kind: String(r.kind),
+    msgId: String(r.msg_id),
     fileName: (r.file_name as string | null) ?? null,
     threadId: String(r.thread_id),
     threadType: r.thread_type === "group" ? "group" : "user",
