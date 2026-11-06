@@ -350,4 +350,9 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
     deleted_at TEXT NOT NULL
   );
   `,
+  // 23: trang Tổng quan đếm tin theo nguồn (trực tiếp / lấy bù / điện thoại): không chỉ mục thì phải quét cả bảng tin
+  // (rất nhiều tin sau đồng bộ toàn bộ lịch sử: quét lâu, chặn mọi yêu cầu dashboard khác trong lúc đó)
+  `
+  CREATE INDEX messages_source ON messages (source);
+  `,
 ];
