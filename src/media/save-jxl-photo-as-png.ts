@@ -5,6 +5,9 @@ import { mediaRelativePath } from "./media-file-naming.js";
 
 export type SavedMedia = { rel: string; sha256: string; sizeBytes: number; mime: string | null };
 
+/** Đổi byte ảnh JXL sang PNG - thường chạy ở luồng phụ (`JxlPngWorkerPool`) để không chặn daemon */
+export type ConvertJxlToPng = (bytes: Uint8Array) => Promise<Uint8Array>;
+
 /** Đặt file đã tải vào chỗ cuối; file cùng nội dung đã có thì bỏ bản mới (khử trùng theo sha) */
 export function placeDownloadedFile(tempFile: string, finalPath: string): void {
   try {
@@ -21,12 +24,12 @@ export function placeDownloadedFile(tempFile: string, finalPath: string): void {
  * Ảnh JXL vừa tải (file tạm): đổi sang PNG để trình duyệt / Claude xem được, lưu PNG
  * làm file chính của đính kèm, và giữ file .jxl gốc NGAY CẠNH (cùng tên, đuôi .jxl).
  */
-export function saveJxlPhotoAsPng(o: {
+export async function saveJxlPhotoAsPng(o: {
   tempFile: string;
   mediaDir: string;
-  convert: (bytes: Uint8Array) => Uint8Array;
-}): SavedMedia {
-  const png = o.convert(new Uint8Array(fs.readFileSync(o.tempFile)));
+  convert: ConvertJxlToPng;
+}): Promise<SavedMedia> {
+  const png = await o.convert(new Uint8Array(fs.readFileSync(o.tempFile)));
   const sha256 = crypto.createHash("sha256").update(png).digest("hex");
   const rel = mediaRelativePath(sha256, ".png");
   const finalPath = path.join(o.mediaDir, rel);

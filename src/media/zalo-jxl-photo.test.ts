@@ -41,7 +41,7 @@ function setup(routes: Record<string, () => Response>) {
     downloadTimeoutMs: 60_000,
     fetchImpl,
     now: () => new Date("2026-10-29T03:30:00.000Z"),
-    convertJxl: () => FAKE_PNG,
+    convertJxl: async () => FAKE_PNG,
   });
   return { db, worker, mediaDir, asked, att: () => getAttachment(db, 1)! };
 }

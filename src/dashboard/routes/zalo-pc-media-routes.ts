@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { zaloPcDownloadsDir } from "../../config/account-paths.js";
 import { ZaloPcMediaImportJob } from "../../daemon/zalo-pc-media-import-job.js";
+import { sharedJxlPngPool } from "../../media/jxl-png-worker-pool.js";
 import { createSilentLogger } from "../../shared/logger.js";
 import type { DashboardContext } from "../dashboard-context.js";
 
@@ -11,11 +12,14 @@ import type { DashboardContext } from "../dashboard-context.js";
  */
 export function zaloPcMediaRoutes(ctx: DashboardContext): Hono {
   const app = new Hono();
+  const pool = sharedJxlPngPool(ctx.env.JXL_CONVERT_WORKERS);
   const job = new ZaloPcMediaImportJob({
     db: ctx.db,
     mediaDir: ctx.paths.mediaDir,
     downloadsDirFor: (uid) => zaloPcDownloadsDir(ctx.env, uid),
     log: (ctx.log ?? createSilentLogger()).child({ part: "zalo-pc-media" }),
+    convertJxl: (bytes) => pool.convert(bytes),
+    concurrency: pool.size,
   });
   app.get("/zalo-pc-media", (c) => c.json(job.status()));
   app.post("/zalo-pc-media/start", (c) => {

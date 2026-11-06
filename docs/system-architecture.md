@@ -68,9 +68,15 @@ tin cũ (đồng bộ điện thoại) thường không còn file. Zalo PC trên
 đính kèm ở `file\<md5>`; video kiểu cũ (Zalo PC trước khoảng 07/2026) ở `video\<mã tin>` / `video\group\<mã tin>`,
 phần lớn trùng bản trong `resource`, chỉ dùng khi `resource` không có. `media/zalo-pc-media-index.ts` dò theo tên file, `media/import-media-from-zalo-pc.ts`
 chép sang kho (CHỈ ĐỌC thư mục Zalo PC), kiểm chữ ký ảnh / MP4 / MD5, ảnh lấy bản JPEG xem trước làm file
-hiện + giữ bản gốc HD cạnh (`<sha>.orig.jxl`), chỉ có JXL thì đổi PNG; đánh `done` kèm
+hiện + giữ bản gốc HD cạnh (`<sha>.orig.jxl`), chỉ có JXL thì đổi PNG (luồng phụ, vài file cùng lúc - xem dưới); đánh `done` kèm
 `attachments.recovered_from = 'zalo_pc'` (migration 19). Chạy theo nút trên trang Tài khoản Zalo. Không dùng
 `fileNoise` (Zalo PC biến đổi nội dung) và không đụng DB Zalo PC.
+
+Đổi ảnh JXL sang PNG (trình duyệt không hiện JXL) tốn vài giây một ảnh lớn, phần lớn là mã hóa PNG, và
+chặn luồng đang chạy. Daemon chỉ có một luồng chính cho dashboard + listener + hàng đợi gửi, nên việc đổi chạy ở
+luồng phụ: `media/jxl-png-worker-pool.ts` giữ tối đa `JXL_CONVERT_WORKERS` luồng (mặc định 4, dùng chung cho tải
+media và lấy từ Zalo PC), mỗi luồng đổi một ảnh, luồng rảnh 30 giây thì tắt để trả bộ nhớ WASM. Lấy từ Zalo PC
+chép / đổi chừng ấy file cùng lúc.
 
 Parser sai: sửa code, `pnpm replay-journal` dựng lại (giữ `source`/`received_at` của lần đầu).
 

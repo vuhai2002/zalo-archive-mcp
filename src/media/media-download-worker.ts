@@ -12,7 +12,7 @@ import { isOldFileDeletedByZalo, markAttachmentDeletedByZalo } from "../storage/
 import { downloadToTempFile, type DownloadOutcome } from "./download-to-file.js";
 import type { MediaLinkRenewer } from "./media-link-renewer.js";
 import { chooseExtension, mediaRelativePath } from "./media-file-naming.js";
-import { placeDownloadedFile, saveJxlPhotoAsPng, type SavedMedia } from "./save-jxl-photo-as-png.js";
+import { placeDownloadedFile, saveJxlPhotoAsPng, type ConvertJxlToPng, type SavedMedia } from "./save-jxl-photo-as-png.js";
 import { convertJxlToPng, looksLikeJxl } from "./zalo-jxl-photo.js";
 import { fallbackSourceUrl } from "./media-fallback-source-url.js";
 
@@ -26,8 +26,8 @@ export type MediaWorkerOptions = {
   downloadTimeoutMs: number;
   fetchImpl?: typeof fetch;
   now?: () => Date;
-  /** Đổi ảnh JXL sang PNG; test thay bằng bản giả để khỏi nạp WASM */
-  convertJxl?: (bytes: Uint8Array) => Uint8Array;
+  /** Đổi ảnh JXL sang PNG - daemon dùng luồng phụ (`JxlPngWorkerPool`); bỏ trống = đổi ngay ở luồng chính; test thay bản giả */
+  convertJxl?: ConvertJxlToPng;
   /** Xin Zalo cấp lại link khi link hết hạn; không có thì link hết hạn là hỏng hẳn */
   renewer?: MediaLinkRenewer;
   /** File của tin cũ hơn chừng này ngày mà Zalo đã xóa thì khỏi gọi máy chủ (0 / bỏ trống = luôn thử tải) */
@@ -131,7 +131,7 @@ export class MediaDownloadWorker {
       return 1_000;
     }
 
-    const saved = this.save(item, result);
+    const saved = await this.save(item, result);
     markAttachmentDone(this.o.db, item.id, {
       localPath: saved.rel,
       sha256: saved.sha256,
@@ -143,7 +143,7 @@ export class MediaDownloadWorker {
   }
 
   /** Cất file vừa tải. Ảnh JXL (trình duyệt không hiện được) thì đổi sang PNG, giữ bản gốc bên cạnh. */
-  private save(item: PendingAttachment, r: Extract<DownloadOutcome, { ok: true }>): SavedMedia {
+  private async save(item: PendingAttachment, r: Extract<DownloadOutcome, { ok: true }>): Promise<SavedMedia> {
     if (item.kind === "photo" || item.kind === "gif") {
       const head = new Uint8Array(16);
       const fd = fs.openSync(r.tempFile, "r");
@@ -154,7 +154,7 @@ export class MediaDownloadWorker {
       }
       if (looksLikeJxl(r.mime, head)) {
         try {
-          return saveJxlPhotoAsPng({ tempFile: r.tempFile, mediaDir: this.o.mediaDir, convert: this.o.convertJxl ?? convertJxlToPng });
+          return await saveJxlPhotoAsPng({ tempFile: r.tempFile, mediaDir: this.o.mediaDir, convert: this.o.convertJxl ?? (async (b) => convertJxlToPng(b)) });
         } catch (err) {
           // Không đổi được thì vẫn giữ file JXL gốc: kho không mất ảnh, chỉ dashboard không hiện
           this.o.log.warn({ id: item.id, err }, "Không đổi được ảnh JXL sang PNG - giữ nguyên file JXL");

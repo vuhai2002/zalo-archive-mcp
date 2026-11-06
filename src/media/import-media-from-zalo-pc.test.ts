@@ -109,7 +109,7 @@ describe("lấy lại media từ bản Zalo PC đã tải về máy", () => {
     failedMedia(db, { ...group, msgId: "9001", cliMsgId: "901", kind: "video" }); // chỉ có bản kiểu cũ
 
     const mediaDir = fs.mkdtempSync(path.join(os.tmpdir(), "zam-media-"));
-    const result = await importMediaFromZaloPc({ db, mediaDir, downloadsDir: dl, selfUid: SELF, log: createSilentLogger(), convertJxl: () => PNG });
+    const result = await importMediaFromZaloPc({ db, mediaDir, downloadsDir: dl, selfUid: SELF, log: createSilentLogger(), convertJxl: async () => PNG, concurrency: 3 });
 
     assert.deepEqual(result, { total: 9, processed: 9, recovered: 7, notFound: 1, rejected: 1, failed: 0 });
     const row = (msgId: string) =>
@@ -128,7 +128,34 @@ describe("lấy lại media từ bản Zalo PC đã tải về máy", () => {
     assert.deepEqual(fs.readdirSync(path.join(mediaDir, ".tmp")), [], "không để lại file tạm");
     assert.deepEqual(snapshot(dl), before, "thư mục Zalo PC không bị đổi gì");
 
-    const again = await importMediaFromZaloPc({ db, mediaDir, downloadsDir: dl, selfUid: SELF, log: createSilentLogger(), convertJxl: () => PNG });
+    const again = await importMediaFromZaloPc({ db, mediaDir, downloadsDir: dl, selfUid: SELF, log: createSilentLogger(), convertJxl: async () => PNG });
     assert.deepEqual([again.total, again.recovered], [2, 0], "chạy lại chỉ xét file còn hỏng");
+  });
+
+  it("đổi JXL vài ảnh cùng lúc, không quá `concurrency`; ảnh đổi lỗi thì vẫn giữ bản JXL", async () => {
+    const dl = fs.mkdtempSync(path.join(os.tmpdir(), "zam-zalopc-"));
+    const db = openArchiveDatabase(":memory:");
+    for (let i = 1; i <= 7; i++) {
+      fs.mkdirSync(path.join(dl, "resource/g900/picture"), { recursive: true });
+      fs.writeFileSync(path.join(dl, `resource/g900/picture/${i}_55_g900_x.jxl`), JXL(`ảnh ${i}`));
+      failedMedia(db, { threadType: "group", threadId: "900", senderId: "55", isSelf: false, msgId: `m${i}`, cliMsgId: String(i), kind: "photo" });
+    }
+    let running = 0;
+    let peak = 0;
+    const convertJxl = async (bytes: Uint8Array) => {
+      running++;
+      peak = Math.max(peak, running);
+      await new Promise((r) => setTimeout(r, 20));
+      running--;
+      if (Buffer.from(bytes).toString().endsWith("ảnh 4")) throw new Error("JXL hỏng");
+      return new Uint8Array(Buffer.concat([PNG, Buffer.from(bytes)]));
+    };
+    const mediaDir = fs.mkdtempSync(path.join(os.tmpdir(), "zam-media-"));
+    const result = await importMediaFromZaloPc({ db, mediaDir, downloadsDir: dl, selfUid: SELF, log: createSilentLogger(), convertJxl, concurrency: 3 });
+
+    assert.deepEqual(result, { total: 7, processed: 7, recovered: 7, notFound: 0, rejected: 0, failed: 0 });
+    assert.equal(peak, 3);
+    const mimes = db.prepare("SELECT mime FROM attachments ORDER BY id").all().map((r) => (r as { mime: string }).mime);
+    assert.deepEqual(mimes, ["image/png", "image/png", "image/png", "image/jxl", "image/png", "image/png", "image/png"]);
   });
 });

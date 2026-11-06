@@ -7,7 +7,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { Logger } from "pino";
 import { failedAttachmentsForRecovery, markAttachmentRecovered, type RecoveryCandidate } from "../storage/attachment-local-recovery-store.js";
 import { chooseExtension, mediaRelativePath } from "./media-file-naming.js";
-import { placeDownloadedFile, saveJxlPhotoAsPng, type SavedMedia } from "./save-jxl-photo-as-png.js";
+import { placeDownloadedFile, saveJxlPhotoAsPng, type ConvertJxlToPng, type SavedMedia } from "./save-jxl-photo-as-png.js";
 import { buildZaloPcMediaIndex, findZaloPcMedia, type ZaloPcMediaMatch } from "./zalo-pc-media-index.js";
 import { convertJxlToPng } from "./zalo-jxl-photo.js";
 
@@ -16,8 +16,9 @@ import { convertJxlToPng } from "./zalo-jxl-photo.js";
  * Nguồn chỉ được MỞ ĐỂ ĐỌC rồi chép sang thư mục media của kho - không ghi, đổi tên, xóa gì của Zalo PC
  * (CLAUDE.md). Mỗi bản chép được kiểm trước khi nhận: ảnh phải đúng chữ ký ảnh, video phải là MP4, file đính
  * kèm phải đúng MD5 Zalo ghi trong tin. Ảnh: bản JPEG xem trước làm file hiện trên dashboard, bản gốc HD
- * (JXL) giữ ngay cạnh; chỉ có bản JXL thì đổi sang PNG như lúc tải. Chạy từng file, nhường vòng lặp sự kiện
- * giữa các file để daemon vẫn nghe tin.
+ * (JXL) giữ ngay cạnh; chỉ có bản JXL thì đổi sang PNG như lúc tải. Chép / đổi vài file cùng lúc (`concurrency`)
+ * vì đổi một ảnh JXL mất vài giây; việc đổi chạy ở luồng phụ (`convertJxl` = `JxlPngWorkerPool`) để daemon vẫn
+ * nghe tin và dashboard không đứng.
  */
 export const ZALO_PC_SOURCE = "zalo_pc";
 
@@ -76,7 +77,7 @@ function place(mediaDir: string, c: Copied, ext: string, mime: string | null): S
   return { rel, sha256: c.sha256, sizeBytes: c.sizeBytes, mime };
 }
 
-type StoreOptions = { mediaDir: string; tempDir: string; convertJxl: (bytes: Uint8Array) => Uint8Array };
+type StoreOptions = { mediaDir: string; tempDir: string; convertJxl: ConvertJxlToPng };
 
 /** Chép + kiểm + cất một bản Zalo PC; null nếu bản đó không đúng loại / không đúng MD5 (không nhận) */
 async function storeMatch(o: StoreOptions, c: RecoveryCandidate, match: ZaloPcMediaMatch): Promise<SavedMedia | null> {
@@ -103,7 +104,7 @@ async function storePhoto(o: StoreOptions, match: Extract<ZaloPcMediaMatch, { ki
   const original = await copyIntoTemp(match.original, o.tempDir);
   if (sniff(original.head) === "jxl") {
     try {
-      return saveJxlPhotoAsPng({ tempFile: original.tempFile, mediaDir: o.mediaDir, convert: o.convertJxl });
+      return await saveJxlPhotoAsPng({ tempFile: original.tempFile, mediaDir: o.mediaDir, convert: o.convertJxl });
     } catch {
       // Không đổi được sang PNG thì vẫn giữ bản JXL: kho không mất ảnh, chỉ trình duyệt không hiện (như lúc tải)
       return place(o.mediaDir, original, ".jxl", "image/jxl");
@@ -132,37 +133,67 @@ async function keepOriginalBeside(o: StoreOptions, mainRel: string, original: st
   placeDownloadedFile(copied.tempFile, path.join(o.mediaDir, mainRel.replace(/\.[a-z0-9]+$/i, `.orig${ext}`)));
 }
 
-export async function importMediaFromZaloPc(o: {
+/** File Zalo PC không có dò trong bộ nhớ rất nhanh: cứ chừng này file thì nhường vòng lặp sự kiện một lần */
+const YIELD_EVERY = 500;
+
+type ImportOptions = {
   db: DatabaseSync;
   mediaDir: string;
   downloadsDir: string;
   selfUid: string;
   log: Logger;
-  convertJxl?: (bytes: Uint8Array) => Uint8Array;
+  /** Đổi JXL sang PNG; bỏ trống = đổi ngay ở luồng đang chạy (chặn vài giây mỗi ảnh - chỉ hợp cho lệnh chạy một lần / test) */
+  convertJxl?: ConvertJxlToPng;
+  /** Số file chép / đổi cùng lúc (mặc định 1); nên bằng số luồng của pool đổi JXL */
+  concurrency?: number;
   shouldAbort?: () => boolean;
   onProgress?: (p: ZaloPcImportProgress) => void;
-}): Promise<ZaloPcImportProgress> {
+};
+
+/** Chép + kiểm + đánh dấu một file có bản Zalo PC, cộng vào tiến độ chung */
+async function recoverOne(o: ImportOptions, store: StoreOptions, c: RecoveryCandidate, match: ZaloPcMediaMatch, p: ZaloPcImportProgress): Promise<void> {
+  try {
+    const saved = await storeMatch(store, c, match);
+    if (!saved) p.rejected++;
+    else if (markAttachmentRecovered(o.db, c.id, { localPath: saved.rel, sha256: saved.sha256, sizeBytes: saved.sizeBytes, mime: saved.mime }, ZALO_PC_SOURCE, new Date().toISOString())) p.recovered++;
+  } catch (err) {
+    p.failed++;
+    o.log.warn({ id: c.id, kind: c.kind, err }, "Không chép được bản Zalo PC của file");
+  }
+  p.processed++;
+  o.onProgress?.({ ...p });
+}
+
+export async function importMediaFromZaloPc(o: ImportOptions): Promise<ZaloPcImportProgress> {
   const index = buildZaloPcMediaIndex(o.downloadsDir);
   const candidates = failedAttachmentsForRecovery(o.db);
   const p: ZaloPcImportProgress = { total: candidates.length, processed: 0, recovered: 0, notFound: 0, rejected: 0, failed: 0 };
-  const store: StoreOptions = { mediaDir: o.mediaDir, tempDir: path.join(o.mediaDir, ".tmp"), convertJxl: o.convertJxl ?? convertJxlToPng };
+  const store: StoreOptions = {
+    mediaDir: o.mediaDir,
+    tempDir: path.join(o.mediaDir, ".tmp"),
+    convertJxl: o.convertJxl ?? (async (bytes) => convertJxlToPng(bytes)),
+  };
+  const limit = Math.max(1, Math.floor(o.concurrency ?? 1));
+  const inFlight = new Set<Promise<void>>();
+  let sinceYield = 0;
   o.onProgress?.({ ...p });
   for (const c of candidates) {
     if (o.shouldAbort?.()) break;
     const match = findZaloPcMedia(index, c, o.selfUid);
-    try {
-      const saved = match ? await storeMatch(store, c, match) : null;
-      if (!match) p.notFound++;
-      else if (!saved) p.rejected++;
-      else if (markAttachmentRecovered(o.db, c.id, { localPath: saved.rel, sha256: saved.sha256, sizeBytes: saved.sizeBytes, mime: saved.mime }, ZALO_PC_SOURCE, new Date().toISOString())) p.recovered++;
-    } catch (err) {
-      p.failed++;
-      o.log.warn({ id: c.id, kind: c.kind, err }, "Không chép được bản Zalo PC của file");
+    if (!match) {
+      p.notFound++;
+      p.processed++;
+      o.onProgress?.({ ...p });
+      if (++sinceYield >= YIELD_EVERY) {
+        sinceYield = 0;
+        await new Promise((r) => setImmediate(r));
+      }
+      continue;
     }
-    p.processed++;
-    o.onProgress?.({ ...p });
-    // Đổi JXL sang PNG chặn vài giây: nhường vòng lặp sự kiện giữa các file để listener vẫn chạy
-    await new Promise((r) => setImmediate(r));
+    const task: Promise<void> = recoverOne(o, store, c, match, p).finally(() => inFlight.delete(task));
+    inFlight.add(task);
+    if (inFlight.size >= limit) await Promise.race(inFlight);
   }
+  await Promise.all(inFlight);
   return p;
 }

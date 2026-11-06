@@ -3,6 +3,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { Logger } from "pino";
 import type { ZaloPcImportProgress, ZaloPcMediaImportStatus } from "../dashboard/dashboard-api-contract.js";
 import { importMediaFromZaloPc } from "../media/import-media-from-zalo-pc.js";
+import type { ConvertJxlToPng } from "../media/save-jxl-photo-as-png.js";
 import { getMeta } from "../storage/thread-directory-store.js";
 
 /**
@@ -25,6 +26,9 @@ export class ZaloPcMediaImportJob {
       /** Thư mục ZaloDownloads của nick theo mã nick (null khi không xác định được) */
       downloadsDirFor: (uid: string) => string | null;
       log: Logger;
+      /** Đổi JXL sang PNG ở luồng phụ; `concurrency` = số file chép / đổi cùng lúc (bằng số luồng đổi JXL) */
+      convertJxl?: ConvertJxlToPng;
+      concurrency?: number;
     },
   ) {}
 
@@ -68,6 +72,8 @@ export class ZaloPcMediaImportJob {
       downloadsDir: dir,
       selfUid: uid,
       log: this.d.log,
+      convertJxl: this.d.convertJxl,
+      concurrency: this.d.concurrency,
       onProgress: (p) => (this.progress = p),
     })
       .then((p) => this.d.log.info({ ...p }, "Đã lấy lại media từ Zalo PC"))

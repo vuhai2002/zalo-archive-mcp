@@ -4,6 +4,7 @@ import { ThreadType, type API } from "zca-js";
 import type { AccountPaths } from "../config/account-paths.js";
 import type { AppEnv } from "../config/env-schema.js";
 import { MediaDownloadWorker } from "../media/media-download-worker.js";
+import { sharedJxlPngPool } from "../media/jxl-png-worker-pool.js";
 import { MediaLinkRenewer } from "../media/media-link-renewer.js";
 import { attachRenewLinkListener, RenewLinkReplyWaiter } from "../zalo/renew-link-control-listener.js";
 import { installRenewMediaLinkApi } from "../zalo/zca-renew-media-link-api.js";
@@ -147,6 +148,7 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
       maxAttempts: env.MEDIA_MAX_ATTEMPTS,
       downloadTimeoutMs: env.MEDIA_DOWNLOAD_TIMEOUT_MINUTES * 60_000,
       assumeDeletedAfterDays: env.MEDIA_ASSUME_DELETED_AFTER_DAYS,
+      convertJxl: (bytes) => sharedJxlPngPool(env.JXL_CONVERT_WORKERS).convert(bytes),
     });
     const swept = media.sweepTempFiles();
     if (swept > 0) log.info({ swept }, "Đã xóa file media tải dở từ lần chạy trước");

@@ -87,6 +87,9 @@ export const envSchema = z
     // File của tin cũ hơn chừng này ngày mà Zalo đã xóa (Zalo đã từ chối file cùng loại mới hơn) thì không
     // gọi máy chủ nữa: máy chủ không còn trả file quá ~30 ngày. 0 = luôn thử tải
     MEDIA_ASSUME_DELETED_AFTER_DAYS: int(40, 0, 3650),
+    // Số luồng phụ đổi ảnh JPEG XL sang PNG (lúc tải ảnh JXL và lúc lấy từ Zalo PC). Mỗi ảnh lớn mất vài giây
+    // một luồng; nhiều luồng thì lấy từ Zalo PC nhanh hơn nhưng chiếm thêm nhân CPU trong lúc chạy
+    JXL_CONVERT_WORKERS: int(4, 1, 16),
     /**
      * Thư mục dữ liệu cục bộ của Zalo PC (chứa `<UID>\ZaloDownloads`) để lấy lại ảnh / video Zalo đã
      * xóa khỏi máy chủ. Bỏ trống = `%LOCALAPPDATA%\ZaloPC` (Windows tự có biến LOCALAPPDATA).
