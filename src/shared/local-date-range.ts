@@ -23,6 +23,11 @@ export function startOfNextLocalDayUtc(date: string, timeZone: string): string |
   return dt.isValid ? dt.toUTC().toJSDate().toISOString() : null;
 }
 
+/** Mốc UTC ISO -> ngày "YYYY-MM-DD" theo múi giờ kho (vd điền sẵn ô ngày trên dashboard) */
+export function localDateOf(iso: string, timeZone: string): string {
+  return DateTime.fromISO(iso, { zone: "utc" }).setZone(timeZone).toISODate() ?? iso.slice(0, 10);
+}
+
 /** Ngày "YYYY-MM-DD" + giờ "HH:mm" theo múi giờ kho -> UTC ISO; null nếu sai/không tồn tại */
 export function localWallClockToUtc(date: string, time: string, timeZone: string): string | null {
   if (!DATE_PATTERN.test(date) || !TIME_PATTERN.test(time)) return null;

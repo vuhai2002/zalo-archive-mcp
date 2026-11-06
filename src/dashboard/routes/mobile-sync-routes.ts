@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import { startOfLocalDayUtc, startOfNextLocalDayUtc } from "../../shared/local-date-range.js";
+import { localDateOf, startOfLocalDayUtc, startOfNextLocalDayUtc } from "../../shared/local-date-range.js";
+import { dismissPhoneSyncSuggestion, readPhoneSyncSuggestion } from "../../storage/phone-sync-suggestion-store.js";
 import type { MobileSyncResponse, MobileSyncStartRequest } from "../dashboard-api-contract.js";
 import type { DashboardAppContext } from "../dashboard-context.js";
 
@@ -14,7 +15,10 @@ export function mobileSyncRoutes(ctx: DashboardAppContext): Hono {
   const tz = ctx.env.ARCHIVE_TIMEZONE;
   const body = (): MobileSyncResponse => {
     const sync = ctx.accounts.mobileSync();
-    return { available: sync !== null, status: sync?.status() ?? null };
+    const db = ctx.accounts.active()?.db;
+    const s = db ? readPhoneSyncSuggestion(db) : null;
+    const suggestion = s ? { fromIso: s.fromIso, toIso: s.toIso, fromDate: localDateOf(s.fromIso, tz), toDate: localDateOf(s.toIso, tz) } : null;
+    return { available: sync !== null, status: sync?.status() ?? null, suggestion };
   };
 
   app.get("/mobile-sync", (c) => c.json(body()));
@@ -40,6 +44,12 @@ export function mobileSyncRoutes(ctx: DashboardAppContext): Hono {
 
   app.post("/mobile-sync/cancel", async (c) => {
     await ctx.accounts.mobileSync()?.cancel();
+    return c.json(body());
+  });
+
+  app.post("/mobile-sync/suggestion/dismiss", (c) => {
+    const db = ctx.accounts.active()?.db;
+    if (db) dismissPhoneSyncSuggestion(db);
     return c.json(body());
   });
   return app;

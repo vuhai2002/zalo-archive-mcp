@@ -5,6 +5,7 @@ import type { Logger } from "pino";
 import type { API } from "zca-js";
 import { decryptBackupKey, extractZdbBackup, generateSyncKeyPair, verifyChecksum } from "./decrypt-zdb-backup.js";
 import { describeUnimportedBackupFiles } from "./describe-unimported-backup-files.js";
+import { settlePhoneSyncSuggestion } from "../../storage/phone-sync-suggestion-store.js";
 import { describeBackupInfo, downloadBackupWithRetry } from "./download-mobile-backup-with-retry.js";
 import { importMobileBackupFiles, MobileSyncCancelled } from "./import-mobile-backup-files.js";
 import {
@@ -198,6 +199,8 @@ export class MobileSyncSession {
       });
       stats.durationMs = Date.now() - started;
       this.d.log.info({ stats }, "Đồng bộ từ điện thoại xong");
+      // Lượt này phủ được quãng có thể thiếu tin (sau khi đăng nhập lại bằng QR) thì thôi nhắc
+      settlePhoneSyncSuggestion(this.d.db, { fromTs: range.fromTs ?? 0, toTs: range.toTs ?? 0 });
       this.finish("completed", `Đã nhập ${stats.messagesImported} tin mới từ ${stats.conversationsResolved} hội thoại`, stats);
     } catch (err) {
       stats.durationMs = Date.now() - started;

@@ -104,6 +104,7 @@ export const api = {
   mobileSync: () => request<MobileSyncResponse>("/api/mobile-sync"),
   mobileSyncStart: (body: MobileSyncStartRequest) => post<MobileSyncResponse>("/api/mobile-sync/start", body),
   mobileSyncCancel: () => post<MobileSyncResponse>("/api/mobile-sync/cancel"),
+  mobileSyncDismissSuggestion: () => post<MobileSyncResponse>("/api/mobile-sync/suggestion/dismiss"),
   zaloPcMedia: () => request<ZaloPcMediaImportStatus>("/api/zalo-pc-media"),
   zaloPcMediaStart: () => post<ZaloPcMediaImportStatus>("/api/zalo-pc-media/start"),
   attachmentRetry: (id: number) => post<{ ok: true }>(`/api/attachments/${id}/retry`),

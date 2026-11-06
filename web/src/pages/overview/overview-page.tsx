@@ -14,6 +14,7 @@ import { ErrorNote, formatNumber, LoadingText, SectionCard, StatCard } from "../
 import { DailyMessageBarChart } from "./daily-message-bar-chart";
 import { OutboxCountsPanel, StorageBreakdownPanel, TopThreadsPanel } from "./overview-breakdown-panels";
 import { ConnectionEventsPanel, ListenerGapsPanel } from "./overview-connection-panels";
+import { PhoneSyncGapBanner } from "./phone-sync-gap-banner";
 
 const DAY_OPTIONS = [7, 14, 30, 90].map((d) => ({ value: String(d), label: `${d} ngày` }));
 
@@ -53,6 +54,8 @@ export function OverviewPage() {
           </Link>
         </div>
       )}
+
+      <PhoneSyncGapBanner timeZone={tz} />
 
       {error && (
         <div className="mb-5">

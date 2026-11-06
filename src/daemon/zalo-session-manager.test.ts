@@ -8,6 +8,8 @@ import { accountPaths } from "../config/account-paths.js";
 import { parseEnv } from "../config/env-schema.js";
 import { createSilentLogger } from "../shared/logger.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
+import { readPhoneSyncSuggestion } from "../storage/phone-sync-suggestion-store.js";
+import { setMeta } from "../storage/thread-directory-store.js";
 import { ZaloSessionManager, type SessionIdentity, type SessionIo } from "./zalo-session-manager.js";
 
 /** Khối lưu trữ giả: listener không hẹn nối lại */
@@ -50,8 +52,9 @@ function setup(withCredentials = true) {
       return { stop: () => void archivesStopped++, isListenerConnected: () => true, ...NO_RETRY };
     },
   };
+  const db = openArchiveDatabase(":memory:");
   const m = new ZaloSessionManager({
-    db: openArchiveDatabase(":memory:"),
+    db,
     env,
     paths,
     keyHex: "00",
@@ -60,7 +63,7 @@ function setup(withCredentials = true) {
     onIdentity: (who) => identities.push(who),
     isReadOnly: () => false,
   });
-  return { m, paths, cookieLogins, identities, counts: () => ({ started: archivesStarted, stopped: archivesStopped }) };
+  return { m, db, paths, cookieLogins, identities, counts: () => ({ started: archivesStarted, stopped: archivesStopped }) };
 }
 
 describe("ZaloSessionManager", () => {
@@ -104,5 +107,56 @@ describe("ZaloSessionManager", () => {
     await m.attach(fakeApi);
     assert.deepEqual(counts(), { started: 2, stopped: 1 });
     assert.equal(cookieLogins.length, 0);
+  });
+
+  it("đăng nhập lại bằng QR sau một quãng không nghe: nhắc đồng bộ từ điện thoại quãng đó", async () => {
+    const { m, db } = setup();
+    const lastHeard = new Date(Date.now() - 4 * 3_600_000).toISOString();
+    setMeta(db, "listener_heartbeat_at", lastHeard);
+    await m.attach(fakeApi);
+    assert.equal(readPhoneSyncSuggestion(db)?.fromIso, lastHeard);
+  });
+
+  it("vừa bật máy, mạng chưa sẵn: tự thử lại giãn dần rồi vào được, KHÔNG bắt quét QR", async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout"] });
+    const { m, cookieLogins, counts } = setup();
+    const netDown = () => new TypeError("fetch failed: getaddrinfo ENOTFOUND wpa.chat.zalo.me");
+    const p = m.start();
+    cookieLogins[0]!.reject(netDown());
+    await p;
+    assert.equal(m.status().state, "logging_in");
+    assert.match(String(m.status().lastError), /tự thử lại sau 5 giây/);
+
+    t.mock.timers.tick(5_000);
+    cookieLogins[1]!.reject(netDown());
+    await new Promise((r) => setImmediate(r));
+    assert.match(String(m.status().lastError), /tự thử lại sau 10 giây/, "lần sau chờ gấp đôi");
+
+    t.mock.timers.tick(10_000);
+    cookieLogins[2]!.resolve(fakeApi);
+    await new Promise((r) => setImmediate(r));
+    assert.equal(m.status().state, "running");
+    assert.equal(m.status().lastError, null);
+    assert.equal(counts().started, 1);
+  });
+
+  it("Zalo từ chối cookie (không phải lỗi mạng): báo cần quét QR, không thử lại; bấm Dừng lúc đang chờ thử lại thì thôi", async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout"] });
+    const rejected = setup();
+    const p = rejected.m.start();
+    rejected.cookieLogins[0]!.reject(new Error("Đăng nhập thất bại"));
+    await p;
+    assert.equal(rejected.m.status().state, "error");
+    t.mock.timers.tick(600_000);
+    assert.equal(rejected.cookieLogins.length, 1);
+
+    const stopped = setup();
+    const q = stopped.m.start();
+    stopped.cookieLogins[0]!.reject(Object.assign(new TypeError("fetch failed"), { cause: { code: "EAI_AGAIN" } }));
+    await q;
+    stopped.m.stop();
+    t.mock.timers.tick(600_000);
+    assert.equal(stopped.cookieLogins.length, 1, "đã Dừng thì không đăng nhập lại");
+    assert.equal(stopped.m.status().state, "stopped");
   });
 });

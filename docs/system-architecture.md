@@ -154,6 +154,13 @@ cảm xúc nhận trực tiếp đẩy mốc lên (cùng hệ id), để lần t
 mốc thì xin từ đầu hàng chờ; xin từ mốc mà Zalo không trả lời thì bỏ mốc. zca-js 2.2.0 bỏ mất `more` /
 `lastActionId`, bản vá zca-js phát thêm `old_messages_meta` / `old_reactions_meta`.
 
+Lấy bù chỉ chạy được trên phiên CŨ. Phiên đăng nhập mới bằng QR (vd Zalo hủy phiên vì đổi vị trí) bị Zalo coi
+như máy mới: lấy bù trả 0 tin. Vì vậy:
+- đăng nhập bằng cookie lúc khởi động mà lỗi mạng thì tự thử lại (giãn dần như nối lại listener), không bỏ phiên;
+- đăng nhập lại bằng QR mà heartbeat cuối cách đó từ 10 phút thì kho ghi quãng có thể thiếu tin
+  (`phone-sync-suggestion-store.ts`, meta `phone_sync_suggestion`); dashboard nhắc đồng bộ từ điện thoại đúng quãng
+  đó, đồng bộ xong phủ được quãng thì tự thôi nhắc.
+
 Khoảng không nghe (`connection_events`, hiện ở Tổng quan và `sync_status`): listener ghi lúc đóng / nối
 lại; tiến trình chết đột ngột thì lần khởi động sau ghi bù theo heartbeat cuối; máy ngủ thì vòng
 heartbeat (mỗi phút) thấy hai nhịp cách nhau quá 3 phút theo giờ máy và ghi bù khoảng đó

@@ -80,7 +80,7 @@ describe("dashboard: nick Zalo", () => {
     assert.deepEqual(started, [{ fromTs: Date.parse("2026-09-30T17:00:00.000Z"), toTs: Date.parse("2026-10-28T16:59:59.999Z") }]);
     assert.equal((await post("/api/mobile-sync/start", { fromDate: "01/10/2026" })).status, 400);
     assert.equal((await post("/api/mobile-sync/start", { fromDate: "2026-10-28", toDate: "2026-10-01" })).status, 400);
-    assert.deepEqual(await (await h.call("/api/mobile-sync", { cookie })).json(), { available: true, status: null });
+    assert.deepEqual(await (await h.call("/api/mobile-sync", { cookie })).json(), { available: true, status: null, suggestion: null });
   });
 
   it("vừa đăng nhập Zalo xong mà bấm Chạy: 429 kèm số giây phải đợi", async () => {

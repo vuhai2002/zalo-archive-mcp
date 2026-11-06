@@ -36,6 +36,7 @@ export type AccountsResponse = { accounts: AccountSummary[] };
 // GET  /api/mobile-sync                                  -> MobileSyncResponse
 // POST /api/mobile-sync/start  { fromDate?, toDate? }    -> MobileSyncResponse | 400 | 409 nick chưa chạy / đang có lượt
 // POST /api/mobile-sync/cancel {}                        -> MobileSyncResponse
+// POST /api/mobile-sync/suggestion/dismiss {}            -> MobileSyncResponse (thôi nhắc quãng có thể thiếu tin)
 // fromDate / toDate: "YYYY-MM-DD" theo giờ của kho; bỏ trống = không giới hạn phía đó.
 export type MobileSyncStage =
   | "idle" | "requesting" | "waiting_confirm" | "waiting_backup" | "mobile_idle" | "downloading"
@@ -51,7 +52,12 @@ export type MobileSyncStatus = {
   startedAt?: number;
   updatedAt: number;
 };
-export type MobileSyncResponse = { available: boolean; status: MobileSyncStatus | null };
+/**
+ * Quãng có thể thiếu tin: nick vừa đăng nhập lại bằng QR sau một lúc không nghe, Zalo không gửi bù tin cho phiên
+ * mới - đồng bộ từ điện thoại quãng này để lấy lại. `fromDate` / `toDate` theo giờ kho, điền sẵn vào ô ngày.
+ */
+export type PhoneSyncSuggestionInfo = { fromIso: string; toIso: string; fromDate: string; toDate: string };
+export type MobileSyncResponse = { available: boolean; status: MobileSyncStatus | null; suggestion: PhoneSyncSuggestionInfo | null };
 export type MobileSyncStartRequest = { fromDate?: string; toDate?: string };
 
 // ---------- Phiên Zalo của nick đang dùng ----------

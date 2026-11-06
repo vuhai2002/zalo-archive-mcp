@@ -7,10 +7,12 @@ import type { AppEnv } from "../config/env-schema.js";
 import type { SessionState } from "../dashboard/dashboard-api-contract.js";
 import { recordConnectionEvent } from "../storage/connection-event-store.js";
 import { MY_DOCUMENTS_META_KEY } from "../storage/my-documents-deletion-store.js";
+import { suggestPhoneSyncForGap } from "../storage/phone-sync-suggestion-store.js";
 import { getMeta, setMeta } from "../storage/thread-directory-store.js";
 import { loginWithStoredCredentials, persistSessionCredentials, startQrLoginForWeb } from "../zalo/zalo-session-login.js";
 import { startArchiveDaemon, type ArchiveHandle } from "./start-archive-daemon.js";
 import type { ListenerRetryInfo } from "../zalo/listener-reconnect-timer.js";
+import { isNetworkFailure } from "../zalo/listener-error-details.js";
 
 /** Các hàm chạm Zalo thật - tiêm vào được để test vòng đời phiên mà không cần mạng */
 export type SessionIo = {
@@ -54,6 +56,8 @@ export class ZaloSessionManager {
   private lastError: string | null = null;
   private displayName: string | null = null;
   private gen = 0;
+  private loginRetries = 0;
+  private loginRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly io: SessionIo;
 
   constructor(
@@ -104,18 +108,43 @@ export class ZaloSessionManager {
     if (!this.hasCredentials()) return this.setState("logged_out");
     const my = ++this.gen;
     this.lastError = null;
+    this.loginRetries = 0;
     this.setState("logging_in");
+    await this.loginWithCookie(my);
+  }
+
+  /**
+   * Lỗi mạng (vừa bật máy, mạng chưa sẵn) thì tự thử lại, giãn dần như nối lại listener: cookie vẫn có thể còn
+   * dùng được, giữ phiên cũ thì lấy bù còn lấy lại được khoảng máy tắt. Phải quét QR thì phiên mới không được Zalo
+   * gửi bù tin cũ. Zalo từ chối cookie thật thì mới báo cần quét QR.
+   */
+  private async loginWithCookie(my: number): Promise<void> {
     try {
       const api = await this.io.loginWithStoredCredentials(this.d.paths.credentialsFile, this.d.keyHex);
       await this.onLoggedIn(api, my);
     } catch (err) {
-      this.fail(err, "Đăng nhập bằng cookie đã lưu thất bại - có thể cần quét QR lại", my);
+      if (my !== this.gen) return;
+      if (!isNetworkFailure(err)) return this.fail(err, "Đăng nhập bằng cookie đã lưu thất bại - có thể cần quét QR lại", my);
+      const { RECONNECT_BASE_DELAY_SECONDS: base, RECONNECT_MAX_DELAY_SECONDS: max } = this.d.env;
+      const delayMs = Math.min(base * 2 ** this.loginRetries++, max) * 1000;
+      this.lastError = `Chưa kết nối được máy chủ Zalo (mạng chưa sẵn?) - tự thử lại sau ${Math.round(delayMs / 1000)} giây: ${err instanceof Error ? err.message : String(err)}`;
+      this.d.log.warn({ err, delayMs }, "Đăng nhập bằng cookie lỗi mạng - tự thử lại");
+      this.loginRetryTimer = setTimeout(() => {
+        this.loginRetryTimer = null;
+        if (my === this.gen) void this.loginWithCookie(my);
+      }, delayMs);
     }
   }
 
   /** Nhận phiên vừa đăng nhập QR (đã chắc là nick này): lưu cookie rồi chạy khối lưu trữ */
   async attach(api: API): Promise<void> {
     this.stop();
+    // Đăng nhập lại bằng QR sau một quãng không nghe: Zalo không gửi bù tin cho phiên mới - nhắc đồng bộ từ điện thoại
+    const lastHeard = getMeta(this.d.db, "listener_heartbeat_at");
+    const nowIso = new Date().toISOString();
+    if (lastHeard && suggestPhoneSyncForGap(this.d.db, lastHeard, nowIso, nowIso)) {
+      this.d.log.warn({ from: lastHeard }, "Đăng nhập lại bằng QR sau một quãng không nghe - nhắc đồng bộ từ điện thoại");
+    }
     const my = ++this.gen;
     this.lastError = null;
     this.setState("logging_in");
@@ -134,6 +163,8 @@ export class ZaloSessionManager {
 
   stop(): void {
     this.gen++;
+    if (this.loginRetryTimer) clearTimeout(this.loginRetryTimer);
+    this.loginRetryTimer = null;
     this.archive?.stop();
     this.archive = null;
     this.setState(this.hasCredentials() ? "stopped" : "logged_out");

@@ -26,3 +26,15 @@ const NETWORK_ERROR_CODES = new Set([
 export function isNetworkErrorCode(code: string | null): boolean {
   return code !== null && NETWORK_ERROR_CODES.has(code);
 }
+
+/**
+ * Lỗi của một lệnh HTTP tới Zalo (vd đăng nhập bằng cookie) là lỗi mạng: `fetch` của Node báo "fetch failed",
+ * mã thật (ENOTFOUND...) nằm ở `cause`, có khi chỉ còn trong câu báo (zca-js gói lại thành
+ * "fetch failed: getaddrinfo ENOTFOUND wpa.chat.zalo.me"). Lỗi mạng không nói gì về việc cookie còn dùng được.
+ */
+export function isNetworkFailure(err: unknown): boolean {
+  const e = err as { code?: unknown; message?: unknown; cause?: { code?: unknown } } | null;
+  for (const code of [e?.code, e?.cause?.code]) if (typeof code === "string" && NETWORK_ERROR_CODES.has(code)) return true;
+  const message = String(e?.message ?? err ?? "");
+  return /fetch failed/i.test(message) || [...NETWORK_ERROR_CODES].some((code) => message.includes(code));
+}

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import type { MobileSyncResponse, MobileSyncStage } from "../../archive-api-types";
 import { api, errorText } from "../../dashboard-api-client";
+import { useArchiveTimeZone } from "../../layout/dashboard-shell-context";
+import { PhoneSyncGapNotice } from "./phone-sync-gap-notice";
 import type { ConfirmOptions } from "../../shared/confirm-dialog";
 import { BTN_PRIMARY, BTN_SECONDARY, ErrorNote, SectionCard } from "../../shared/ui-bits";
 
@@ -14,6 +16,7 @@ const inputClass = "rounded-lg border border-line bg-surface px-3 py-2 text-[14p
  * không bị nhập trùng. Trong lúc chạy, thẻ tự hỏi trạng thái mỗi 2 giây.
  */
 export function MobileHistorySyncCard({ confirm }: { confirm: (o: ConfirmOptions) => Promise<boolean> }) {
+  const timeZone = useArchiveTimeZone();
   const [data, setData] = useState<MobileSyncResponse | null>(null);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -32,7 +35,14 @@ export function MobileHistorySyncCard({ confirm }: { confirm: (o: ConfirmOptions
     return () => clearInterval(t);
   }, [running, load]);
 
-  async function start() {
+  /** `range`: đồng bộ đúng quãng có thể thiếu tin (lời nhắc); không có thì theo hai ô ngày */
+  async function start(range?: { fromDate: string; toDate: string }) {
+    if (range) {
+      setFromDate(range.fromDate);
+      setToDate(range.toDate);
+    }
+    const from = range?.fromDate ?? fromDate;
+    const to = range?.toDate ?? toDate;
     const ok = await confirm({
       title: "Đồng bộ lịch sử từ điện thoại?",
       message:
@@ -45,11 +55,19 @@ export function MobileHistorySyncCard({ confirm }: { confirm: (o: ConfirmOptions
     setBusy(true);
     setError(null);
     try {
-      setData(await api.mobileSyncStart({ fromDate: fromDate || undefined, toDate: toDate || undefined }));
+      setData(await api.mobileSyncStart({ fromDate: from || undefined, toDate: to || undefined }));
     } catch (err) {
       setError(errorText(err));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function dismissSuggestion() {
+    try {
+      setData(await api.mobileSyncDismissSuggestion());
+    } catch (err) {
+      setError(errorText(err));
     }
   }
 
@@ -69,6 +87,15 @@ export function MobileHistorySyncCard({ confirm }: { confirm: (o: ConfirmOptions
     <SectionCard title="Lịch sử cũ từ điện thoại" subtitle="Lấy tin nhắn từ trước khi kho chạy, qua tính năng đồng bộ của Zalo">
       {error && <ErrorNote message={error} />}
       {!data?.available && <p className="mb-3 text-[13px] text-ink-soft">Nick cần đang chạy (đã đăng nhập và nghe tin) mới đồng bộ được.</p>}
+      {data?.suggestion && !running && (
+        <PhoneSyncGapNotice
+          suggestion={data.suggestion}
+          timeZone={timeZone}
+          disabled={busy || !data.available}
+          onSync={() => void start({ fromDate: data.suggestion!.fromDate, toDate: data.suggestion!.toDate })}
+          onDismiss={() => void dismissSuggestion()}
+        />
+      )}
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-[13px] text-ink-soft">
@@ -84,7 +111,7 @@ export function MobileHistorySyncCard({ confirm }: { confirm: (o: ConfirmOptions
             Hủy đồng bộ
           </button>
         ) : (
-          <button type="button" className={BTN_PRIMARY} disabled={busy || !data?.available} onClick={start}>
+          <button type="button" className={BTN_PRIMARY} disabled={busy || !data?.available} onClick={() => void start()}>
             {busy ? "Đang gửi yêu cầu..." : "Đồng bộ từ điện thoại"}
           </button>
         )}
