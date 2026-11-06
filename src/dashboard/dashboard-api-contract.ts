@@ -131,8 +131,19 @@ export type ArchivedMessage = {
   call: { missedIncoming: boolean } | null;
   /** Ảnh thuộc album (nhiều ảnh gửi cùng lúc): cùng `id` thì gộp một khung lưới, xếp theo `index` */
   album: { id: string; index: number; total: number } | null;
-  /** Thẻ link như Zalo (chỉ link http(s)): hiện thay cho chữ ghép "tiêu đề / link / mô tả" */
-  link: { url: string; title: string | null; description: string | null; domain: string } | null;
+  /**
+   * Tin link như Zalo (chỉ link http(s)): `text` là chữ của tin (đầy đủ, hoặc chính link khi chỉ dán link), hiện thay
+   * cho chữ ghép; bên dưới là thẻ xem trước: ảnh (https CDN Zalo, `thumbAspect` = rộng / cao), tên trang, mô tả, tên miền
+   */
+  link: {
+    url: string;
+    text: string;
+    title: string | null;
+    description: string | null;
+    domain: string;
+    thumbUrl: string | null;
+    thumbAspect: number | null;
+  } | null;
   /**
    * Danh thiếp Zalo: tên, avatar, số điện thoại (nếu người gửi kèm), ảnh mã QR - ảnh chỉ link https CDN Zalo.
    * `threadId` khi người đó có hội thoại 1-1 trong kho (nút mở hội thoại)

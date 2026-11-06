@@ -56,7 +56,7 @@ export type MessageRow = {
   call: { missedIncoming: boolean } | null;
   /** Ảnh thuộc album (nhiều ảnh gửi cùng lúc) - dashboard gộp thành khung lưới; null với tin khác */
   album: PhotoAlbum | null;
-  /** Thẻ link (recommened.link): URL, tiêu đề, mô tả, tên miền; null với tin khác */
+  /** Tin link (recommened.link): chữ của tin + thẻ xem trước (tên trang, mô tả, ảnh, tên miền); null với tin khác */
   link: LinkPreview | null;
   /** Danh thiếp (recommened.user); `threadId` khi người đó có hội thoại 1-1 trong kho */
   contactCard: (ContactCard & { threadId: string | null }) | null;

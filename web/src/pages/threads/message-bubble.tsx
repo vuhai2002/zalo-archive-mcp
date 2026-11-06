@@ -161,7 +161,7 @@ export function MessageBubble({
                   </div>
                 )}
                 {msg.link ? (
-                  <MessageLinkCard link={msg.link} />
+                  <MessageLinkCard link={msg.link} onMediaLoad={onMediaLoad} />
                 ) : msg.call ? (
                   <MessageCallCard text={msg.text} missed={msg.call.missedIncoming} />
                 ) : (
