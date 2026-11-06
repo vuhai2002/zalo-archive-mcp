@@ -64,6 +64,8 @@ export type ThreadSummary = {
   /** Link avatar trên CDN Zalo (tải thẳng từ trình duyệt); null thì hiện chữ cái đầu */
   avatarUrl: string | null;
   isFriend: boolean;
+  /** My Documents của Zalo (cất đồ riêng): dòng phụ như Zalo thay vì "Người lạ" */
+  isMyDocuments: boolean;
   lastMessageAt: string | null;
   messageCount: number;
   /** Đã ghim lên đầu danh sách (ghim trong kho, không phải trên Zalo) */

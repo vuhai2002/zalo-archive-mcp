@@ -4,6 +4,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { Logger } from "pino";
 import type { API } from "zca-js";
 import { decryptBackupKey, extractZdbBackup, generateSyncKeyPair, verifyChecksum } from "./decrypt-zdb-backup.js";
+import { describeUnimportedBackupFiles } from "./describe-unimported-backup-files.js";
 import { describeBackupInfo, downloadBackupWithRetry } from "./download-mobile-backup-with-retry.js";
 import { importMobileBackupFiles, MobileSyncCancelled } from "./import-mobile-backup-files.js";
 import {
@@ -179,6 +180,8 @@ export class MobileSyncSession {
         onProgress: (p) => this.setProgress(p.totalBytes ? (p.processedBytes / p.totalBytes) * 100 : 0),
       });
       fs.rmSync(cryptPath, { force: true });
+      // Chỉ tên + cỡ + số dòng chat của file không nhập (dò hội thoại bị bỏ sót, vd My Documents)
+      this.d.log.info({ unimported: describeUnimportedBackupFiles(extracted.files, extracted.skippedEntries) }, "File trong bản sao lưu kho không nhập");
 
       const range = this.status_!.range ?? { fromTs: null, toTs: null };
       await importMobileBackupFiles(extracted.files, {

@@ -8,16 +8,21 @@ import { BTN_ICON, formatNumber } from "../../shared/ui-bits";
 
 type ChatThread = ThreadMessagesResponse["thread"];
 
-/** Dòng phụ dưới tên như Zalo PC: "Nhóm · 25 thành viên" / "Bạn bè" / "Người lạ" (chưa kết bạn), kèm số tin trong kho */
+/**
+ * Dòng phụ dưới tên như Zalo PC: "Nhóm · 25 thành viên" / "Bạn bè" / "Người lạ" (chưa kết bạn) / dòng của My
+ * Documents, kèm số tin trong kho
+ */
 export function chatSubtitle(thread: ChatThread): string {
   const kind =
     thread.threadType === "group"
       ? thread.memberCount
         ? `Nhóm · ${formatNumber(thread.memberCount)} thành viên`
         : "Nhóm"
-      : thread.isFriend
-        ? "Bạn bè"
-        : "Người lạ";
+      : thread.isMyDocuments
+        ? "Lưu và đồng bộ dữ liệu giữa các thiết bị"
+        : thread.isFriend
+          ? "Bạn bè"
+          : "Người lạ";
   return `${kind} · ${formatNumber(thread.messageCount)} tin trong kho`;
 }
 

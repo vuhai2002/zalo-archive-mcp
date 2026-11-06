@@ -12,7 +12,7 @@ import { sampleMessage } from "./archive-store-test-helpers.js";
 import { upsertMessage } from "./message-write-store.js";
 import { MY_DOCUMENTS_META_KEY } from "./my-documents-deletion-store.js";
 import { openArchiveDatabase } from "./open-archive-database.js";
-import { searchMessages } from "./message-read-queries.js";
+import { findThread, searchMessages } from "./message-read-queries.js";
 import { setMeta } from "./thread-directory-store.js";
 
 const ME = "u-me";
@@ -84,6 +84,12 @@ describe("My Documents: tin bạn xóa thì kho xóa hẳn", () => {
     ingestArchiveEvent(db, { kind: "message", message: deleteCommand("u-lan", "9000") }, AT, log);
     ingestArchiveEvent(db, { kind: "message", message: deleteCommand(DOCS, "8400013000115", 1) }, AT, log);
     assert.deepEqual(msgIds(db), ["8400013000115", "8400013000116", "9000"]);
+  });
+
+  it("dashboard biết hội thoại nào là My Documents (không hiện 'Người lạ')", () => {
+    const db = setup();
+    assert.equal(findThread(db, DOCS)?.isMyDocuments, true);
+    assert.equal(findThread(db, "u-lan")?.isMyDocuments, false);
   });
 
   it("tin đã xóa không vào lại kho qua lấy bù / đồng bộ điện thoại", () => {

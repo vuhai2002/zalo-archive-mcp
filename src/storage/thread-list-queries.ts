@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ThreadKind } from "../archive/archived-message-types.js";
 import { foldVietnameseForSearch } from "../shared/fold-vietnamese-for-search.js";
+import { myDocumentsThreadId } from "./my-documents-deletion-store.js";
 
 export type ThreadSummary = {
   threadId: string;
@@ -8,6 +9,8 @@ export type ThreadSummary = {
   name: string | null;
   avatarUrl: string | null;
   isFriend: boolean;
+  /** Hội thoại My Documents của Zalo (cất đồ riêng): không phải "người lạ" */
+  isMyDocuments: boolean;
   lastMessageAt: string | null;
   messageCount: number;
   /** Đã ghim lên đầu danh sách trên dashboard */
@@ -80,6 +83,7 @@ function toThreadSummary(db: DatabaseSync, r: Record<string, unknown>): ThreadSu
     name: (r.name as string | null) ?? null,
     avatarUrl: (r.avatar_url as string | null) ?? null,
     isFriend: r.is_friend === 1,
+    isMyDocuments: r.thread_type === "user" && String(r.thread_id) === myDocumentsThreadId(db),
     lastMessageAt: (r.last_message_at as string | null) ?? null,
     messageCount: Number(count.n),
     pinned: r.pinned_at !== null && r.pinned_at !== undefined,
