@@ -20,6 +20,8 @@ export type TextStyleSpan = {
   /** "#rrggbb" hoặc null */
   color: string | null;
   size: "small" | "big" | null;
+  /** Chỗ nhắc tên (@Tên): tô xanh như Zalo */
+  mention?: boolean;
 };
 
 const MAX_SPANS = 500;

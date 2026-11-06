@@ -56,6 +56,7 @@ export function buildRichSegments(text: string, spans: TextStyleSpan[]): RichSeg
       style.strike ||= s.strike;
       if (s.color && HEX_COLOR.test(s.color)) style.color = s.color;
       if (s.size) style.size = s.size;
+      if (s.mention) style.mention = true;
     }
     const href = links.find((l) => l.start <= a && l.end >= b)?.href ?? null;
     const last = segments[segments.length - 1];

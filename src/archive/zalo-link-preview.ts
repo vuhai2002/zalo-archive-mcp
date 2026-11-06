@@ -1,3 +1,5 @@
+import type { TextStyleSpan } from "../storage/message-text-styles.js";
+
 /**
  * Tin link của Zalo (`chat.recommended`, action `recommened.link`), trình bày như Zalo:
  * - `title` là CHỮ CỦA TIN - toàn bộ chữ người gửi gõ (có thể nhiều dòng, chứa link), hoặc chính URL khi chỉ dán
@@ -10,6 +12,8 @@ export type LinkPreview = {
   url: string;
   /** Chữ của tin (đầy đủ) */
   text: string;
+  /** Định dạng trên `text` (chỗ nhắc tên - dựng lúc đọc, cần danh bạ); rỗng khi dựng từ dữ liệu tin */
+  textStyles: TextStyleSpan[];
   /** Tên trang trong thẻ xem trước */
   title: string | null;
   description: string | null;
@@ -66,6 +70,7 @@ export function linkPreviewOf(content: unknown): LinkPreview | null {
   return {
     url,
     text: typed ?? url,
+    textStyles: [],
     title: same(title) ? null : title,
     description: same(description) || description === title ? null : description,
     domain: text(p.src) ?? u.hostname,

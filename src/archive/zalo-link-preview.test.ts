@@ -19,6 +19,7 @@ describe("thẻ link Zalo (recommened.link)", () => {
       {
         url,
         text: url,
+        textStyles: [],
         title: "Bài viết của Minh",
         description: null,
         domain: "facebook.com",

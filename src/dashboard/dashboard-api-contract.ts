@@ -138,6 +138,7 @@ export type ArchivedMessage = {
   link: {
     url: string;
     text: string;
+    textStyles: TextStyleSpan[];
     title: string | null;
     description: string | null;
     domain: string;
@@ -167,7 +168,7 @@ export type ArchivedMessage = {
   attachments: AttachmentInfo[];
 };
 
-/** Một đoạn chữ có định dạng: đậm / nghiêng / gạch / màu "#rrggbb" / cỡ chữ (đã lọc ở máy chủ) */
+/** Một đoạn chữ có định dạng: đậm / nghiêng / gạch / màu "#rrggbb" / cỡ chữ (đã lọc ở máy chủ), hoặc chỗ nhắc tên */
 export type TextStyleSpan = {
   start: number;
   end: number;
@@ -177,6 +178,8 @@ export type TextStyleSpan = {
   strike: boolean;
   color: string | null;
   size: "small" | "big" | null;
+  /** Chỗ nhắc tên (@Tên, đã đổi sang tên gợi nhớ nếu có): tô xanh như Zalo */
+  mention?: boolean;
 };
 
 // GET /api/threads/:threadId/messages?beforeId=&afterId=&aroundId=&limit=50

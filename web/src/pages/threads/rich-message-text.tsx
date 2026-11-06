@@ -5,6 +5,8 @@ import { buildRichSegments, type SegmentStyle } from "./rich-text-segments";
 function segmentClass(s: SegmentStyle): string {
   return [
     s.bold ? "font-semibold" : "",
+    // Nhắc tên (@Tên) tô xanh như Zalo
+    s.mention ? "text-[#0068ff] dark:text-zalo-600" : "",
     s.italic ? "italic" : "",
     s.underline && s.strike ? "underline line-through" : s.underline ? "underline" : s.strike ? "line-through" : "",
     s.size === "big" ? "text-[17px] leading-snug" : s.size === "small" ? "text-[12.5px]" : "",

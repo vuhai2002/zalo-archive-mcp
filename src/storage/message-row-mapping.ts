@@ -6,6 +6,8 @@ import { withZaloEmoticons } from "../archive/zalo-emoticon-emoji.js";
 import { linkPreviewOf, type LinkPreview } from "../archive/zalo-link-preview.js";
 import { photoAlbumOf, type PhotoAlbum } from "../archive/zalo-photo-album.js";
 import { videoInfoOf, type VideoInfo } from "../archive/zalo-video-info.js";
+import { parseMentions } from "../archive/zalo-mention-names.js";
+import { applyMentionNames, type MentionSource } from "./message-mention-display.js";
 import { quotePreviewFromRaw, resolveQuotePreviews, type QuotePreview } from "./message-quote-preview.js";
 import { reactionSummaries, type ReactionSummary } from "./message-reaction-store.js";
 import { parseTextStyles, type TextStyleSpan } from "./message-text-styles.js";
@@ -85,7 +87,8 @@ export const MESSAGE_COLUMNS = `m.id, m.msg_id, m.thread_id, m.thread_type, m.se
   CASE WHEN m.msg_type = 'chat.video.msg' AND json_valid(m.raw_json)
     THEN json_extract(m.raw_json, '$.content.params') END AS video_params,
   CASE WHEN m.msg_type = 'group_event' THEN m.raw_json END AS notice_raw,
-  CASE WHEN m.quote_msg_id IS NOT NULL AND json_valid(m.raw_json) THEN json_extract(m.raw_json, '$.quote') END AS quote_raw`;
+  CASE WHEN m.quote_msg_id IS NOT NULL AND json_valid(m.raw_json) THEN json_extract(m.raw_json, '$.quote') END AS quote_raw,
+  CASE WHEN instr(m.raw_json, '"mentions"') > 0 AND json_valid(m.raw_json) THEN json_extract(m.raw_json, '$.mentions') END AS mentions_raw`;
 /** Avatar người gửi lấy từ danh bạ người */
 export const SENDER_JOIN = "LEFT JOIN contacts c ON c.user_id = m.sender_id";
 
@@ -94,6 +97,8 @@ export const SENDER_JOIN = "LEFT JOIN contacts c ON c.user_id = m.sender_id";
 const noticeRawOf = new WeakMap<MessageRow, string>();
 // Dữ liệu trích dẫn Zalo gửi kèm tin trả lời: dựng ô trích dẫn cần mã của mình (biết "Bạn") nên cũng chờ tới đó
 const quoteRawOf = new WeakMap<MessageRow, string>();
+// Tin có nhắc tên: chữ gốc + định dạng + danh sách nhắc, dựng lại chữ cần danh bạ (tên gợi nhớ) nên cũng chờ tới đó
+const mentionSourceOf = new WeakMap<MessageRow, MentionSource>();
 
 export function toMessageRow(r: Record<string, unknown>): MessageRow {
   // Mã biểu cảm (":d") đổi sang emoji lúc đọc, định dạng chữ dời theo; DB giữ chữ gốc
@@ -130,6 +135,8 @@ export function toMessageRow(r: Record<string, unknown>): MessageRow {
   };
   if (typeof r.notice_raw === "string") noticeRawOf.set(row, r.notice_raw);
   if (typeof r.quote_raw === "string") quoteRawOf.set(row, r.quote_raw);
+  const mentions = parseMentions(r.mentions_raw);
+  if (mentions.length > 0) mentionSourceOf.set(row, { text: String(r.text), rtfParams: (r.rtf_params as string | null) ?? null, mentions });
   return row;
 }
 
@@ -149,6 +156,7 @@ export function withAttachments(db: DatabaseSync, messages: MessageRow[]): Messa
     if (m.contactCard && userThread.get(m.contactCard.userId)) m.contactCard.threadId = m.contactCard.userId;
   }
   resolveQuotePreviews(db, messages);
+  applyMentionNames(db, messages, (m) => mentionSourceOf.get(m));
   const stmt = db.prepare(
     `SELECT id, msg_id, kind, status, file_name, local_path, size_bytes, mime, needs_renew, renewed_at, last_error, sha256
      FROM attachments WHERE msg_id = ? ORDER BY id`,

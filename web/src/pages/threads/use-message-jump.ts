@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject, type RefObject } from "react";
+import { jumpScrollTop } from "./jump-scroll-position";
 
 /** Ý định cuộn áp NGAY sau khi danh sách tin đổi: xuống đáy, giữ chỗ đang đọc, hoặc tới một tin */
 export type ScrollIntent = { kind: "bottom" } | { kind: "keep"; prevHeight: number; prevTop: number } | { kind: "message"; id: number };
@@ -10,12 +11,15 @@ const HIGHLIGHT_MS = 3_000;
 
 /**
  * Cuộn tới một tin trong khung chat: mỗi mục bọc trong phần tử có `data-msg-ids` (id tin, cùng id các
- * ảnh nếu là album). Trả về false khi tin chưa có trong phần đang hiện.
+ * ảnh nếu là album). Tin ngắn nằm giữa khung, tin dài thì đầu tin sát mép trên (`jumpScrollTop`).
+ * Trả về false khi tin chưa có trong phần đang hiện.
  */
 export function scrollToMessage(root: HTMLElement | null, id: number): boolean {
   const el = root?.querySelector<HTMLElement>(`[data-msg-ids~="${id}"]`);
-  if (!el) return false;
-  el.scrollIntoView({ block: "center" });
+  if (!root || !el) return false;
+  const item = el.getBoundingClientRect();
+  const box = root.getBoundingClientRect();
+  root.scrollTop = jumpScrollTop({ itemTop: item.top, itemHeight: item.height, rootTop: box.top, rootHeight: root.clientHeight, scrollTop: root.scrollTop });
   return true;
 }
 

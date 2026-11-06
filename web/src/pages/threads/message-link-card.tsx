@@ -13,7 +13,7 @@ export function MessageLinkCard({ link, onMediaLoad }: { link: NonNullable<Archi
   const hasCard = !!(thumb || link.title || link.description);
   return (
     <div className="min-w-0 space-y-2">
-      <RichMessageText text={link.text} styles={[]} />
+      <RichMessageText text={link.text} styles={link.textStyles} />
       {hasCard ? (
         <a
           href={link.url}
