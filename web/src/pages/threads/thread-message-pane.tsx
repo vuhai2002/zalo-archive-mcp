@@ -1,11 +1,11 @@
-import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useArchiveTimeZone, useDashboardShell } from "../../layout/dashboard-shell-context";
-import { IconChevronDown } from "../../shared/dashboard-icons";
 import { threadDisplayName } from "../../shared/thread-kind-badge";
 import { EmptyState, ErrorNote, LoadingText } from "../../shared/ui-bits";
 import { useArchiveLiveChanges } from "../../shared/use-archive-live-changes";
 import { useLoadMoreWhenVisible } from "../../shared/use-load-more-when-visible";
 import { ChatItemRow, itemHasMessage } from "./chat-item-row";
+import { JumpToLatestButton } from "./jump-to-latest-button";
 import { MessageComposer } from "./message-composer";
 import { layoutMessages } from "./message-grouping";
 import { MediaViewerProvider } from "./media-viewer-context";
@@ -14,7 +14,7 @@ import { ThreadChatHeader } from "./thread-chat-header";
 import { ThreadInfoPanel } from "./thread-info-panel";
 import { ThreadSearchPanel } from "./thread-search-panel";
 import { useChatSidePanel } from "./use-chat-side-panel";
-import { nextStickToBottom } from "./stick-to-bottom-scroll";
+import { awayFromLatest, nextStickToBottom } from "./stick-to-bottom-scroll";
 import { scrollToMessage, useMessageJump, type MessageFocus, type ScrollIntent } from "./use-message-jump";
 import { useThreadMessages } from "./use-thread-messages";
 
@@ -29,6 +29,8 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
   const intent = useRef<ScrollIntent | null>(initialFocusId ? { kind: "message", id: initialFocusId } : { kind: "bottom" });
   const stickToBottom = useRef(!initialFocusId);
   const lastScrollTop = useRef(0);
+  // Đã kéo lên đọc tin cũ: hiện nút về tin mới nhất. Chỉ đổi khi vượt ngưỡng nên không vẽ lại mỗi lần cuộn
+  const [awayFromBottom, setAwayFromBottom] = useState(false);
   const side = useChatSidePanel();
   const jump = useMessageJump({ focus, jumpTo: t.jumpTo, intent, scrollRef, stickToBottom });
 
@@ -84,6 +86,14 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
     void reload();
   }, [reload]);
 
+  /** Nút "Tin mới nhất": tin mới nhất đã có sẵn thì nhảy thẳng xuống đáy; đang xem đoạn cũ thì tải lại phần mới nhất */
+  const goToLatest = useCallback(() => {
+    const el = scrollRef.current;
+    if (!t.atLatest || !el) return backToLatest();
+    stickToBottom.current = true;
+    el.scrollTop = el.scrollHeight;
+  }, [t.atLatest, backToLatest]);
+
   // Tin daemon vừa gửi phải chờ listener ghi lại mới có trong kho - hỏi lại sau một nhịp
   const afterSent = useCallback(() => {
     if (!t.atLatest) return backToLatest();
@@ -132,14 +142,16 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
         ref={scrollRef}
         onScroll={(e) => {
           const el = e.currentTarget;
+          const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
           stickToBottom.current = nextStickToBottom({
             stick: stickToBottom.current,
             atLatest: t.atLatest,
             scrollTop: el.scrollTop,
             prevScrollTop: lastScrollTop.current,
-            distanceFromBottom: el.scrollHeight - el.scrollTop - el.clientHeight,
+            distanceFromBottom,
           });
           lastScrollTop.current = el.scrollTop;
+          setAwayFromBottom(awayFromLatest(distanceFromBottom));
         }}
         className="scrollbar-stable min-h-0 flex-1 overflow-y-auto bg-chat px-3 pb-4 pt-3 sm:px-6"
       >
@@ -177,17 +189,8 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
         {t.loadingNewer && <p className="pt-1 text-center text-[12px] text-chat-time">Đang tải tin mới hơn...</p>}
       </div>
 
-      {!t.atLatest && !t.loading && (
-        <button
-          type="button"
-          onClick={backToLatest}
-          title="Tin mới nhất"
-          aria-label="Tin mới nhất"
-          className="absolute bottom-4 right-6 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface text-ink-soft shadow-md hover:bg-tile hover:text-zalo-500"
-        >
-          <IconChevronDown size={20} />
-        </button>
-      )}
+      {/* Kéo lên đọc tin cũ, hoặc đang xem đoạn cũ vừa nhảy tới: nút về tin mới nhất như Zalo */}
+      {(!t.atLatest || awayFromBottom) && !t.loading && t.messages.length > 0 && <JumpToLatestButton onClick={goToLatest} />}
       </div>
 
       {readOnly ? (

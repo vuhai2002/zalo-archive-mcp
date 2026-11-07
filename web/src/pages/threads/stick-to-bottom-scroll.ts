@@ -18,3 +18,14 @@ export function nextStickToBottom(o: {
   if (o.distanceFromBottom < STICK_PX) return o.atLatest;
   return o.scrollTop < o.prevScrollTop ? false : o.stick;
 }
+
+/** Kéo lên cách đáy hơn ngần này (cỡ vài tin) thì hiện nút về tin mới nhất, như Zalo */
+export const JUMP_TO_LATEST_PX = 300;
+
+/**
+ * Người dùng đã kéo lên đọc tin cũ (cách đáy quá vài tin): hiện nút tròn "Tin mới nhất". Nút cũng luôn hiện khi
+ * đoạn đang xem không chứa tin mới nhất (vừa nhảy tới một tin xa), kể cả ở cuối phần đã tải - việc đó khung tin tự xét.
+ */
+export function awayFromLatest(distanceFromBottom: number): boolean {
+  return distanceFromBottom > JUMP_TO_LATEST_PX;
+}

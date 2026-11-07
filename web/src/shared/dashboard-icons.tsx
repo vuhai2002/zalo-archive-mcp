@@ -117,6 +117,13 @@ export const IconChevronDown = (p: IconProps) => (
   </svg>
 );
 
+/** Hai mũi tên chồng nhau hướng xuống - nút về tin mới nhất như Zalo */
+export const IconChevronsDown = (p: IconProps) => (
+  <svg {...iconBase(p)}>
+    <path d="m6 6.5 6 6 6-6M6 12.5l6 6 6-6" />
+  </svg>
+);
+
 export const IconArrowLeft = (p: IconProps) => (
   <svg {...iconBase(p)}>
     <path d="M19 12H5M11 6l-6 6 6 6" />
