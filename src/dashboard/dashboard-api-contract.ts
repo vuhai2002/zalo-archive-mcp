@@ -129,8 +129,11 @@ export type ArchivedMessage = {
   textStyles: TextStyleSpan[];
   /** Tin cuộc gọi: `text` là "tiêu đề\nthời lượng"; cuộc gọi tới mình mà không nghe thì tô đỏ */
   call: { missedIncoming: boolean } | null;
-  /** Ảnh thuộc album (nhiều ảnh gửi cùng lúc): cùng `id` thì gộp một khung lưới, xếp theo `index` */
-  album: { id: string; index: number; total: number } | null;
+  /**
+   * Ảnh thuộc album (nhiều ảnh gửi cùng lúc): cùng `id` thì gộp một khung lưới, xếp theo `index`;
+   * `width` / `height` = cỡ ảnh (xếp lưới theo tỉ lệ như Zalo), null khi tin không ghi
+   */
+  album: { id: string; index: number; total: number; width: number | null; height: number | null } | null;
   /**
    * Tin link như Zalo (chỉ link http(s)): `text` là chữ của tin (đầy đủ, hoặc chính link khi chỉ dán link), hiện thay
    * cho chữ ghép; bên dưới là thẻ xem trước: ảnh (https CDN Zalo, `thumbAspect` = rộng / cao), tên trang, mô tả, tên miền

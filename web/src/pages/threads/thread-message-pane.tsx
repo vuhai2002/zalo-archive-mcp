@@ -126,6 +126,8 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
         onToggleSearch={side.toggleSearch}
       />
 
+      {/* Vùng tin nhắn bọc riêng để nút "Tin mới nhất" neo vào góc dưới của nó, ngay trên ô soạn (như Zalo) */}
+      <div className="relative flex min-h-0 flex-1 flex-col">
       <div
         ref={scrollRef}
         onScroll={(e) => {
@@ -179,18 +181,21 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
         <button
           type="button"
           onClick={backToLatest}
-          className="absolute bottom-20 right-5 z-10 flex items-center gap-1 rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] font-medium text-zalo-500 shadow-md hover:bg-tile"
+          title="Tin mới nhất"
+          aria-label="Tin mới nhất"
+          className="absolute bottom-4 right-6 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface text-ink-soft shadow-md hover:bg-tile hover:text-zalo-500"
         >
-          <IconChevronDown size={16} /> Tin mới nhất
+          <IconChevronDown size={20} />
         </button>
       )}
+      </div>
 
       {readOnly ? (
         <div className="border-t border-line bg-surface px-4 py-3 text-center text-[13px] text-ink-soft">
           Nick này đang ở chế độ <b>Chỉ đọc</b>: kho chỉ nghe và lưu tin, không gửi gì. Đổi trong trang Tài khoản Zalo.
         </div>
       ) : (
-        <MessageComposer threadId={threadId} onSent={afterSent} />
+        <MessageComposer threadId={threadId} threadName={threadDisplayName(t.thread?.name)} onSent={afterSent} />
       )}
     </div>
     {side.panel === "info" && t.thread && <ThreadInfoPanel thread={t.thread} timeZone={tz} onClose={side.toggleInfo} />}

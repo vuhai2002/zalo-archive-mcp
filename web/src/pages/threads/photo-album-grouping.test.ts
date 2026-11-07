@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { ArchivedMessage } from "../../archive-api-types";
-import { albumColumns, collapseAlbums, mergeAlbumReactions } from "./photo-album-grouping";
+import { collapseAlbums, mergeAlbumReactions } from "./photo-album-grouping";
 
 let nextId = 1;
 const photo = (sender: string, album: { id: string; index: number } | null, reactions: ArchivedMessage["reactions"] = []): ArchivedMessage => ({
@@ -21,7 +21,7 @@ const photo = (sender: string, album: { id: string; index: number } | null, reac
   source: "mobile_sync",
   textStyles: [],
   call: null,
-  album: album ? { ...album, total: 3 } : null,
+  album: album ? { ...album, total: 3, width: null, height: null } : null,
   link: null, contactCard: null, quote: null, video: null, noticeAvatar: null,
   reactions,
   attachments: [],
@@ -44,10 +44,6 @@ describe("gộp album ảnh thành khung lưới", () => {
   it("album chỉ còn một ảnh trong trang, hoặc khác người gửi: không gộp", () => {
     const items = collapseAlbums([photo("lan", { id: "B", index: 0 }), photo("minh", { id: "B", index: 1 })]);
     assert.deepEqual(items.map((i) => i.album), [null, null]);
-  });
-
-  it("số cột như Zalo: 2 hoặc 4 ảnh thì 2 cột, còn lại 3 cột", () => {
-    assert.deepEqual([2, 3, 4, 5, 9].map(albumColumns), [2, 3, 2, 3, 3]);
   });
 
   it("cảm xúc trên các ảnh gộp thành một dải", () => {

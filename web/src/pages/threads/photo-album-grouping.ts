@@ -35,11 +35,6 @@ export function collapseAlbums(messages: ArchivedMessage[]): ChatItem[] {
   return items;
 }
 
-/** Số cột của khung lưới: 2 hoặc 4 ảnh thì 2 cột (ô to), còn lại 3 cột */
-export function albumColumns(count: number): 2 | 3 {
-  return count === 2 || count === 4 ? 2 : 3;
-}
-
 /** Cảm xúc thả trên từng ảnh của album gộp thành một dải, theo loại */
 export function mergeAlbumReactions(album: ArchivedMessage[]): ArchivedMessage["reactions"] {
   const byIcon = new Map<string, ArchivedMessage["reactions"][number]>();

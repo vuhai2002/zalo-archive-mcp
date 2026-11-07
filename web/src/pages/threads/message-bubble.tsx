@@ -129,7 +129,7 @@ export function MessageBubble({
               )}
             </div>
             {albumCaption && (
-              <div className="mt-1 max-w-[360px] whitespace-pre-wrap rounded-lg border border-black/5 bg-bubble px-3 py-2 text-[14.5px] leading-[1.45] text-chat-ink dark:border-white/5">
+              <div className="mt-1 max-w-[450px] whitespace-pre-wrap rounded-lg border border-black/5 bg-bubble px-3 py-2 text-[14.5px] leading-[1.45] text-chat-ink dark:border-white/5">
                 {albumCaption}
               </div>
             )}
