@@ -208,8 +208,8 @@ describe("hỏi hồ sơ không dồn dập", () => {
     const api = { getUserInfo: async () => Promise.reject(tooMany) } as unknown as API;
     assert.equal(await resolveUnknownContacts(api, db, log), "rate_limited");
     assert.deepEqual(contactsNeedingLookup(db, 10, "2000-01-01T00:00:00.000Z").sort(), ["u-lan", "u-minh"]);
-    // Lỗi khác thì vẫn chờ một ngày như cũ, không hỏi lại liên tục
-    const broken = { getUserInfo: async () => Promise.reject(new Error("mạng hỏng")) } as unknown as API;
+    // Zalo trả lỗi khác thì vẫn chờ một ngày như cũ, không hỏi lại liên tục (mất mạng: xem directory-lookup-network-failure.test.ts)
+    const broken = { getUserInfo: async () => Promise.reject(Object.assign(new Error("Tham số không hợp lệ"), { code: 114 })) } as unknown as API;
     assert.equal(await resolveUnknownContacts(broken, db, log), "done");
     assert.deepEqual(contactsNeedingLookup(db, 10, "2000-01-01T00:00:00.000Z"), []);
   });

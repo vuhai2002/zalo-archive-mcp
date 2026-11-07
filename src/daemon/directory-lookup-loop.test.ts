@@ -93,4 +93,22 @@ describe("vòng hỏi danh bạ", () => {
     assert.equal(readLookupPause(db, "groups").times, 1);
     assert.equal(readLookupPause(db, "contacts").times, 5);
   });
+
+  it("máy vừa bật chưa có mạng: không nghỉ, không đánh dấu đã hỏi - có mạng lại thì lấy được ngay", async () => {
+    const db = openArchiveDatabase(":memory:");
+    upsertMessage(db, sampleMessage({ msgId: "g1", threadType: "group", threadId: "777", senderId: "55" }), live);
+    const netDown = async () => Promise.reject(new TypeError("fetch failed: getaddrinfo ENOTFOUND tt-profile-wpa.chat.zalo.me"));
+    const offline = { getAllFriends: async () => [], getStickersDetail: async () => [], getGroupInfo: netDown, getUserInfo: netDown };
+    await runFirstRound(offline as unknown as API, db);
+    assert.deepEqual([readLookupPause(db, "groups"), readLookupPause(db, "contacts")], [{ untilMs: 0, times: 0 }, { untilMs: 0, times: 0 }]);
+
+    const online = {
+      ...offline,
+      getGroupInfo: async () => ({ gridInfoMap: { "777": { name: "Nhóm", fullAvt: "https://g.zadn.vn/a.jpg", memVerList: ["55_0"], totalMember: 1 } } }),
+      getUserInfo: async () => ({ changed_profiles: { "55_0": { userId: "55", displayName: "Năm", avatar: "https://ava.zadn.vn/55.jpg" } } }),
+    };
+    await runFirstRound(online as unknown as API, db);
+    assert.equal(db.prepare("SELECT name FROM threads WHERE thread_id = '777'").get()?.name, "Nhóm");
+    assert.equal(db.prepare("SELECT avatar_url FROM contacts WHERE user_id = '55'").get()?.avatar_url, "https://ava.zadn.vn/55.jpg");
+  });
 });

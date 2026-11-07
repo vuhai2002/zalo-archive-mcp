@@ -9,6 +9,7 @@ import {
   replaceFriendDirectory,
   upsertGroupNames,
 } from "../storage/thread-directory-store.js";
+import { isNetworkFailure } from "./listener-error-details.js";
 
 /** Số nhóm / người hỏi mỗi lượt: đủ nhỏ để giống Zalo Web, không dồn dập */
 const GROUP_BATCH = 50;
@@ -19,8 +20,11 @@ const RETRY_MS = 24 * 3_600_000;
 const ZALO_RATE_LIMIT_CODE = 221;
 const MAX_RATE_LIMIT_PAUSE_MS = 6 * 3_600_000;
 
-/** Kết quả một lượt hỏi: không có gì để hỏi / đã hỏi (được hay hỏng) / Zalo báo hỏi quá nhiều */
-export type LookupOutcome = "idle" | "done" | "rate_limited";
+/**
+ * Kết quả một lượt hỏi: không có gì để hỏi / đã hỏi (được, hay Zalo trả lỗi) / Zalo báo hỏi quá nhiều / mất mạng
+ * (chưa tới được Zalo, vd máy vừa bật chưa có mạng - không tính là đã hỏi, lượt sau hỏi lại)
+ */
+export type LookupOutcome = "idle" | "done" | "rate_limited" | "offline";
 
 export function isZaloRateLimit(err: unknown): boolean {
   return (err as { code?: unknown } | null)?.code === ZALO_RATE_LIMIT_CODE;
@@ -31,6 +35,7 @@ export function rateLimitPauseMs(times: number, baseMs: number): number {
   return Math.min(baseMs * 2 ** Math.max(0, times), MAX_RATE_LIMIT_PAUSE_MS);
 }
 
+const errorMessage = (err: unknown): string => String((err as { message?: unknown } | null)?.message ?? err);
 const nonEmpty = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
 
 /**
@@ -83,8 +88,12 @@ export async function resolveMissingGroupInfo(api: API, db: DatabaseSync, log: L
     for (const [id, info] of entries) storeGroupMembers(db, id, info);
     log.info({ asked: ids.length, found: entries.length }, "Đã cập nhật tên, avatar, thành viên nhóm");
   } catch (err) {
-    // Zalo báo hỏi quá nhiều: không tính là đã hỏi, vòng hỏi tạm nghỉ rồi hỏi lại
+    // Zalo báo hỏi quá nhiều: không tính là đã hỏi, vòng hỏi tạm nghỉ rồi hỏi lại. Mất mạng: cũng không tính
     if (isZaloRateLimit(err)) return "rate_limited";
+    if (isNetworkFailure(err)) {
+      log.warn({ count: ids.length, error: errorMessage(err) }, "Chưa có mạng - chưa hỏi được thông tin nhóm, hỏi lại lượt sau");
+      return "offline";
+    }
     markGroupNameLookup(db, ids, new Date(now).toISOString());
     log.warn({ err, count: ids.length }, "Không lấy được thông tin nhóm");
   }
@@ -142,8 +151,12 @@ export async function resolveUnknownContacts(api: API, db: DatabaseSync, log: Lo
     upsertContacts(db, entries);
     log.info({ asked: ids.length, found: entries.length }, "Đã cập nhật hồ sơ người nhắn");
   } catch (err) {
-    // Zalo báo hỏi quá nhiều: không tính là đã hỏi, vòng hỏi tạm nghỉ rồi hỏi lại
+    // Zalo báo hỏi quá nhiều: không tính là đã hỏi, vòng hỏi tạm nghỉ rồi hỏi lại. Mất mạng: cũng không tính
     if (isZaloRateLimit(err)) return "rate_limited";
+    if (isNetworkFailure(err)) {
+      log.warn({ count: ids.length, error: errorMessage(err) }, "Chưa có mạng - chưa hỏi được hồ sơ người nhắn, hỏi lại lượt sau");
+      return "offline";
+    }
     markContactLookup(db, ids, new Date(now).toISOString());
     log.warn({ err, count: ids.length }, "Không lấy được hồ sơ người nhắn");
   }

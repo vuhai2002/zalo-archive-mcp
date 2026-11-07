@@ -27,7 +27,8 @@ const KIND_LABEL: Record<LookupKind, string> = { groups: "hỏi thông tin nhóm
  * chặn nghỉ `rateLimitPauseMs`, bị lại thì gấp đôi, hỏi được một lượt thì về mức đầu. Hỏi nhóm và
  * hỏi hồ sơ nghỉ RIÊNG: lệnh hỏi hồ sơ bị chặn cả ngày không được kéo nhóm mới phải chờ theo. Thời
  * gian nghỉ lưu trong DB (`directory-lookup-pause-store.ts`) để chạy lại daemon không phá lệ nghỉ.
- * Danh sách bạn bè và ảnh sticker không thuộc lệnh bị chặn nên vẫn chạy trong lúc nghỉ.
+ * Danh sách bạn bè và ảnh sticker không thuộc lệnh bị chặn nên vẫn chạy trong lúc nghỉ. Mất mạng (máy vừa bật,
+ * chưa có mạng) không tính là đã hỏi: nhóm hỏi lại ở lượt sau, hồ sơ hỏi lại sau `contactLookupGapMs`.
  *
  * Các bước chạy NỐI TIẾP, lượt sau không chồng lượt trước.
  */
@@ -90,9 +91,10 @@ export function startDirectoryLookupLoop(o: {
       if (!paused("contacts") && Date.now() - lastContactLookup >= o.contactLookupGapMs) {
         const contacts = await resolveUnknownContacts(o.api, o.db, o.log);
         if (contacts === "rate_limited") pause("contacts");
-        else if (contacts === "done") {
+        else if (contacts !== "idle") {
+          // Mất mạng cũng chờ đủ khoảng giãn rồi mới thử lại, nhưng không tính là Zalo đã thôi chặn
           lastContactLookup = Date.now();
-          recovered("contacts");
+          if (contacts === "done") recovered("contacts");
         }
       }
     } catch (err) {
