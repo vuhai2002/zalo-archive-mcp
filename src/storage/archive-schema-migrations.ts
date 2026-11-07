@@ -355,4 +355,12 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   `
   CREATE INDEX messages_source ON messages (source);
   `,
+  // 24: hỏi Zalo mà không ra (không có hồ sơ / không có nhóm, hoặc Zalo báo lỗi) thì chỉ hỏi lại tối đa 2 lần nữa
+  // thay vì mỗi ngày mãi mãi: đếm số lần hỏi trượt liên tiếp. Người / nhóm đang thiếu mà đã hỏi trước đây tính là trượt 1 lần
+  `
+  ALTER TABLE contacts ADD COLUMN lookup_attempts INTEGER NOT NULL DEFAULT 0;
+  UPDATE contacts SET lookup_attempts = 1 WHERE lookup_at IS NOT NULL AND avatar_url IS NULL;
+  ALTER TABLE threads ADD COLUMN name_lookup_attempts INTEGER NOT NULL DEFAULT 0;
+  UPDATE threads SET name_lookup_attempts = 1 WHERE thread_type = 'group' AND name_lookup_at IS NOT NULL AND name IS NULL;
+  `,
 ];

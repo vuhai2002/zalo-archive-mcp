@@ -53,8 +53,10 @@ export function applyGroupEvent(db: DatabaseSync, event: unknown): void {
   } else if (typeof e?.act === "string" && LEAVE_ACTS.has(e.act) && members.length > 0) {
     removeGroupMembers(db, groupId, members.map((m) => m.id));
   } else if (e?.act === "update_avatar") {
-    // Ảnh nhóm đổi: xóa link cũ để vòng hỏi thông tin nhóm lấy link mới ngay
-    db.prepare("UPDATE threads SET avatar_url = NULL, name_lookup_at = NULL WHERE thread_id = ? AND thread_type = 'group'").run(
+    // Ảnh nhóm đổi: xóa link cũ để vòng hỏi thông tin nhóm lấy link mới ngay (như nhóm chưa hỏi lần nào)
+    db.prepare(
+      "UPDATE threads SET avatar_url = NULL, name_lookup_at = NULL, name_lookup_attempts = 0 WHERE thread_id = ? AND thread_type = 'group'",
+    ).run(
       groupId,
     );
   }

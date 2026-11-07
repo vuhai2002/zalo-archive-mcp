@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { inTransaction } from "../shared/db-transaction.js";
+import { MAX_LOOKUP_ATTEMPTS } from "./directory-lookup-retry-limit.js";
 
 export type DirectoryEntry = { threadId: string; name: string | null; avatarUrl?: string | null };
 
@@ -26,7 +27,7 @@ export function replaceFriendDirectory(db: DatabaseSync, friends: DirectoryEntry
   });
 }
 
-/** Ghi tên + avatar nhóm (có thể đổi nên luôn ghi đè khi có giá trị mới) */
+/** Ghi tên + avatar nhóm (có thể đổi nên luôn ghi đè khi có giá trị mới). Zalo có trả nhóm là xong: đếm hỏi trượt về 0 */
 export function upsertGroupNames(db: DatabaseSync, groups: DirectoryEntry[]): void {
   const now = new Date().toISOString();
   inTransaction(db, () => {
@@ -34,7 +35,7 @@ export function upsertGroupNames(db: DatabaseSync, groups: DirectoryEntry[]): vo
       `INSERT INTO threads (thread_id, thread_type, name, avatar_url, updated_at) VALUES (?, 'group', ?, ?, ?)
        ON CONFLICT (thread_id, thread_type) DO UPDATE SET
          name = COALESCE(excluded.name, threads.name), avatar_url = COALESCE(excluded.avatar_url, threads.avatar_url),
-         updated_at = excluded.updated_at`,
+         updated_at = excluded.updated_at, name_lookup_attempts = 0`,
     );
     for (const g of groups) stmt.run(g.threadId, g.name, g.avatarUrl ?? null, now);
   });
@@ -55,8 +56,10 @@ export function setFriendFlag(db: DatabaseSync, userId: string, friend: boolean)
  * Nhóm đã có tin trong kho nhưng chưa biết tên, avatar hoặc ĐỦ danh sách thành viên - để hỏi theo lô.
  * Biết ít người hơn tổng số thành viên cũng là thiếu: sự kiện "có người vào nhóm" chỉ thêm đúng người
  * đó vào danh sách, chưa hỏi nhóm thì vẫn chưa biết những người còn lại (avatar ghép thiếu người).
- * Nhóm hoạt động gần nhất trước; nhóm đã hỏi mà không ra thì chờ tới `retryBeforeIso` mới hỏi lại
- * (không hỏi mãi, không chặn đường nhóm mới).
+ * Nhóm hoạt động gần nhất trước. Mỗi nhóm hỏi MỘT lần: Zalo đã trả nhóm mà vẫn thiếu là thứ Zalo không có (nhóm
+ * không đặt ảnh, nhóm đông Zalo không trả đủ danh sách) - đổi ảnh / tên / thành viên về sau đi theo sự kiện nhóm.
+ * Zalo không trả nhóm (đã rời, giải tán) hoặc báo lỗi thì chờ tới `retryBeforeIso` hỏi lại, tổng cộng tối đa
+ * MAX_LOOKUP_ATTEMPTS lần (không hỏi mãi, không chặn đường nhóm mới).
  */
 export function groupsMissingName(db: DatabaseSync, limit: number, retryBeforeIso: string): string[] {
   const rows = db
@@ -65,15 +68,19 @@ export function groupsMissingName(db: DatabaseSync, limit: number, retryBeforeIs
        WHERE thread_type = 'group'
          AND (name IS NULL OR avatar_url IS NULL
               OR (SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = threads.thread_id) < COALESCE(member_count, 1))
-         AND (name_lookup_at IS NULL OR name_lookup_at < ?)
+         AND (name_lookup_at IS NULL
+              OR (name_lookup_attempts > 0 AND name_lookup_attempts < ? AND name_lookup_at < ?))
        ORDER BY last_message_at DESC LIMIT ?`,
     )
-    .all(retryBeforeIso, limit) as Array<{ thread_id: string }>;
+    .all(MAX_LOOKUP_ATTEMPTS, retryBeforeIso, limit) as Array<{ thread_id: string }>;
   return rows.map((r) => r.thread_id);
 }
 
+/** Đánh dấu đã hỏi và tính một lần hỏi trượt; nhóm Zalo có trả thì `upsertGroupNames` ngay sau đó đếm lại về 0 */
 export function markGroupNameLookup(db: DatabaseSync, groupIds: string[], atIso: string): void {
-  const stmt = db.prepare("UPDATE threads SET name_lookup_at = ? WHERE thread_type = 'group' AND thread_id = ?");
+  const stmt = db.prepare(
+    "UPDATE threads SET name_lookup_at = ?, name_lookup_attempts = name_lookup_attempts + 1 WHERE thread_type = 'group' AND thread_id = ?",
+  );
   for (const id of groupIds) stmt.run(atIso, id);
 }
 

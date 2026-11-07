@@ -14,7 +14,7 @@ import { isNetworkFailure } from "./listener-error-details.js";
 /** Số nhóm / người hỏi mỗi lượt: đủ nhỏ để giống Zalo Web, không dồn dập */
 const GROUP_BATCH = 50;
 const CONTACT_BATCH = 50;
-/** Hỏi rồi mà không ra tên/avatar thì một ngày sau mới hỏi lại */
+/** Hỏi rồi mà Zalo không trả (hồ sơ / nhóm) thì một ngày sau mới hỏi lại, tổng cộng tối đa MAX_LOOKUP_ATTEMPTS lần */
 const RETRY_MS = 24 * 3_600_000;
 /** Mã lỗi Zalo "Vượt quá số request cho phép" */
 const ZALO_RATE_LIMIT_CODE = 221;

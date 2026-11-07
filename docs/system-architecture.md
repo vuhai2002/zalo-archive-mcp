@@ -138,8 +138,12 @@ lượt đó không tính là đã hỏi và loại hỏi bị chặn nghỉ `DI
 bị lại, tối đa 6 tiếng. Hỏi nhóm và hỏi hồ sơ nghỉ RIÊNG (`meta.directory_lookup_pause_groups` /
 `meta.directory_lookup_pause`): sau đồng bộ điện thoại, lệnh hỏi hồ sơ có thể bị chặn cả ngày, nhóm mới không
 phải chờ theo. Trong lúc nghỉ, danh sách bạn bè và ảnh sticker (lệnh khác, không bị chặn) vẫn chạy. Nhóm
-biết ít thành viên hơn tổng số (mới chỉ nghe sự kiện "có người vào nhóm") vẫn coi là thiếu, hỏi lại để ghép
-đủ avatar nhóm. Lúc đọc, tin không kèm tên người gửi (bản sao lưu điện thoại) lấy tên trong danh bạ.
+chưa hỏi lần nào mà biết ít thành viên hơn tổng số (mới chỉ nghe sự kiện "có người vào nhóm") vẫn coi là thiếu,
+hỏi để ghép đủ avatar nhóm. Mỗi nhóm hỏi một lần: Zalo đã trả nhóm mà vẫn thiếu là thứ Zalo không có (nhóm không đặt
+ảnh, nhóm đông Zalo không trả đủ danh sách); đổi tên / ảnh / thành viên về sau đi theo sự kiện nhóm (đổi ảnh thì hỏi
+lại một lần). Zalo không trả hồ sơ / nhóm (tài khoản đã xóa, nhóm đã rời), trả hồ sơ trống, hoặc báo lỗi thì hỏi lại
+sau một ngày, tổng cộng tối đa 3 lần (`MAX_LOOKUP_ATTEMPTS`, đếm ở `contacts.lookup_attempts` /
+`threads.name_lookup_attempts`) rồi thôi. Mất mạng (máy vừa bật) không tính là đã hỏi. Lúc đọc, tin không kèm tên người gửi (bản sao lưu điện thoại) lấy tên trong danh bạ.
 Tên gợi nhớ mình đặt cho người khác (`getAliasList`, đồng bộ cùng danh sách bạn bè, lưu `contacts.alias`)
 đứng trước mọi tên khác ở danh sách, đầu khung chat, tên người gửi, xem trước, tìm kiếm và MCP - như Zalo PC.
 
