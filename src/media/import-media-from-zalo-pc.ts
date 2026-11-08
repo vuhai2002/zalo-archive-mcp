@@ -1,32 +1,28 @@
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { Transform } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import type { DatabaseSync } from "node:sqlite";
 import type { Logger } from "pino";
 import { failedAttachmentsForRecovery, markAttachmentRecovered, type RecoveryCandidate } from "../storage/attachment-local-recovery-store.js";
+import { findZaloPcMedia, type ZaloPcMediaMatch } from "./find-zalo-pc-copy-for-attachment.js";
 import { chooseExtension, mediaRelativePath } from "./media-file-naming.js";
 import { placeDownloadedFile, saveJxlPhotoAsPng, type ConvertJxlToPng, type SavedMedia } from "./save-jxl-photo-as-png.js";
-import { buildZaloPcMediaIndex, findZaloPcMedia, type ZaloPcMediaMatch } from "./zalo-pc-media-index.js";
+import { copyIntoTemp, sniff, type Copied } from "./zalo-pc-file-copy.js";
+import { buildZaloPcMediaIndex } from "./zalo-pc-media-index.js";
 import { convertJxlToPng } from "./zalo-jxl-photo.js";
 
 /**
- * Lấy lại ảnh / video / file mà kho không tải được (Zalo đã xóa khỏi máy chủ) từ bản Zalo PC đã tải về máy.
- * Nguồn chỉ được MỞ ĐỂ ĐỌC rồi chép sang thư mục media của kho - không ghi, đổi tên, xóa gì của Zalo PC
- * (CLAUDE.md). Mỗi bản chép được kiểm trước khi nhận: ảnh phải đúng chữ ký ảnh, video phải là MP4, file đính
- * kèm phải đúng MD5 Zalo ghi trong tin. Ảnh: bản JPEG xem trước làm file hiện trên dashboard, bản gốc HD
- * (JXL) giữ ngay cạnh; chỉ có bản JXL thì đổi sang PNG như lúc tải. Chép / đổi vài file cùng lúc (`concurrency`)
- * vì đổi một ảnh JXL mất vài giây; việc đổi chạy ở luồng phụ (`convertJxl` = `JxlPngWorkerPool`) để daemon vẫn
- * nghe tin và dashboard không đứng.
+ * Lấy lại ảnh / video / file / tin thoại mà kho không tải được (Zalo đã xóa khỏi máy chủ) từ bản Zalo PC đã tải về
+ * máy. Nguồn chỉ được MỞ ĐỂ ĐỌC rồi chép sang thư mục media của kho - không ghi, đổi tên, xóa gì của Zalo PC
+ * (CLAUDE.md). Mỗi bản chép được kiểm trước khi nhận: ảnh phải đúng chữ ký ảnh, video phải là MP4, tin thoại phải
+ * là AAC, file đính kèm phải đúng MD5 Zalo ghi trong tin (bản bị làm nhiễu được bỏ nhiễu rồi mới kiểm). Ảnh: bản
+ * JPEG xem trước làm file hiện trên dashboard, bản gốc HD (JXL) giữ ngay cạnh; chỉ có bản JXL thì đổi sang PNG như
+ * lúc tải. Chép / đổi vài file cùng lúc (`concurrency`) vì đổi một ảnh JXL mất vài giây; việc đổi chạy ở luồng phụ
+ * (`convertJxl` = `JxlPngWorkerPool`) để daemon vẫn nghe tin và dashboard không đứng.
  */
 export const ZALO_PC_SOURCE = "zalo_pc";
 
 export type { ZaloPcImportProgress } from "../dashboard/dashboard-api-contract.js";
 import type { ZaloPcImportProgress } from "../dashboard/dashboard-api-contract.js";
-
-type Copied = { tempFile: string; sha256: string; md5: string; sizeBytes: number; head: Buffer };
-type Sniffed = "jpeg" | "png" | "gif" | "webp" | "jxl" | "mp4" | null;
 
 const IMAGE: Record<string, { ext: string; mime: string }> = {
   jpeg: { ext: ".jpg", mime: "image/jpeg" },
@@ -34,42 +30,6 @@ const IMAGE: Record<string, { ext: string; mime: string }> = {
   gif: { ext: ".gif", mime: "image/gif" },
   webp: { ext: ".webp", mime: "image/webp" },
 };
-
-function sniff(h: Buffer): Sniffed {
-  if (h[0] === 0xff && h[1] === 0xd8 && h[2] === 0xff) return "jpeg";
-  if (h.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "png";
-  if (h.subarray(0, 4).toString("latin1") === "GIF8") return "gif";
-  if (h.subarray(0, 4).toString("latin1") === "RIFF" && h.subarray(8, 12).toString("latin1") === "WEBP") return "webp";
-  if ((h[0] === 0xff && h[1] === 0x0a) || h.subarray(4, 8).toString("latin1") === "JXL ") return "jxl";
-  if (h.subarray(4, 8).toString("latin1") === "ftyp") return "mp4";
-  return null;
-}
-
-/** Chép nguồn (mở chỉ để đọc) sang file tạm của kho, vừa chép vừa băm sha256 + md5 và giữ 16 byte đầu */
-async function copyIntoTemp(src: string, tempDir: string): Promise<Copied> {
-  fs.mkdirSync(tempDir, { recursive: true });
-  const tempFile = path.join(tempDir, `${crypto.randomUUID()}.part`);
-  const sha = crypto.createHash("sha256");
-  const md5 = crypto.createHash("md5");
-  let sizeBytes = 0;
-  let head = Buffer.alloc(0);
-  const meter = new Transform({
-    transform(chunk: Buffer, _enc, done) {
-      if (head.length < 16) head = Buffer.concat([head, chunk.subarray(0, 16 - head.length)]);
-      sizeBytes += chunk.length;
-      sha.update(chunk);
-      md5.update(chunk);
-      done(null, chunk);
-    },
-  });
-  try {
-    await pipeline(fs.createReadStream(src, { flags: "r" }), meter, fs.createWriteStream(tempFile, { mode: 0o600 }));
-  } catch (err) {
-    fs.rmSync(tempFile, { force: true });
-    throw err;
-  }
-  return { tempFile, sha256: sha.digest("hex"), md5: md5.digest("hex"), sizeBytes, head };
-}
 
 function place(mediaDir: string, c: Copied, ext: string, mime: string | null): SavedMedia {
   const rel = mediaRelativePath(c.sha256, ext);
@@ -79,13 +39,31 @@ function place(mediaDir: string, c: Copied, ext: string, mime: string | null): S
 
 type StoreOptions = { mediaDir: string; tempDir: string; convertJxl: ConvertJxlToPng };
 
-/** Chép + kiểm + cất một bản Zalo PC; null nếu bản đó không đúng loại / không đúng MD5 (không nhận) */
+/** Chép + kiểm + cất một bản Zalo PC; null nếu không bản nào đúng loại / đúng MD5 (không nhận) */
 async function storeMatch(o: StoreOptions, c: RecoveryCandidate, match: ZaloPcMediaMatch): Promise<SavedMedia | null> {
   if (match.kind === "photo") return storePhoto(o, match);
+  if (match.kind === "file") return storeFile(o, c, match);
   const copied = await copyIntoTemp(match.file, o.tempDir);
-  if (match.kind === "video") return sniff(copied.head) === "mp4" ? place(o.mediaDir, copied, ".mp4", "video/mp4") : reject(copied);
-  if (copied.md5 !== match.md5) return reject(copied);
-  return place(o.mediaDir, copied, chooseExtension({ kind: "file", fileName: c.fileName, mime: null, url: "" }), null);
+  if (match.kind === "voice") return sniff(copied.head) === "aac" ? place(o.mediaDir, copied, ".aac", "audio/aac") : reject(copied);
+  return sniff(copied.head) === "mp4" ? place(o.mediaDir, copied, ".mp4", "video/mp4") : reject(copied);
+}
+
+/** File đính kèm: thử lần lượt từng bản, nhận bản đầu tiên đúng MD5 (tin không có checksum: bản gắn chắc với tin) */
+async function storeFile(o: StoreOptions, c: RecoveryCandidate, match: Extract<ZaloPcMediaMatch, { kind: "file" }>): Promise<SavedMedia | null> {
+  for (const source of match.sources) {
+    if (!match.md5 && !source.sure) continue;
+    let copied: Copied;
+    try {
+      copied = await copyIntoTemp(source.file, o.tempDir, { denoise: source.noise });
+    } catch {
+      continue; // bản bị làm nhiễu mà không đúng dạng: thử bản khác
+    }
+    if (match.md5 ? copied.md5 === match.md5 : copied.sizeBytes > 0) {
+      return place(o.mediaDir, copied, chooseExtension({ kind: "file", fileName: c.fileName, mime: null, url: "" }), null);
+    }
+    reject(copied);
+  }
+  return null;
 }
 
 /** Ảnh: bản xem trước (JPEG) làm file hiện, bản gốc HD giữ cạnh; không có / hỏng bản xem trước thì dùng bản gốc */
@@ -136,10 +114,12 @@ async function keepOriginalBeside(o: StoreOptions, mainRel: string, original: st
 /** File Zalo PC không có dò trong bộ nhớ rất nhanh: cứ chừng này file thì nhường vòng lặp sự kiện một lần */
 const YIELD_EVERY = 500;
 
-type ImportOptions = {
+export type ImportOptions = {
   db: DatabaseSync;
   mediaDir: string;
   downloadsDir: string;
+  /** Các thư mục `Zalo Received Files` (Zalo PC bản cũ) để dò file theo tên + cỡ */
+  receivedDirs?: string[];
   selfUid: string;
   log: Logger;
   /** Đổi JXL sang PNG; bỏ trống = đổi ngay ở luồng đang chạy (chặn vài giây mỗi ảnh - chỉ hợp cho lệnh chạy một lần / test) */
@@ -165,7 +145,7 @@ async function recoverOne(o: ImportOptions, store: StoreOptions, c: RecoveryCand
 }
 
 export async function importMediaFromZaloPc(o: ImportOptions): Promise<ZaloPcImportProgress> {
-  const index = buildZaloPcMediaIndex(o.downloadsDir);
+  const index = buildZaloPcMediaIndex(o.downloadsDir, o.receivedDirs);
   const candidates = failedAttachmentsForRecovery(o.db);
   const p: ZaloPcImportProgress = { total: candidates.length, processed: 0, recovered: 0, notFound: 0, rejected: 0, failed: 0 };
   const store: StoreOptions = {

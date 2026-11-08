@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { zaloPcDownloadsDir } from "../../config/account-paths.js";
+import { zaloPcDownloadsDir, zaloPcReceivedFilesDirs } from "../../config/account-paths.js";
 import { ZaloPcMediaImportJob } from "../../daemon/zalo-pc-media-import-job.js";
 import { sharedJxlPngPool } from "../../media/jxl-png-worker-pool.js";
 import { createSilentLogger } from "../../shared/logger.js";
@@ -17,6 +17,7 @@ export function zaloPcMediaRoutes(ctx: DashboardContext): Hono {
     db: ctx.db,
     mediaDir: ctx.paths.mediaDir,
     downloadsDirFor: (uid) => zaloPcDownloadsDir(ctx.env, uid),
+    receivedDirs: () => zaloPcReceivedFilesDirs(ctx.env),
     log: (ctx.log ?? createSilentLogger()).child({ part: "zalo-pc-media" }),
     convertJxl: (bytes) => pool.convert(bytes),
     concurrency: pool.size,

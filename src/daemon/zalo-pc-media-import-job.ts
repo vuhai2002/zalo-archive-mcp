@@ -8,7 +8,8 @@ import { getMeta } from "../storage/thread-directory-store.js";
 
 /**
  * Lượt lấy lại media từ Zalo PC của MỘT nick, chạy nền theo nút bấm trên dashboard (mỗi lúc một lượt).
- * Không cần phiên Zalo: chỉ đọc thư mục Zalo PC đã tải về máy rồi chép sang kho.
+ * Không cần phiên Zalo: chỉ đọc thư mục Zalo PC đã tải về máy rồi chép sang kho (ghép vào đúng tin). File Zalo PC không
+ * ghép được vào tin nào thì bỏ (người dùng chốt 2026-11-08).
  */
 export type ZaloPcImportStatus = ZaloPcMediaImportStatus;
 
@@ -25,6 +26,8 @@ export class ZaloPcMediaImportJob {
       mediaDir: string;
       /** Thư mục ZaloDownloads của nick theo mã nick (null khi không xác định được) */
       downloadsDirFor: (uid: string) => string | null;
+      /** Các thư mục `Zalo Received Files` trên máy (dò file theo tên + cỡ); bỏ trống = không dò */
+      receivedDirs?: () => string[];
       log: Logger;
       /** Đổi JXL sang PNG ở luồng phụ; `concurrency` = số file chép / đổi cùng lúc (bằng số luồng đổi JXL) */
       convertJxl?: ConvertJxlToPng;
@@ -66,17 +69,7 @@ export class ZaloPcMediaImportJob {
     this.finishedAt = null;
     this.error = null;
     this.progress = null;
-    void importMediaFromZaloPc({
-      db: this.d.db,
-      mediaDir: this.d.mediaDir,
-      downloadsDir: dir,
-      selfUid: uid,
-      log: this.d.log,
-      convertJxl: this.d.convertJxl,
-      concurrency: this.d.concurrency,
-      onProgress: (p) => (this.progress = p),
-    })
-      .then((p) => this.d.log.info({ ...p }, "Đã lấy lại media từ Zalo PC"))
+    void this.run(uid, dir)
       .catch((err) => {
         this.error = err instanceof Error ? err.message : String(err);
         this.d.log.error({ err }, "Lấy media từ Zalo PC hỏng");
@@ -86,5 +79,21 @@ export class ZaloPcMediaImportJob {
         this.finishedAt = new Date().toISOString();
       });
     return { ok: true };
+  }
+
+  /** Lấy lại file kho đang hỏng từ bản Zalo PC */
+  private async run(uid: string, dir: string): Promise<void> {
+    const recovered = await importMediaFromZaloPc({
+      db: this.d.db,
+      mediaDir: this.d.mediaDir,
+      downloadsDir: dir,
+      receivedDirs: this.d.receivedDirs?.() ?? [],
+      selfUid: uid,
+      log: this.d.log,
+      convertJxl: this.d.convertJxl,
+      concurrency: this.d.concurrency,
+      onProgress: (p) => (this.progress = p),
+    });
+    this.d.log.info({ ...recovered }, "Đã lấy lại media từ Zalo PC");
   }
 }

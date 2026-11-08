@@ -64,13 +64,19 @@ Thông báo nhóm (`msg_type = 'group_event'`): sự kiện nhóm của zca-js v
 Lấy lại media Zalo đã xóa từ Zalo PC: Zalo xóa ảnh / video / file khỏi máy chủ sau khoảng 2 tuần, nên
 tin cũ (đồng bộ điện thoại) thường không còn file. Zalo PC trên máy đã tải nhiều file trong số đó vào
 `%LOCALAPPDATA%\ZaloPC\<UID>\ZaloDownloads` dưới dạng file thường: ảnh / video ở
-`resource\<g<mã nhóm> | mã người>\<picture | Cache | video>\<cliMsgId>_<người gửi>_<hội thoại>...`, file
-đính kèm ở `file\<md5>`; video kiểu cũ (Zalo PC trước khoảng 07/2026) ở `video\<mã tin>` / `video\group\<mã tin>`,
-phần lớn trùng bản trong `resource`, chỉ dùng khi `resource` không có. `media/zalo-pc-media-index.ts` dò theo tên file, `media/import-media-from-zalo-pc.ts`
-chép sang kho (CHỈ ĐỌC thư mục Zalo PC), kiểm chữ ký ảnh / MP4 / MD5, ảnh lấy bản JPEG xem trước làm file
-hiện + giữ bản gốc HD cạnh (`<sha>.orig.jxl`), chỉ có JXL thì đổi PNG (luồng phụ, vài file cùng lúc - xem dưới); đánh `done` kèm
-`attachments.recovered_from = 'zalo_pc'` (migration 19). Chạy theo nút trên trang Tài khoản Zalo. Không dùng
-`fileNoise` (Zalo PC biến đổi nội dung) và không đụng DB Zalo PC.
+`resource\<g<mã nhóm> | mã người>\<picture | Cache | video | file | fileNoise | voice>\<cliMsgId>_<người gửi>_<hội thoại>...`
+(video gửi dạng file cũng ở `video`), file đính kèm theo checksum ở `file\<md5>` / `fileNoise\<md5>`; video / tin thoại kiểu
+cũ (Zalo PC trước khoảng 07/2026) ở `video\<mã tin>` / `voice\<mã tin>` (thêm `group\`), phần lớn trùng bản trong
+`resource`. Zalo PC bản cũ còn lưu file nhận được, giữ tên thật, ở `Zalo Received Files` (cạnh thư mục dữ liệu thật
+của Zalo PC, vd `X:\Du-lieu` khi `%LOCALAPPDATA%\ZaloPC` là liên kết trỏ sang đó, hoặc `Documents`) - dò theo tên + cỡ.
+`media/zalo-pc-media-index.ts` dò theo tên file, `media/find-zalo-pc-copy-for-attachment.ts` chọn các bản có thể dùng,
+`media/import-media-from-zalo-pc.ts` chép sang kho (CHỈ ĐỌC thư mục Zalo PC), kiểm chữ ký ảnh / MP4 / AAC, file đính kèm
+phải đúng MD5 Zalo ghi trong tin (thử lần lượt từng bản). File trong `fileNoise` bị Zalo PC "làm nhiễu": 100 byte đầu XOR
+0x93, cuối thêm 6 byte `zAlO` - `media/zalo-pc-file-copy.ts` bỏ nhiễu lúc chép rồi mới kiểm MD5 (người dùng bảo rõ ngày
+2026-11-08). Ảnh lấy bản JPEG xem trước làm file hiện + giữ bản gốc HD cạnh (`<sha>.orig.jxl`), chỉ có JXL thì đổi PNG
+(luồng phụ, vài file cùng lúc - xem dưới); đánh `done` kèm `attachments.recovered_from = 'zalo_pc'` (migration 19).
+File Zalo PC không ghép được vào tin nào trong kho (tin kho không có, ảnh kiểu cũ `picture\<hội thoại>\z<...>`) thì bỏ,
+không giữ bản sao (người dùng chốt 2026-11-08). Chạy theo nút trên trang Tài khoản Zalo.
 
 Đổi ảnh JXL sang PNG (trình duyệt không hiện JXL) tốn vài giây một ảnh lớn, phần lớn là mã hóa PNG, và
 chặn luồng đang chạy. Daemon chỉ có một luồng chính cho dashboard + listener + hàng đợi gửi, nên việc đổi chạy ở

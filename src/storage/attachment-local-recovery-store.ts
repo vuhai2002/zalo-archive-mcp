@@ -17,6 +17,8 @@ export type RecoveryCandidate = {
   cliMsgId: string | null;
   /** Checksum MD5 Zalo ghi cho file đính kèm (`content.params.checksum`); null với loại khác */
   checksum: string | null;
+  /** Cỡ file Zalo ghi trong tin (dò bản cùng tên + cỡ trong `Zalo Received Files`) */
+  size: number | null;
 };
 
 function checksumOf(params: unknown): string | null {
@@ -29,14 +31,14 @@ function checksumOf(params: unknown): string | null {
   }
 }
 
-/** Đính kèm hỏng hẳn có thể có bản trên máy: ảnh, gif, video, file (bỏ sticker, tin thoại) */
+/** Đính kèm hỏng hẳn có thể có bản trên máy: ảnh, gif, video, file, tin thoại (bỏ sticker) */
 export function failedAttachmentsForRecovery(db: DatabaseSync): RecoveryCandidate[] {
   const rows = db
     .prepare(
-      `SELECT a.id, a.kind, a.msg_id, a.file_name, m.thread_id, m.thread_type, m.sender_id, m.is_self, m.cli_msg_id,
+      `SELECT a.id, a.kind, a.msg_id, a.file_name, COALESCE(a.declared_size, a.size_bytes) AS size, m.thread_id, m.thread_type, m.sender_id, m.is_self, m.cli_msg_id,
          CASE WHEN a.kind = 'file' AND json_valid(m.raw_json) THEN json_extract(m.raw_json, '$.content.params') END AS params
        FROM attachments a JOIN messages m ON m.msg_id = a.msg_id
-       WHERE a.status = 'failed' AND a.kind IN ('photo', 'gif', 'video', 'file')
+       WHERE a.status = 'failed' AND a.kind IN ('photo', 'gif', 'video', 'file', 'voice')
        ORDER BY a.id`,
     )
     .all() as Array<Record<string, unknown>>;
@@ -51,6 +53,7 @@ export function failedAttachmentsForRecovery(db: DatabaseSync): RecoveryCandidat
     isSelf: Number(r.is_self) === 1,
     cliMsgId: (r.cli_msg_id as string | null) ?? null,
     checksum: checksumOf(r.params),
+    size: typeof r.size === "number" && r.size > 0 ? r.size : null,
   }));
 }
 

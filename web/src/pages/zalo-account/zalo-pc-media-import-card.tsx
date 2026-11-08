@@ -7,8 +7,9 @@ import { useArchiveTimeZone } from "../../layout/dashboard-shell-context";
 import { BTN_PRIMARY, ErrorNote, SectionCard } from "../../shared/ui-bits";
 
 /**
- * Ảnh / video Zalo đã xóa khỏi máy chủ (tin cũ, thường từ đồng bộ điện thoại) nhưng Zalo PC trên máy này đã
- * tải về: kho tìm trong thư mục tải về của Zalo PC rồi chép sang. CHỈ ĐỌC thư mục Zalo PC, không sửa gì.
+ * Ảnh / video / file / tin thoại Zalo đã xóa khỏi máy chủ (tin cũ, thường từ đồng bộ điện thoại) nhưng Zalo PC trên
+ * máy này đã tải về: kho tìm trong thư mục tải về của Zalo PC rồi chép sang, ghép vào đúng tin. CHỈ ĐỌC thư mục Zalo PC,
+ * không sửa gì.
  * Trong lúc chạy, thẻ tự hỏi trạng thái mỗi 2 giây.
  */
 export function ZaloPcMediaImportCard({ confirm }: { confirm: (o: ConfirmOptions) => Promise<boolean> }) {
@@ -30,7 +31,7 @@ export function ZaloPcMediaImportCard({ confirm }: { confirm: (o: ConfirmOptions
 
   async function start() {
     const ok = await confirm({
-      title: "Lấy ảnh / video từ Zalo PC?",
+      title: "Lấy file từ Zalo PC?",
       message:
         "Kho tìm bản Zalo PC đã tải về máy này cho các file không tải được (Zalo đã xóa khỏi máy chủ) rồi chép sang kho. " +
         "Chỉ đọc thư mục của Zalo PC, không sửa hay xóa gì. Chạy nền, có thể mất vài phút.",
@@ -52,7 +53,7 @@ export function ZaloPcMediaImportCard({ confirm }: { confirm: (o: ConfirmOptions
   const p = data?.progress;
   const percent = p && p.total > 0 ? Math.round((p.processed / p.total) * 100) : 0;
   return (
-    <SectionCard title="Ảnh / video cũ từ Zalo PC" subtitle="Lấy lại file Zalo đã xóa khỏi máy chủ từ bản Zalo PC đã tải về máy này">
+    <SectionCard title="Ảnh / video / file cũ từ Zalo PC" subtitle="Lấy lại file Zalo đã xóa khỏi máy chủ từ bản Zalo PC đã tải về máy này">
       {error && <ErrorNote message={error} />}
       {data && !data.available && (
         <p className="mb-3 text-[13px] text-ink-soft">

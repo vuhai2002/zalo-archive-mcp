@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { ACCOUNT_ID_PATTERN } from "../accounts/zalo-account-registry.js";
 import type { AppEnv } from "./env-schema.js";
@@ -40,7 +42,36 @@ export function accountPaths(dataDir: string, accountId: string): AccountPaths {
  * Kho CHỈ ĐỌC thư mục này (CLAUDE.md). null khi không biết thư mục gốc (không phải Windows, chưa đặt biến).
  */
 export function zaloPcDownloadsDir(env: AppEnv, uid: string): string | null {
-  const root = env.ZALO_PC_DATA_DIR ?? (env.LOCALAPPDATA ? path.join(env.LOCALAPPDATA, "ZaloPC") : null);
+  const root = zaloPcRoot(env);
   if (!root || !/^\d+$/.test(uid)) return null;
   return path.join(root, uid, "ZaloDownloads");
+}
+
+const zaloPcRoot = (env: AppEnv) => env.ZALO_PC_DATA_DIR ?? (env.LOCALAPPDATA ? path.join(env.LOCALAPPDATA, "ZaloPC") : null);
+const RECEIVED_FILES = "Zalo Received Files";
+
+/**
+ * Các thư mục `Zalo Received Files` có trên máy - Zalo PC bản cũ lưu file nhận được ở đây, giữ tên thật: cạnh thư
+ * mục dữ liệu THẬT của Zalo PC (vd `%LOCALAPPDATA%\ZaloPC` là liên kết trỏ sang `X:\Du-lieu\ZaloPC` thì là
+ * `X:\Du-lieu\Zalo Received Files`) và `Documents\Zalo Received Files` (chỗ mặc định cũ). Kho CHỈ ĐỌC các thư mục này.
+ */
+export function zaloPcReceivedFilesDirs(env: AppEnv): string[] {
+  const root = zaloPcRoot(env);
+  const candidates = [path.join(os.homedir(), "Documents", RECEIVED_FILES)];
+  if (root) {
+    try {
+      candidates.unshift(path.join(path.dirname(fs.realpathSync(root)), RECEIVED_FILES));
+    } catch {
+      // chưa có Zalo PC trên máy
+    }
+  }
+  const found = new Map<string, string>();
+  for (const dir of candidates) {
+    try {
+      if (fs.statSync(dir).isDirectory()) found.set(fs.realpathSync(dir).toLowerCase(), dir);
+    } catch {
+      // không có thư mục này
+    }
+  }
+  return [...found.values()];
 }

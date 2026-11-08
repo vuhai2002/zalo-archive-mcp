@@ -10,7 +10,8 @@ import { sampleMessage } from "../storage/archive-store-test-helpers.js";
 import { upsertMessage } from "../storage/message-write-store.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { importMediaFromZaloPc } from "./import-media-from-zalo-pc.js";
-import { buildZaloPcMediaIndex, findZaloPcMedia } from "./zalo-pc-media-index.js";
+import { findZaloPcMedia } from "./find-zalo-pc-copy-for-attachment.js";
+import { buildZaloPcMediaIndex } from "./zalo-pc-media-index.js";
 
 const SELF = "100";
 const JPEG = (tag: string) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from(`jpeg ${tag}`)]);
