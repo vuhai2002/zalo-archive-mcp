@@ -135,12 +135,14 @@ export const api = {
   }) => request<SearchResponse>(withQuery("/api/search", p)),
   threadSenders: (threadId: string) => request<ThreadSendersResponse>(`/api/threads/${enc(threadId)}/senders`),
 
-  outboxList: (status: OutboxStatus, limit: number) =>
+  /** Bỏ trống `status` = mọi trạng thái */
+  outboxList: (status: OutboxStatus | undefined, limit: number) =>
     request<OutboxListResponse>(withQuery("/api/outbox", { status, limit })),
   outboxGet: (id: number) => request<OutboxItem>(`/api/outbox/${id}`),
   outboxCreate: (body: SendRequest) => post<OutboxItem>("/api/outbox", body),
   outboxApprove: (id: number) => post<OutboxItem>(`/api/outbox/${id}/approve`),
   outboxCancel: (id: number) => post<OutboxItem>(`/api/outbox/${id}/cancel`),
+  outboxRecall: (id: number) => post<OutboxItem>(`/api/outbox/${id}/recall`),
 
   settings: () => request<SettingsResponse>("/api/settings"),
   updateSettings: (patch: Partial<SendSettings>) =>

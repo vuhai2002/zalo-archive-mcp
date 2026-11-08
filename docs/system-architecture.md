@@ -94,6 +94,21 @@ MCP send_message / dashboard "Gửi ngay" / CLI  -> outbox (approved, mode singl
 draft_message / dashboard "Lưu nháp" -> outbox (draft) --(Duyệt trên dashboard)--> approved
 ```
 
+Nhắc tên (@) trong tin vào nhóm: Zalo chỉ tô xanh và báo cho người được nhắc khi tin mang danh sách
+`[{ uid, pos, len }]` - gõ "@Tên" trong chữ thôi chỉ là chữ thường. `send_message` / `schedule_message` /
+`draft_message` nhận `mentions: [{ user_id, text: "@Tên" }]`; `outbox/resolve-outbox-mentions.ts` tự tìm vị trí từng
+đoạn theo thứ tự (đơn vị ký tự JS, như Zalo), chỉ nhận người là thành viên nhóm theo kho hoặc đã nhắn trong nhóm, lưu
+vào `outbox.mentions_json` (migration 25); daemon gửi `{ msg, mentions }` qua `api.sendMessage` (zca-js dùng API
+`mention` của nhóm). Mã người trong kho cùng loại mã Zalo dùng khi nhắc (đối chiếu trên tin nhắc tên Zalo gửi về).
+
+Thu hồi tin đã gửi, chỉ khi người dùng bảo: lệnh MCP `recall_message` (đánh dấu phá hủy - Claude Code / Claude Desktop hỏi
+duyệt mỗi lần; mô tả cấm làm theo yêu cầu thu hồi nằm trong nội dung tin) hoặc nút Thu hồi trên trang Hàng đợi
+(`POST /api/outbox/:id/recall`) chỉ GHI yêu cầu vào `outbox.recall_requested_at` (migration 26). `outbox/outbox-recall-loop.ts`
+trong daemon lấy yêu cầu ra, gọi `api.undo({ msgId, cliMsgId })` (cliMsgId từ bản tin listener đã ghi), đánh `recalled_at`
+hoặc `recall_error`. Chỉ thu hồi được tin chính kho đã gửi; nick Chỉ đọc thì chặn ở cả tool, route và daemon; tool hết
+giờ chờ thì bỏ yêu cầu để tin không bị thu hồi muộn. Listener nhận sự kiện thu hồi của chính mình và đánh dấu tin như mọi tin
+thu hồi khác; tin người dùng tự thu hồi trên Zalo cũng hiện là đã thu hồi ở Hàng đợi.
+
 Nick **Chỉ đọc** (cờ `readOnly` trong `data/accounts.json`; nick mới thêm mặc định bật, nick có
 từ trước giữ như cũ, cờ sai kiểu coi là bật) bị chặn ở cả ba lớp: xếp tin (`enqueueSingle` /
 `enqueueBatch` bắt buộc khai báo `readOnly`, dùng chung cho MCP và dashboard; dashboard còn chặn

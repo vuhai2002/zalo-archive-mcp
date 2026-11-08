@@ -33,7 +33,8 @@ const textOf = (r: unknown) => (r as { content: Array<{ text: string }> }).conte
 describe("MCP server kho", () => {
   it("có tool đọc + gửi; KHÔNG có tool chạm kill switch hay cài đặt gửi", async () => {
     const { client } = await connectClient();
-    const names = (await client.listTools()).tools.map((t) => t.name).sort();
+    const tools = (await client.listTools()).tools;
+    const names = tools.map((t) => t.name).sort();
     assert.deepEqual(names, [
       "cancel_outbox",
       "draft_message",
@@ -41,12 +42,15 @@ describe("MCP server kho", () => {
       "list_outbox",
       "list_threads",
       "read_thread",
+      "recall_message",
       "schedule_message",
       "search_messages",
       "send_batch",
       "send_message",
       "sync_status",
     ]);
+    // Thu hồi đánh dấu phá hủy: ứng dụng của người dùng hỏi duyệt trước mỗi lần gọi
+    assert.equal(tools.find((t) => t.name === "recall_message")?.annotations?.destructiveHint, true);
   });
 
   it("nội dung tin được bọc ranh giới có nonce; thẻ đóng giả trong tin bị vô hiệu", async () => {

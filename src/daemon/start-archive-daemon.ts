@@ -8,6 +8,7 @@ import { sharedJxlPngPool } from "../media/jxl-png-worker-pool.js";
 import { MediaLinkRenewer } from "../media/media-link-renewer.js";
 import { attachRenewLinkListener, RenewLinkReplyWaiter } from "../zalo/renew-link-control-listener.js";
 import { installRenewMediaLinkApi } from "../zalo/zca-renew-media-link-api.js";
+import { OutboxRecaller } from "../outbox/outbox-recall-loop.js";
 import { OutboxSender } from "../outbox/outbox-sender-loop.js";
 import { setMeta } from "../storage/thread-directory-store.js";
 import { recordSuspendGap } from "../storage/connection-event-store.js";
@@ -163,8 +164,9 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
     log: log.child({ part: "sender" }),
     isListenerConnected: listener.isConnected,
     isReadOnly: d.isReadOnly,
-    sendText: async (threadId, type, text) => {
-      const res = await api.sendMessage(text, threadId, toZaloType(type));
+    sendText: async (threadId, type, text, mentions) => {
+      // Có nhắc tên (@) thì gửi kèm danh sách nhắc - Zalo mới tô xanh và báo cho người được nhắc
+      const res = await api.sendMessage(mentions.length > 0 ? { msg: text, mentions } : text, threadId, toZaloType(type));
       return { msgId: res.message?.msgId !== undefined ? String(res.message.msgId) : null };
     },
     sendTyping: async (threadId, type) => {
@@ -173,6 +175,18 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
   });
   sender.start();
   stops.push(() => sender.stop());
+
+  // Thu hồi tin kho đã gửi khi người dùng yêu cầu (MCP / dashboard chỉ ghi yêu cầu)
+  const recaller = new OutboxRecaller({
+    db,
+    log: log.child({ part: "recall" }),
+    isReadOnly: d.isReadOnly,
+    recall: async (m) => {
+      await api.undo({ msgId: m.msgId, cliMsgId: m.cliMsgId }, m.threadId, toZaloType(m.threadType));
+    },
+  });
+  recaller.start();
+  stops.push(() => recaller.stop());
 
   // Đồng bộ từ điện thoại: chỉ gắn listener sự kiện, không tự gửi yêu cầu nào
   const mobileSync = new MobileSyncSession({

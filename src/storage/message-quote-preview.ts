@@ -15,8 +15,26 @@ const KIND_LABEL: Record<string, string> = {
   "chat.video.msg": "[Video]",
   "chat.voice": "[Tin nhắn thoại]",
   "share.file": "[File]",
-  "chat.recommended": "[Liên kết]",
+  "chat.recommended": "[Link]",
 };
+
+const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+
+/**
+ * Tin link (`recommened.link`): Zalo hiện "[Link] <tiêu đề>" - tiêu đề là chữ người gửi gõ kèm, hoặc chính link khi chỉ dán
+ * link (khác `href` ở dấu / cuối nên không ghép chữ + link, kẻo thành hai dòng gần trùng nhau). `content`: object hoặc chuỗi JSON.
+ */
+export function linkQuoteText(content: unknown): string | null {
+  let c: Record<string, unknown> | null = null;
+  try {
+    c = (typeof content === "string" ? JSON.parse(content) : content) as Record<string, unknown> | null;
+  } catch {
+    return null;
+  }
+  if (!c || typeof c !== "object" || c.action !== "recommened.link") return null;
+  const title = str(c.title) ?? str(c.href);
+  return title ? `[Link] ${title}` : "[Link]";
+}
 
 /** Từ dữ liệu trích dẫn Zalo gửi kèm (JSON `quote` của tin trả lời) */
 export function quotePreviewFromRaw(quoteJson: unknown, selfUid: string | null): QuotePreview | null {
@@ -29,7 +47,8 @@ export function quotePreviewFromRaw(quoteJson: unknown, selfUid: string | null):
       id: null,
       senderName: typeof q.fromD === "string" && q.fromD.trim() ? q.fromD.trim() : null,
       isSelf: selfUid !== null && String(q.ownerId ?? "") === selfUid,
-      text: msg || "[Tin nhắn]",
+      // Tin gốc là link: chữ nằm trong `attach` (title, href), `msg` để trống
+      text: msg || linkQuoteText(q.attach) || "[Tin nhắn]",
     };
   } catch {
     return null;
@@ -45,7 +64,8 @@ export function resolveQuotePreviews(
   messages: Array<{ threadId: string; quoteMsgId: string | null; quote: QuotePreview | null }>,
 ): void {
   const stmt = db.prepare(
-    `SELECT m.id, m.is_self, m.msg_type, m.text, COALESCE(c.alias, m.sender_name, c.display_name) AS sender_name
+    `SELECT m.id, m.is_self, m.msg_type, m.text, COALESCE(c.alias, m.sender_name, c.display_name) AS sender_name,
+       CASE WHEN m.msg_type = 'chat.recommended' AND json_valid(m.raw_json) THEN json_extract(m.raw_json, '$.content') END AS content
      FROM messages m LEFT JOIN contacts c ON c.user_id = m.sender_id
      WHERE m.msg_id = ? AND m.thread_id = ?`,
   );
@@ -58,7 +78,7 @@ export function resolveQuotePreviews(
       id: Number(o.id),
       senderName: (o.sender_name as string | null) ?? m.quote?.senderName ?? null,
       isSelf: o.is_self === 1,
-      text: own || KIND_LABEL[String(o.msg_type)] || m.quote?.text || "[Tin nhắn]",
+      text: linkQuoteText(o.content) || own || KIND_LABEL[String(o.msg_type)] || m.quote?.text || "[Tin nhắn]",
     };
   }
 }

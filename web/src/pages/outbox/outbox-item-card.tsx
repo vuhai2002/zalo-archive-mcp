@@ -11,15 +11,20 @@ export function OutboxItemCard({
   busy,
   onApprove,
   onCancel,
+  onRecall,
 }: {
   item: OutboxItem;
   timeZone: string;
   busy: boolean;
   onApprove: () => void;
   onCancel: () => void;
+  onRecall: () => void;
 }) {
   const canApprove = item.status === "draft";
   const canCancel = item.status === "draft" || item.status === "approved";
+  // Thu hồi tin đã gửi (như Zalo); đang chờ daemon thu hồi thì thôi hiện nút
+  const recalling = !!item.recallRequestedAt && !item.recalledAt && !item.recallError;
+  const canRecall = item.status === "sent" && !item.recalledAt && !recalling;
 
   return (
     <li className="gc-card p-4">
@@ -35,7 +40,9 @@ export function OutboxItemCard({
         <Badge tone={item.mode === "batch" ? "amber" : "gray"} dot={false}>
           {item.mode === "batch" ? "Gửi lô" : "Tin lẻ"}
         </Badge>
-        <span className="ml-auto">
+        <span className="ml-auto flex items-center gap-1.5">
+          {item.recalledAt && <Badge tone="gray">Đã thu hồi</Badge>}
+          {recalling && <Badge tone="amber">Đang thu hồi...</Badge>}
           <Badge tone={outboxStatusTone(item.status)}>{outboxStatusLabel(item.status)}</Badge>
         </span>
       </div>
@@ -83,8 +90,19 @@ export function OutboxItemCard({
         </p>
       )}
 
-      {(canApprove || canCancel) && (
+      {item.recallError && !item.recalledAt && (
+        <p className="mt-2 break-words rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          Chưa thu hồi được: {item.recallError}
+        </p>
+      )}
+
+      {(canApprove || canCancel || canRecall) && (
         <div className="mt-3 flex flex-wrap justify-end gap-2">
+          {canRecall && (
+            <button type="button" className={btnClass("secondary", "sm")} disabled={busy} onClick={onRecall}>
+              Thu hồi
+            </button>
+          )}
           {canCancel && (
             <button type="button" className={btnClass("secondary", "sm")} disabled={busy} onClick={onCancel}>
               Hủy

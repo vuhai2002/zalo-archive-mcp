@@ -5,6 +5,8 @@ export type OutboxStatus = "draft" | "approved" | "sending" | "sent" | "failed" 
 /** `single`: tin lẻ người dùng bảo gửi; `batch`: một phần của lô gửi nhiều người, đi có nhịp */
 export type OutboxMode = "single" | "batch";
 export type OutboxCreator = "mcp" | "cli" | "dashboard";
+/** Một chỗ nhắc tên (@) trong tin gửi vào nhóm, đúng dạng Zalo cần: vị trí + độ dài đoạn "@Tên" trong chữ (đơn vị ký tự JS) */
+export type OutboxMention = { uid: string; pos: number; len: number };
 
 export type OutboxItem = {
   id: number;
@@ -23,6 +25,12 @@ export type OutboxItem = {
   finishedAt: string | null;
   sentMsgId: string | null;
   error: string | null;
+  /** Nhắc tên (@) gửi kèm; rỗng = tin chữ thường */
+  mentions: OutboxMention[];
+  /** Thu hồi tin đã gửi: lúc người dùng yêu cầu, lúc Zalo thu hồi xong, lỗi nếu Zalo không cho */
+  recallRequestedAt: string | null;
+  recalledAt: string | null;
+  recallError: string | null;
 };
 
 /** Dòng bảng outbox -> OutboxItem */
@@ -45,5 +53,21 @@ export function toItem(r: Record<string, unknown>): OutboxItem {
     finishedAt: s("finished_at"),
     sentMsgId: s("sent_msg_id"),
     error: s("error"),
+    mentions: parseMentions(r.mentions_json),
+    recallRequestedAt: s("recall_requested_at"),
+    recalledAt: s("recalled_at"),
+    recallError: s("recall_error"),
   };
+}
+
+function parseMentions(v: unknown): OutboxMention[] {
+  if (typeof v !== "string" || !v) return [];
+  try {
+    const list = JSON.parse(v) as unknown;
+    return Array.isArray(list)
+      ? list.filter((m): m is OutboxMention => typeof m?.uid === "string" && Number.isInteger(m?.pos) && Number.isInteger(m?.len))
+      : [];
+  } catch {
+    return [];
+  }
 }

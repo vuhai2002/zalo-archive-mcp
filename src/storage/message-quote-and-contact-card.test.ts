@@ -64,4 +64,38 @@ describe("ô trích dẫn của tin trả lời", () => {
     assert.deepEqual(byId.get("202")!.quote, { id: null, senderName: "Khê", isSelf: true, text: "tin cũ không có trong kho" });
     assert.equal(byId.get("100")!.quote, null);
   });
+
+  it("tin gốc là link: \"[Link] <tiêu đề>\" như Zalo (không ghép link hai lần); tin của mình vẫn mang tên thật", () => {
+    const db = openArchiveDatabase(":memory:");
+    setMeta(db, "self_uid", "u-me");
+    const link = {
+      action: "recommened.link",
+      title: "https://app.example.com",
+      href: "https://app.example.com/",
+      params: JSON.stringify({ mediaTitle: "Sổ tay mẫu", src: "app.example.com" }),
+    };
+    upsertMessage(
+      db,
+      sampleMessage({ msgId: "300", msgType: "chat.recommended", senderId: "u-me", senderName: "Lã Văn Khê", isSelf: true, sentAt: "2026-11-07T01:00:00.000Z", rawJson: JSON.stringify({ content: link }) }),
+      live,
+    );
+    const reply = (msgId: string, quoteMsgId: string) =>
+      upsertMessage(
+        db,
+        sampleMessage({
+          msgId,
+          quoteMsgId,
+          senderId: "u-lan",
+          text: "link này mở không được nữa",
+          sentAt: `2026-11-08T0${msgId.slice(-1)}:00:00.000Z`,
+          rawJson: JSON.stringify({ quote: { ownerId: "u-me", msg: "", fromD: "Lã Văn Khê", cliMsgType: 38, attach: JSON.stringify(link) } }),
+        }),
+        live,
+      );
+    reply("301", "300");
+    reply("302", "999"); // tin gốc không có trong kho: dựng từ `attach` Zalo gửi kèm
+    const byId = new Map(readThread(db, { threadId: "u-lan", threadType: "user", limit: 10 }).map((r) => [r.msgId, r]));
+    assert.deepEqual(byId.get("301")!.quote, { id: byId.get("300")!.id, senderName: "Lã Văn Khê", isSelf: true, text: "[Link] https://app.example.com" });
+    assert.deepEqual(byId.get("302")!.quote, { id: null, senderName: "Lã Văn Khê", isSelf: true, text: "[Link] https://app.example.com" });
+  });
 });

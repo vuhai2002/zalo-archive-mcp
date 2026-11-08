@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { enqueueSingle, READ_ONLY_ERROR } from "../../outbox/enqueue-outbox-request.js";
+import { recallProblem } from "../../outbox/outbox-recall-loop.js";
+import { requestRecall } from "../../storage/outbox-recall-store.js";
 import { approveDraft, cancelOutboxItem, getOutboxItem, listOutbox, type OutboxStatus } from "../../storage/outbox-store.js";
 import { getKillSwitch, setKillSwitch } from "../../storage/send-control-store.js";
 import { getSendSettings, updateSendSettings, type SendSettings } from "../../storage/send-settings-store.js";
@@ -55,6 +57,17 @@ export function outboxAndSettingsRoutes(ctx: DashboardContext): Hono {
     const id = Number(c.req.param("id"));
     if (!approveDraft(db, id)) return c.json({ error: "Chỉ duyệt được mục đang là nháp" }, 400);
     return c.json(toOutboxItemDto(db, itemOr404(id)!));
+  });
+
+  // Thu hồi tin đã gửi: chỉ ghi yêu cầu, daemon thu hồi bằng phiên Zalo đang chạy (web tự hỏi lại kết quả)
+  app.post("/outbox/:id/recall", (c) => {
+    if (ctx.readOnly()) return c.json({ error: READ_ONLY_ERROR }, 409);
+    const item = itemOr404(Number(c.req.param("id")));
+    if (!item) return c.json({ error: "Không có mục này" }, 404);
+    const problem = recallProblem(db, item);
+    if (problem) return c.json({ error: problem }, 409);
+    if (!requestRecall(db, item.id, new Date().toISOString())) return c.json({ error: "Tin này đang chờ thu hồi rồi" }, 409);
+    return c.json(toOutboxItemDto(db, itemOr404(item.id)!));
   });
 
   app.post("/outbox/:id/cancel", (c) => {

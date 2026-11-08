@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { AttachmentRow, MessageRow } from "../storage/message-read-queries.js";
+import { sentMessageRecord } from "../storage/outbox-recall-store.js";
 import type { OutboxItem as StoredOutboxItem } from "../storage/outbox-store.js";
 import { threadLabel } from "../storage/thread-directory-store.js";
 import type { ArchivedMessage, AttachmentInfo, OutboxItem } from "./dashboard-api-contract.js";
@@ -74,5 +75,9 @@ export function toOutboxItemDto(db: DatabaseSync, item: StoredOutboxItem): Outbo
     finishedAt: item.finishedAt,
     sentMsgId: item.sentMsgId,
     error: item.error,
+    // Thu hồi qua kho, hoặc người dùng tự thu hồi trên Zalo (listener đánh dấu tin)
+    recalledAt: item.recalledAt ?? (item.sentMsgId ? (sentMessageRecord(db, item.sentMsgId)?.recalledAt ?? null) : null),
+    recallRequestedAt: item.recallRequestedAt,
+    recallError: item.recallError,
   };
 }

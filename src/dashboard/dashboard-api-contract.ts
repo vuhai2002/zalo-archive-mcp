@@ -253,6 +253,11 @@ export type OutboxItem = {
   finishedAt: string | null;
   sentMsgId: string | null;
   error: string | null;
+  /** Tin đã gửi bị thu hồi lúc nào (qua kho hoặc người dùng tự thu hồi trên Zalo) */
+  recalledAt: string | null;
+  /** Đang chờ daemon thu hồi / Zalo không cho thu hồi */
+  recallRequestedAt: string | null;
+  recallError: string | null;
 };
 
 // GET  /api/outbox?status=&limit=100           -> { items: OutboxItem[] }
@@ -263,6 +268,7 @@ export type OutboxItem = {
 // GET  /api/outbox/:id                          -> OutboxItem
 // POST /api/outbox/:id/approve  {}              -> OutboxItem (draft -> approved)
 // POST /api/outbox/:id/cancel   {}              -> OutboxItem (draft/approved -> cancelled)
+// POST /api/outbox/:id/recall   {}              -> OutboxItem (ghi yêu cầu thu hồi tin đã gửi; daemon thu hồi trong vài giây)
 export type SendRequest = {
   threadId: string;
   text: string;

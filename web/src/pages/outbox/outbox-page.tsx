@@ -11,8 +11,12 @@ import { KillSwitchBanner } from "../../shared/kill-switch-banner";
 import { BTN_SECONDARY, EmptyState, ErrorNote, LoadingText } from "../../shared/ui-bits";
 import { OutboxItemCard } from "./outbox-item-card";
 
-/** "Lỗi" gom cả `rejected` (cổng gửi từ chối, vd trễ quá hạn) - với người dùng cả hai đều là "không gửi được" */
+/**
+ * "Tất cả" (mặc định, mới nhất trước) hiện mọi trạng thái; các tab sau là bộ lọc. "Lỗi" gom cả `rejected` (cổng gửi từ
+ * chối, vd trễ quá hạn) - với người dùng cả hai đều là "không gửi được"
+ */
 const TABS: { key: string; label: string; statuses: OutboxStatus[] }[] = [
+  { key: "all", label: "Tất cả", statuses: [] },
   { key: "draft", label: "Nháp", statuses: ["draft"] },
   { key: "approved", label: "Chờ gửi", statuses: ["approved"] },
   { key: "sending", label: "Đang gửi", statuses: ["sending"] },
@@ -36,7 +40,7 @@ export function OutboxPage() {
   const load = useCallback(async () => {
     const my = ++seq.current;
     try {
-      const lists = await Promise.all(tab.statuses.map((s) => api.outboxList(s, LIMIT)));
+      const lists = await Promise.all(tab.statuses.length > 0 ? tab.statuses.map((s) => api.outboxList(s, LIMIT)) : [api.outboxList(undefined, LIMIT)]);
       if (my !== seq.current) return;
       setItems(lists.flatMap((l) => l.items).sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
       setError(null);
@@ -53,18 +57,22 @@ export function OutboxPage() {
     return () => clearInterval(timer);
   }, [load]);
 
-  async function act(item: OutboxItem, action: "approve" | "cancel") {
+  async function act(item: OutboxItem, action: "approve" | "cancel" | "recall") {
     const name = item.threadName?.trim() || item.threadId;
     const ok = await confirm(
       action === "approve"
         ? { title: "Duyệt tin này?", message: `Tin tới "${name}" sẽ vào hàng chờ gửi và được gửi theo nhịp đã cài.`, confirmLabel: "Duyệt", tone: "normal" }
-        : { title: "Hủy tin này?", message: `Tin tới "${name}" sẽ không được gửi. Không hoàn tác được.`, confirmLabel: "Hủy tin" },
+        : action === "recall"
+          ? { title: "Thu hồi tin này?", message: `Tin đã gửi tới "${name}" sẽ bị thu hồi trên Zalo: mọi người trong hội thoại thấy "Tin nhắn đã được thu hồi". Không hoàn tác được.`, confirmLabel: "Thu hồi" }
+          : { title: "Hủy tin này?", message: `Tin tới "${name}" sẽ không được gửi. Không hoàn tác được.`, confirmLabel: "Hủy tin" },
     );
     if (!ok) return;
     setBusyId(item.id);
     try {
-      await (action === "approve" ? api.outboxApprove(item.id) : api.outboxCancel(item.id));
+      await (action === "approve" ? api.outboxApprove(item.id) : action === "recall" ? api.outboxRecall(item.id) : api.outboxCancel(item.id));
       await load();
+      // Daemon thu hồi trong vài giây: hỏi lại sớm thay vì chờ nhịp tự cập nhật
+      if (action === "recall") setTimeout(() => void load(), 3_000);
     } catch (err) {
       setError(errorText(err));
     } finally {
@@ -105,7 +113,7 @@ export function OutboxPage() {
 
       {error && <ErrorNote message={error} onRetry={() => void load()} />}
       {items === null && !error && <LoadingText />}
-      {items?.length === 0 && <EmptyState text={`Không có tin nào ở mục "${tab.label}".`} />}
+      {items?.length === 0 && <EmptyState text={tab.statuses.length > 0 ? `Không có tin nào ở mục "${tab.label}".` : "Hàng đợi chưa có tin nào."} />}
       {items && items.length > 0 && (
         <ul className="space-y-3">
           {items.map((it) => (
@@ -116,12 +124,15 @@ export function OutboxPage() {
               busy={busyId === it.id}
               onApprove={() => void act(it, "approve")}
               onCancel={() => void act(it, "cancel")}
+              onRecall={() => void act(it, "recall")}
             />
           ))}
         </ul>
       )}
       {items && items.length >= LIMIT && (
-        <p className="text-center text-[12px] text-ink-soft">Chỉ hiện {LIMIT} tin gần nhất của mỗi trạng thái.</p>
+        <p className="text-center text-[12px] text-ink-soft">
+          {tab.statuses.length > 0 ? `Chỉ hiện ${LIMIT} tin gần nhất của mỗi trạng thái.` : `Chỉ hiện ${LIMIT} tin gần nhất.`}
+        </p>
       )}
       {confirmDialog}
     </div>

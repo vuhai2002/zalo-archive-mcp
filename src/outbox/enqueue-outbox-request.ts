@@ -7,6 +7,7 @@ import { containsUnsafeControlChars } from "../shared/terminal-safe-text.js";
 import { findThread, type ThreadSummary } from "../storage/message-read-queries.js";
 import { enqueueOutboxItem, type OutboxCreator } from "../storage/outbox-store.js";
 import { getSendSettings } from "../storage/send-settings-store.js";
+import { resolveOutboxMentions, type MentionRequest } from "./resolve-outbox-mentions.js";
 
 /**
  * Kiểm tra + đưa yêu cầu gửi vào hàng đợi. Dùng CHUNG cho MCP (Claude), dashboard
@@ -61,14 +62,16 @@ function isDuplicatePending(db: DatabaseSync, threadId: string, text: string): n
   return row?.id ?? null;
 }
 
-/** Một tin tới một hội thoại (tin lẻ: không trần, không khung giờ) */
-export function enqueueSingle(ctx: EnqueueContext, req: Common & { threadId: string; text: string }): EnqueueResult {
+/** Một tin tới một hội thoại (tin lẻ: không trần, không khung giờ); vào nhóm thì có thể nhắc tên (@) người trong nhóm */
+export function enqueueSingle(ctx: EnqueueContext, req: Common & { threadId: string; text: string; mentions?: MentionRequest[] }): EnqueueResult {
   if (ctx.readOnly) return { ok: false, error: READ_ONLY_ERROR };
   if (req.note && containsUnsafeControlChars(req.note)) return { ok: false, error: UNSAFE_CHARS_ERROR };
   const text = checkText(req.text);
   if (typeof text !== "string") return { ok: false, ...text };
   const thread = checkThread(ctx.db, req.threadId);
   if ("error" in thread) return { ok: false, ...thread };
+  const mentions = resolveOutboxMentions(ctx.db, thread, text, req.mentions);
+  if ("error" in mentions) return { ok: false, ...mentions };
   const schedule = resolveSchedule(ctx, req);
   if ("error" in schedule) return { ok: false, ...schedule };
   const dup = isDuplicatePending(ctx.db, thread.threadId, text);
@@ -84,6 +87,7 @@ export function enqueueSingle(ctx: EnqueueContext, req: Common & { threadId: str
     createdBy: req.createdBy,
     note: req.note?.slice(0, 500) ?? null,
     status: req.when === "draft" ? "draft" : "approved",
+    mentions,
   });
   return { ok: true, ids: [id], batchId: null, notBefore: schedule.notBefore, warnings: [] };
 }

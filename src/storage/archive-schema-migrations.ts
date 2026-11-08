@@ -363,4 +363,19 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   ALTER TABLE threads ADD COLUMN name_lookup_attempts INTEGER NOT NULL DEFAULT 0;
   UPDATE threads SET name_lookup_attempts = 1 WHERE thread_type = 'group' AND name_lookup_at IS NOT NULL AND name IS NULL;
   `,
+  // 25: tin gửi vào nhóm có nhắc tên (@): lưu danh sách nhắc [{ uid, pos, len }] để daemon gửi kèm - Zalo chỉ tô xanh và
+  // báo cho người được nhắc khi tin mang danh sách này, gõ chữ "@Tên" không thôi thì chỉ là chữ thường
+  `
+  ALTER TABLE outbox ADD COLUMN mentions_json TEXT;
+  `,
+  // 26: thu hồi tin kho đã gửi khi người dùng bảo (MCP / dashboard ghi yêu cầu, daemon - nơi duy nhất gọi Zalo - thu hồi)
+  `
+  ALTER TABLE outbox ADD COLUMN recall_requested_at TEXT;
+  ALTER TABLE outbox ADD COLUMN recalled_at TEXT;
+  ALTER TABLE outbox ADD COLUMN recall_error TEXT;
+  CREATE INDEX outbox_recall_pending ON outbox (recall_requested_at)
+    WHERE recall_requested_at IS NOT NULL AND recalled_at IS NULL AND recall_error IS NULL;
+  UPDATE outbox SET recalled_at = (SELECT m.recalled_at FROM messages m WHERE m.msg_id = outbox.sent_msg_id AND m.is_self = 1)
+  WHERE status = 'sent' AND sent_msg_id IS NOT NULL;
+  `,
 ];
