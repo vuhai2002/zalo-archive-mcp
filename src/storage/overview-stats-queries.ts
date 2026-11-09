@@ -61,8 +61,7 @@ export function archiveTotals(db: DatabaseSync, startOfTodayIso: string) {
          (SELECT COUNT(*) FROM messages WHERE sent_at >= :today) AS messages_today,
          (SELECT COUNT(*) FROM messages WHERE sent_at >= :today AND is_self = 1) AS sent_today,
          (SELECT MIN(sent_at) FROM messages) AS oldest,
-         (SELECT MAX(sent_at) FROM messages) AS newest,
-         (SELECT COALESCE(SUM(size_bytes), 0) FROM attachments WHERE status = 'done') AS media_bytes`,
+         (SELECT MAX(sent_at) FROM messages) AS newest`,
     )
     .get({ today: startOfTodayIso }) as Record<string, number | string | null>;
   return {
@@ -76,7 +75,6 @@ export function archiveTotals(db: DatabaseSync, startOfTodayIso: string) {
       oldestMessageAt: (row.oldest as string | null) ?? null,
       newestMessageAt: (row.newest as string | null) ?? null,
     },
-    mediaBytes: Number(row.media_bytes),
   };
 }
 

@@ -19,6 +19,7 @@ export type ThreadKind = "user" | "group";
 export type * from "./dashboard-auth-and-account-contract.js";
 // Quản lý dữ liệu (dung lượng kho, xóa file giữ tin): storage-management-contract.ts
 export type * from "./storage-management-contract.js";
+import type { StorageOverviewResponse } from "./storage-management-contract.js";
 
 // ---------- Tổng quan / thống kê ----------
 // GET /api/overview?days=30
@@ -48,7 +49,17 @@ export type OverviewResponse = {
   };
   bySource: Record<string, number>;
   media: Record<string, number>; // theo trạng thái: pending, done, failed...
+  /** Ảnh, video, file, tin thoại đã tải: dung lượng mỗi file một lần (file dùng chung giữa nhiều tin không cộng lặp) */
   mediaBytes: number;
+  /** Thẻ "File đính kèm": cùng phép đếm + bản đo ổ với Cài đặt > Quản lý dữ liệu để hai nơi ra cùng một số */
+  storage: {
+    /** Ảnh, video, file, tin thoại đã tải về máy (theo tin, không tính sticker) */
+    downloadedFiles: number;
+    /** Đính kèm chưa tải được (link hết hạn, Zalo đã xóa) - không nằm trên máy */
+    failedFiles: number;
+    /** Bản đo dung lượng kho trên ổ lần gần nhất (null = chưa đo xong lần nào) */
+    disk: StorageOverviewResponse["disk"];
+  };
   outbox: Record<string, number>; // theo trạng thái
   daily: DailyCount[];
   topThreads: TopThread[]; // 10 hội thoại nhiều tin nhất trong `days` ngày

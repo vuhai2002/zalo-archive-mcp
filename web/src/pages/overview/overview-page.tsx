@@ -3,15 +3,14 @@ import type { OverviewResponse } from "../../archive-api-types";
 import { api, errorText } from "../../dashboard-api-client";
 import { useDashboardShell } from "../../layout/dashboard-shell-context";
 import { PageHeader } from "../../layout/page-header";
-import { IconImage } from "../../shared/action-and-media-icons";
 import { IconChat, IconGrid, IconMessage, IconUsers } from "../../shared/dashboard-icons";
 import { formatDateTime } from "../../shared/format-archive-time";
-import { formatFileSize } from "../../shared/format-file-size";
 import { SelectMenu } from "../../shared/select-menu";
 import { listenerRetryText, SESSION_STATE_LABEL } from "../../shared/session-state-labels";
 import { ErrorNote, formatNumber, LoadingText, SectionCard, StatCard } from "../../shared/ui-bits";
 import { DailyMessageBarChart } from "./daily-message-bar-chart";
 import { OutboxCountsPanel, StorageBreakdownPanel, TopThreadsPanel } from "./overview-breakdown-panels";
+import { OverviewMediaStatCard } from "./overview-media-stat-card";
 import { ConnectionEventsPanel, ListenerGapsPanel } from "./overview-connection-panels";
 import { PhoneSyncGapBanner } from "./phone-sync-gap-banner";
 
@@ -84,12 +83,7 @@ export function OverviewPage() {
               value={formatNumber(data.totals.threads)}
               sub={`${formatNumber(data.totals.groups)} nhóm · ${formatNumber(data.totals.friends)} bạn bè`}
             />
-            <StatCard
-              icon={IconImage}
-              label="File đính kèm"
-              value={formatNumber(Object.values(data.media).reduce((a, n) => a + n, 0))}
-              sub={`Đã lưu ${formatFileSize(data.mediaBytes)}`}
-            />
+            <OverviewMediaStatCard storage={data.storage} />
           </div>
 
           <SectionCard

@@ -73,6 +73,30 @@ export type StoredMediaFile = {
   sharedWith: number;
 };
 
+/**
+ * Đếm theo tin, nhưng dung lượng tính MỖI FILE MỘT LẦN: file dùng chung giữa nhiều tin (chuyển tiếp qua nhiều nhóm) chỉ chiếm
+ * một chỗ trên ổ - cộng thẳng thì tổng vượt cả dung lượng thật (vd file 1 GB chuyển tiếp qua 3 nhóm, cộng thẳng thành 3 GB)
+ */
+function countAndDedupedBytes(db: DatabaseSync, where: string, params: Record<string, string>): { n: number; b: number } {
+  return db
+    .prepare(`SELECT COALESCE(SUM(c), 0) AS n, COALESCE(SUM(sz), 0) AS b FROM (SELECT COUNT(*) AS c, MAX(a.size_bytes) AS sz ${where} GROUP BY a.local_path)`)
+    .get(params) as { n: number; b: number };
+}
+
+/**
+ * Ảnh, video, file, tin thoại đã tải của cả kho (không tính sticker): số tin có file + dung lượng mỗi file một lần. Cùng phép
+ * đếm với thẻ "Ảnh, video, file theo hội thoại" của Quản lý dữ liệu - Tổng quan dùng để hai nơi luôn ra cùng một số.
+ */
+export function storedMediaTotals(db: DatabaseSync): { files: number; bytes: number } {
+  const kinds = TAB_KINDS.all.map((k) => `'${k}'`).join(", ");
+  const r = countAndDedupedBytes(
+    db,
+    `FROM attachments a JOIN messages m ON m.msg_id = a.msg_id WHERE a.status = 'done' AND a.local_path IS NOT NULL AND a.kind IN (${kinds})`,
+    {},
+  );
+  return { files: Number(r.n), bytes: Number(r.b) };
+}
+
 /** File đã tải của một hội thoại hoặc cả kho, theo tab; chỉ file lớn hơn 5 MB nếu `bigOnly`. Lớn nhất trước hoặc mới nhất trước */
 export function storedMediaFiles(
   db: DatabaseSync,
@@ -84,11 +108,7 @@ export function storedMediaFiles(
     ${q.threadId ? "AND m.thread_id = :threadId" : ""} ${q.bigOnly ? `AND a.size_bytes > ${BIG_FILE_BYTES}` : ""}`;
   // node:sqlite từ chối tham số thừa: chỉ truyền threadId khi SQL dùng nó
   const params: Record<string, string> = q.threadId ? { threadId: q.threadId } : {};
-  // Đếm theo tin, nhưng dung lượng tính MỖI FILE MỘT LẦN: file dùng chung giữa nhiều tin (chuyển tiếp qua nhiều nhóm) chỉ chiếm
-  // một chỗ trên ổ - cộng thẳng thì tổng vượt cả dung lượng thật
-  const agg = db
-    .prepare(`SELECT COALESCE(SUM(c), 0) AS n, COALESCE(SUM(sz), 0) AS b FROM (SELECT COUNT(*) AS c, MAX(a.size_bytes) AS sz ${where} GROUP BY a.local_path)`)
-    .get(params) as { n: number; b: number };
+  const agg = countAndDedupedBytes(db, where, params);
   const order = q.sort === "size" ? "a.size_bytes DESC, a.id DESC" : "m.sent_at DESC, a.id DESC";
   const rows = db
     .prepare(

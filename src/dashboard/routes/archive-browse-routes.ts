@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { storageSummaryState } from "../../archive/archive-storage-summary.js";
 import { startOfLocalDayDaysAgoUtc, startOfTodayUtc } from "../../shared/local-date-range.js";
 import { listenerGaps, recentConnectionEvents } from "../../storage/connection-event-store.js";
 import { HEARTBEAT_STALE_MS } from "../../storage/daemon-liveness.js";
@@ -6,6 +7,7 @@ import { findThread, listThreadsPage, readThread } from "../../storage/message-r
 import { readThreadAfter, readThreadAround } from "../../storage/message-window-queries.js";
 import { archiveTotals, countBy, dailyMessageCounts, topThreadsSince } from "../../storage/overview-stats-queries.js";
 import { groupMosaicIfNoAvatar, lastMessagePreview } from "../../storage/thread-list-extras.js";
+import { storedMediaTotals } from "../../storage/storage-browse-queries.js";
 import { setThreadPinned } from "../../storage/thread-pin-store.js";
 import { getMeta } from "../../storage/thread-directory-store.js";
 import type { OverviewResponse, ThreadListResponse, ThreadMessagesResponse } from "../dashboard-api-contract.js";
@@ -27,12 +29,16 @@ export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
   app.get("/overview", (c) => {
     const days = clampInt(c.req.query("days"), 30, 1, 365);
     const now = new Date();
-    const { totals, mediaBytes } = archiveTotals(db, startOfTodayUtc(tz, now));
+    const { totals } = archiveTotals(db, startOfTodayUtc(tz, now));
+    const media = countBy(db, "attachments", "status");
+    // Cùng phép đếm + bản đo ổ với Cài đặt > Quản lý dữ liệu (trước cộng thẳng dung lượng từng tin: file dùng chung bị cộng lặp)
+    const stored = storedMediaTotals(db);
     const body: OverviewResponse = {
       totals,
       bySource: countBy(db, "messages", "source"),
-      media: countBy(db, "attachments", "status"),
-      mediaBytes,
+      media,
+      mediaBytes: stored.bytes,
+      storage: { downloadedFiles: stored.files, failedFiles: media.failed ?? 0, disk: storageSummaryState(db, ctx.paths).summary },
       outbox: countBy(db, "outbox", "status"),
       daily: dailyMessageCounts(db, tz, days, now),
       // Cùng cửa sổ với biểu đồ ngày: từ 00:00 của ngày đầu tiên theo giờ kho

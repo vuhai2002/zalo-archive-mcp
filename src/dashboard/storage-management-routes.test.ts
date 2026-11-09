@@ -5,6 +5,7 @@ import { describe, it } from "node:test";
 import { storageSummaryIdle } from "../archive/archive-storage-summary.js";
 import { sampleMessage } from "../storage/archive-store-test-helpers.js";
 import { upsertMessage } from "../storage/message-write-store.js";
+import type { OverviewResponse } from "./dashboard-api-contract.js";
 import { createDashboardHarness } from "./dashboard-test-harness.js";
 import type { StorageFilesResponse, StorageOverviewResponse, StorageThreadsResponse } from "./storage-management-contract.js";
 
@@ -97,5 +98,20 @@ describe("Quản lý dữ liệu (dashboard)", () => {
     assert.equal(r.status, 200);
     assert.equal(fs.existsSync(path.join(s.paths.root, "archive-truoc-dong-bo-mau.db")), false);
     await storageSummaryIdle(s.paths);
+  });
+
+  it("Tổng quan ra cùng số với Quản lý dữ liệu: file dùng chung tính dung lượng một lần, đếm riêng file chưa tải được", async () => {
+    const s = await setup();
+    s.db.prepare("UPDATE attachments SET status = 'failed', local_path = NULL WHERE msg_id = '102'").run();
+    await (await s.call("/api/storage", { cookie: s.cookie })).json();
+    await storageSummaryIdle(s.paths);
+    const storage = (await (await s.call("/api/storage", { cookie: s.cookie })).json()) as StorageOverviewResponse;
+    const overview = (await (await s.call("/api/overview", { cookie: s.cookie })).json()) as OverviewResponse;
+    // pdf 6 MB dùng chung giữa nhóm và Lan: chỉ tính một lần (trước cộng thẳng ra 8 + 6 + 6 MB)
+    assert.equal(overview.mediaBytes, 8 * MB + 6 * MB);
+    assert.equal(overview.storage.downloadedFiles, storage.byKind.reduce((n, k) => n + k.files, 0));
+    assert.equal(overview.storage.downloadedFiles, 3);
+    assert.equal(overview.storage.failedFiles, 1);
+    assert.deepEqual(overview.storage.disk, storage.disk);
   });
 });

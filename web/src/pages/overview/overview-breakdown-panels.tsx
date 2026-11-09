@@ -63,7 +63,8 @@ export function StorageBreakdownPanel({ data }: { data: OverviewResponse }) {
         </div>
         <div>
           <div className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-ink-soft/70">
-            File đính kèm · {formatFileSize(data.mediaBytes)}
+            {/* Đếm theo trạng thái, gồm cả sticker - thẻ "File đã tải về máy" ở trên thì không tính sticker (như Quản lý dữ liệu) */}
+            File đính kèm (cả sticker) · {formatFileSize(data.mediaBytes)}
           </div>
           <CountRows counts={data.media} label={mediaStatusLabel} />
         </div>
