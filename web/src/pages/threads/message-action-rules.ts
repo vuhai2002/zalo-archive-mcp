@@ -13,6 +13,8 @@ export type MenuPlacement = { left: number; top?: number; bottom?: number };
 export type MessageActions = {
   reply?: (msg: ArchivedMessage) => void;
   forward?: (msg: ArchivedMessage) => void;
+  /** Thả cảm xúc (mã Zalo của 6 cảm xúc nhanh) */
+  react?: (msg: ArchivedMessage, code: string) => void;
   copy: (text: string) => void;
   startSelect: (ids: number[]) => void;
   remove: (ids: number[]) => void;
@@ -20,6 +22,9 @@ export type MessageActions = {
 
 /** Zalo không cho trả lời tin đã thu hồi hay bình chọn */
 export const canReply = (m: ArchivedMessage) => m.recalledAt === null && m.msgType !== "group.poll";
+
+/** Thả cảm xúc cần mã tin thật của Zalo (tin lấy từ điện thoại có mã "mb_..." thì không); không vào tin đã thu hồi */
+export const canReact = (m: ArchivedMessage) => m.recalledAt === null && /^\d+$/.test(m.msgId);
 
 /** Kho chỉ chuyển tiếp được tin chữ và link (máy chủ kiểm lại) */
 export const canForward = (m: ArchivedMessage) =>

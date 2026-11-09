@@ -21,10 +21,13 @@ const PAGE_SIZE = 50;
  */
 export function ThreadListPanel({
   selectedId,
+  resetKey = null,
   onSelect,
   onOpenMessage,
 }: {
   selectedId?: string;
+  /** Đổi giá trị (bấm icon Hội thoại ở thanh bên) thì về danh sách chính: thoát tìm kiếm, cuộn lên đầu */
+  resetKey?: string | null;
   onSelect: (threadId: string) => void;
   /** Mở hội thoại và nhảy tới một tin (bấm kết quả tìm) */
   onOpenMessage: (threadId: string, messageId: number) => void;
@@ -103,6 +106,13 @@ export function ThreadListPanel({
     busy: loading,
     onLoadMore: () => void load(threads.length),
   });
+  useEffect(() => {
+    if (!resetKey) return;
+    setQuery("");
+    setSearchOpen(false);
+    setTab("all");
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [resetKey]);
   const togglePin = (t: ThreadListItem) => {
     setThreadPinned(t.threadId, !t.pinned).catch((err: unknown) => setError(errorText(err)));
   };

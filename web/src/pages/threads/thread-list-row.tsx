@@ -45,7 +45,8 @@ export function ThreadListRow({
             <span className="shrink-0 text-[12px] text-ink-soft">{zaloListTime(t.lastMessageAt, timeZone)}</span>
           </span>
           <span className="mt-1 flex min-w-0 items-center gap-1 pr-6 text-[14px] text-ink-soft">
-            {preview.prefix && <span className="shrink-0">{preview.prefix}</span>}
+            {/* Tên người gửi dài (vd kèm số điện thoại) thì cắt "...", tối đa 60% dòng - không đẩy dòng rộng ra làm cả danh sách cuộn ngang */}
+            {preview.prefix && <span className="max-w-[60%] shrink-0 truncate">{preview.prefix}</span>}
             {preview.icon && <PreviewIconGlyph icon={preview.icon} />}
             <span className="min-w-0 truncate">{preview.text}</span>
           </span>

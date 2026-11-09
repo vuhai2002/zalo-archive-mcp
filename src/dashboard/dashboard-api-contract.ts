@@ -270,6 +270,11 @@ export type MessageDeleteRequest = { ids: number[] };
 export type MessageDeletePreview = { messages: number; files: number; bytes: number };
 export type MessageDeleteResult = { deleted: number; filesRemoved: number; bytes: number };
 
+// POST /api/messages/:id/react  body ReactRequest -> ReactResult | 400/504 ApiError
+//      Thả cảm xúc như Zalo (6 cảm xúc nhanh); chờ daemon thả xong tối đa vài giây. Cảm xúc hiện khi listener ghi lại
+export type ReactRequest = { icon: string };
+export type ReactResult = { ok: true };
+
 // POST /api/messages/:id/forward  body ForwardRequestBody -> ForwardResult | 400 ApiError
 //      Chuyển tiếp (Chia sẻ) tin chữ / link tới tối đa 100 hội thoại; mỗi nơi một mục hàng đợi (+ lời nhắn nếu có)
 export type ForwardRequestBody = { threadIds: string[]; note?: string };

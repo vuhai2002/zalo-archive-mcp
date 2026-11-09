@@ -57,6 +57,10 @@ export function useMessageActions({ readOnly, onDeleted }: { readOnly: boolean; 
     () => ({
       reply: readOnly ? undefined : setReplyTarget,
       forward: readOnly ? undefined : setForwardTarget,
+      // Cảm xúc hiện trên tin khi listener ghi lại (SSE tải lại); chỉ báo khi hỏng
+      react: readOnly
+        ? undefined
+        : (msg, code) => void api.messageReact(msg.id, code).catch((err: unknown) => setNotice(`Không thả được cảm xúc: ${errorText(err)}`)),
       copy: (text) =>
         void navigator.clipboard.writeText(text).then(
           () => setNotice("Đã copy tin nhắn."),

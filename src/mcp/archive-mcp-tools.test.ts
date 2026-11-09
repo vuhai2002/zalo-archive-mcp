@@ -41,6 +41,7 @@ describe("MCP server kho", () => {
       "get_attachment",
       "list_outbox",
       "list_threads",
+      "react_to_message",
       "read_thread",
       "recall_message",
       "schedule_message",
@@ -85,6 +86,14 @@ describe("MCP server kho", () => {
     assert.equal(r.isError, true);
     assert.match(textOf(r), /Daemon chưa sẵn sàng/);
     assert.equal((db.prepare("SELECT COUNT(*) AS n FROM outbox").get() as { n: number }).n, 0);
+  });
+
+  it("react_to_message khi daemon không chạy: báo lỗi ngay, không ghi yêu cầu", async () => {
+    const { client, db } = await connectClient();
+    const r = await client.callTool({ name: "react_to_message", arguments: { message_id: 1, reaction: "heart" } });
+    assert.equal(r.isError, true);
+    assert.match(textOf(r), /Daemon chưa sẵn sàng/);
+    assert.equal((db.prepare("SELECT COUNT(*) AS n FROM reaction_requests").get() as { n: number }).n, 0);
   });
 
   it("tham số sai bị từ chối ở tầng schema, không chạm handler", async () => {

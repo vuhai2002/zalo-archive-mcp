@@ -31,6 +31,9 @@ const NAV_ITEMS: { to: string; label: string; short: string; icon: IconFn }[] = 
   { to: "/settings", label: "Cài đặt", short: "Cài đặt", icon: IconGear },
 ];
 
+/** Bấm icon Hội thoại (kể cả khi đang ở đó): đóng hội thoại đang mở, về danh sách đầu trang, thoát chế độ tìm - như Zalo */
+const navState = (to: string) => (to === "/threads" ? { resetThreadList: true } : undefined);
+
 const RAIL_BTN = "relative flex h-12 w-12 items-center justify-center rounded-lg text-white/85 transition-colors hover:bg-white/15 hover:text-white";
 
 export function SidebarNav({
@@ -61,6 +64,7 @@ export function SidebarNav({
             <NavLink
               key={item.to}
               to={item.to}
+              state={navState(item.to)}
               end={item.to === "/"}
               title={item.label}
               aria-label={item.label}
@@ -97,6 +101,7 @@ export function SidebarNav({
           <NavLink
             key={item.to}
             to={item.to}
+            state={navState(item.to)}
             end={item.to === "/"}
             className={({ isActive }) =>
               `relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10.5px] ${isActive ? "text-zalo-500" : "text-ink-soft"}`

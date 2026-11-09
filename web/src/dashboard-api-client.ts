@@ -18,6 +18,7 @@ import type {
   OutboxListResponse,
   OutboxStatus,
   OverviewResponse,
+  ReactResult,
   SearchFilter,
   SearchResponse,
   SendRequest,
@@ -152,6 +153,8 @@ export const api = {
   /** Xóa tin khỏi KHO (không đụng Zalo): xem trước cho hộp xác nhận, rồi xóa */
   messageDeletePreview: (ids: number[]) => post<MessageDeletePreview>("/api/messages/delete-preview", { ids }),
   messageDelete: (ids: number[]) => post<MessageDeleteResult>("/api/messages/delete", { ids }),
+  /** Thả cảm xúc (6 cảm xúc nhanh); trả về khi daemon đã thả xong */
+  messageReact: (id: number, icon: string) => post<ReactResult>(`/api/messages/${id}/react`, { icon }),
   /** Chuyển tiếp (Chia sẻ) tin chữ / link tới tối đa 100 hội thoại */
   messageForward: (id: number, body: ForwardRequestBody) => post<ForwardResult>(`/api/messages/${id}/forward`, body),
 

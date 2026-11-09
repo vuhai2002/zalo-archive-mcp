@@ -82,7 +82,7 @@ describe("chuyển tiếp (Chia sẻ) một tin tới nhiều hội thoại", ()
     assert.equal(listOutbox(s.db, { limit: 5 }).length, 0);
   });
 
-  it("daemon: tin chuyển tiếp đi bằng API chuyển tiếp (không báo đang soạn), lời nhắn đi bằng tin chữ thường", async () => {
+  it("daemon: tin chuyển tiếp đi bằng API chuyển tiếp, lời nhắn bằng tin chữ thường; cả hai không giả đang soạn", async () => {
     const s = setup();
     fwd(s, "1", ["g-1"], "xem nhé");
     const calls: string[] = [];
@@ -109,7 +109,8 @@ describe("chuyển tiếp (Chia sẻ) một tin tới nhiều hội thoại", ()
     await sender.tick();
     clock = new Date(clock.getTime() + 10_000);
     await sender.tick();
-    assert.deepEqual(calls, ["chuyển tiếp g-1: Nhắc cả nhóm nộp báo cáo tuần", "đang soạn g-1", "gửi g-1: xem nhé"]);
+    // Lời nhắn do người dùng tự gõ trên dashboard: đi ngay, không giả "đang soạn"
+    assert.deepEqual(calls, ["chuyển tiếp g-1: Nhắc cả nhóm nộp báo cáo tuần", "gửi g-1: xem nhé"]);
     assert.deepEqual([getOutboxItem(s.db, 1)!.sentMsgId, getOutboxItem(s.db, 2)!.sentMsgId], ["900", "901"]);
   });
 

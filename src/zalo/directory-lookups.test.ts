@@ -8,7 +8,7 @@ import { findThread, listThreads, readThread } from "../storage/message-read-que
 import { upsertMessage } from "../storage/message-write-store.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { replaceFriendDirectory } from "../storage/thread-directory-store.js";
-import { rateLimitPauseMs, resolveMissingGroupInfo, resolveUnknownContacts } from "./contact-directory-sync.js";
+import { personName, rateLimitPauseMs, resolveMissingGroupInfo, resolveUnknownContacts, syncFriendDirectory } from "./contact-directory-sync.js";
 import { applyFriendEvent, applyGroupEvent, applyReplayedGroupEvent } from "./directory-event-handlers.js";
 import { resolveStickerImages } from "./sticker-image-resolver.js";
 
@@ -63,6 +63,20 @@ describe("danh bạ, avatar, tên nhóm, sticker", () => {
     assert.deepEqual([findThread(db, "g-1")?.name, findThread(db, "g-1")?.avatarUrl], ["Nhóm Thử Nghiệm", "https://g.zadn.vn/a.jpg"]);
     applyGroupEvent(db, { type: "update", data: { groupId: "g-1", groupName: "Tên mới" } });
     assert.equal(findThread(db, "g-1")?.name, "Tên mới");
+  });
+
+  it("tên như Zalo PC: tên Zalo người đó tự đặt, không phải tên danh bạ điện thoại Zalo trả trong displayName", async () => {
+    assert.equal(personName({ zaloName: "Mạc Văn Quế", displayName: "Chị Ba Hàng Xóm" }), "Mạc Văn Quế");
+    assert.equal(personName({ zaloName: " ", displayName: "Lan" }), "Lan");
+    assert.equal(personName({ dName: "Thư Khúc" }), "Thư Khúc");
+    const db = seeded();
+    const api = {
+      getAllFriends: async () => [{ userId: "u-lan", zaloName: "Mạc Văn Quế", displayName: "Chị Ba Hàng Xóm", avatar: "https://ava.zadn.vn/lan.jpg" }],
+    } as unknown as API;
+    await syncFriendDirectory(api, db, log);
+    assert.equal(findThread(db, "u-lan")?.name, "Mạc Văn Quế");
+    const contact = db.prepare("SELECT display_name FROM contacts WHERE user_id = 'u-lan'").get() as { display_name: string };
+    assert.equal(contact.display_name, "Mạc Văn Quế");
   });
 
   it("kết bạn / hủy kết bạn cập nhật cờ bạn bè ngay", () => {

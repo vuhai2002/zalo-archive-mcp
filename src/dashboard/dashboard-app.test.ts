@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
+import { ReactionSender } from "../outbox/reaction-sender-loop.js";
+import { createSilentLogger } from "../shared/logger.js";
 import { sampleMessage } from "../storage/archive-store-test-helpers.js";
 import { markAttachmentDone } from "../storage/attachment-queue-store.js";
 import { upsertMessage } from "../storage/message-write-store.js";
@@ -83,6 +85,25 @@ describe("dashboard API", () => {
     const ok = await post({ threadIds: ["u-lan"], note: "xem nhé" });
     assert.equal(ok.status, 200);
     assert.equal(((await ok.json()) as { ids: number[] }).ids.length, 2);
+  });
+
+  it("thả cảm xúc: cảm xúc lạ / tin không có mã Zalo thì 400; daemon thả xong thì 200", async () => {
+    const s = await setup();
+    const cookie = await login(s);
+    const react = (id: number, icon: string) => s.call(`/api/messages/${id}/react`, { ...s.json({ icon }), cookie });
+    // Tin mẫu có mã tin phía client kiểu chữ (như tin lấy từ điện thoại): không có mã Zalo thật
+    const sample = (s.db.prepare("SELECT id FROM messages LIMIT 1").get() as { id: number }).id;
+    assert.equal((await react(sample, "/-rose")).status, 400);
+    assert.match(((await (await react(sample, "/-heart")).json()) as { error: string }).error, /mã Zalo/);
+    upsertMessage(s.db, sampleMessage({ msgId: "8470001", cliMsgId: "1773030000000" }), { source: "live", receivedAt: "2026-03-09T03:30:00.000Z" });
+    const real = (s.db.prepare("SELECT id FROM messages WHERE msg_id = '8470001'").get() as { id: number }).id;
+    const sender = new ReactionSender({ db: s.db, log: createSilentLogger(), react: async () => {}, isReadOnly: () => false, isListenerConnected: () => true });
+    sender.start();
+    try {
+      assert.equal((await react(real, "/-heart")).status, 200);
+    } finally {
+      sender.stop();
+    }
   });
 
   it("cài đặt: lưu được, sai thì 400; khóa khẩn cấp bật/tắt", async () => {

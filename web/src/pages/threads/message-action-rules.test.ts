@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { ArchivedMessage } from "../../archive-api-types";
-import { canForward, canReply, copyTextOf, MENU_W, menuPosition } from "./message-action-rules";
+import { canForward, canReact, canReply, copyTextOf, MENU_W, menuPosition } from "./message-action-rules";
 
 const msg = (o: Partial<ArchivedMessage>): ArchivedMessage => ({
   id: 1,
@@ -37,6 +37,10 @@ describe("thao tác trên tin (thanh nút khi rê chuột)", () => {
     assert.equal(canReply(msg({ msgType: "chat.photo", text: "" })), true);
     assert.equal(canReply(msg({ msgType: "group.poll" })), false);
     assert.equal(canReply(msg({ recalledAt: "2026-11-09T04:00:00.000Z" })), false);
+    // Thả cảm xúc cần mã tin thật của Zalo: tin lấy từ điện thoại ("mb_...") thì không
+    assert.equal(canReact(msg({ msgId: "8470001" })), true);
+    assert.equal(canReact(msg({ msgId: "mb_1600000000101" })), false);
+    assert.equal(canReact(msg({ msgId: "8470001", recalledAt: "2026-11-09T04:00:00.000Z" })), false);
   });
 
   it("Copy: chữ của tin (link: chữ người gửi gõ), album: các chú thích; không có chữ thì không copy được", () => {

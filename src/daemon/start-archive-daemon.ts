@@ -8,7 +8,6 @@ import { sharedJxlPngPool } from "../media/jxl-png-worker-pool.js";
 import { MediaLinkRenewer } from "../media/media-link-renewer.js";
 import { attachRenewLinkListener, RenewLinkReplyWaiter } from "../zalo/renew-link-control-listener.js";
 import { installRenewMediaLinkApi } from "../zalo/zca-renew-media-link-api.js";
-import { OutboxRecaller } from "../outbox/outbox-recall-loop.js";
 import { OutboxSender } from "../outbox/outbox-sender-loop.js";
 import { forwardedMsgId, toZaloMessage } from "../outbox/outbox-zalo-message-content.js";
 import { setMeta } from "../storage/thread-directory-store.js";
@@ -20,6 +19,7 @@ import type { ListenerRetryInfo } from "../zalo/listener-reconnect-timer.js";
 import { MobileSyncSession } from "../zalo/mobile-sync/mobile-sync-session.js";
 import { startKeepAliveLoop } from "../zalo/keep-alive-loop.js";
 import { startDirectoryLookupLoop } from "./directory-lookup-loop.js";
+import { startRecallAndReactionLoops } from "./start-recall-and-reaction-loops.js";
 import { applyPastMyDocumentsDeletes } from "./my-documents-past-deletes-backfill.js";
 
 export type DaemonDeps = {
@@ -178,17 +178,8 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
   sender.start();
   stops.push(() => sender.stop());
 
-  // Thu hồi tin kho đã gửi khi người dùng yêu cầu (MCP / dashboard chỉ ghi yêu cầu)
-  const recaller = new OutboxRecaller({
-    db,
-    log: log.child({ part: "recall" }),
-    isReadOnly: d.isReadOnly,
-    recall: async (m) => {
-      await api.undo({ msgId: m.msgId, cliMsgId: m.cliMsgId }, m.threadId, toZaloType(m.threadType));
-    },
-  });
-  recaller.start();
-  stops.push(() => recaller.stop());
+  // Thu hồi tin kho đã gửi + thả cảm xúc khi người dùng yêu cầu (MCP / dashboard chỉ ghi yêu cầu)
+  stops.push(startRecallAndReactionLoops({ api, db, log, isReadOnly: d.isReadOnly, isListenerConnected: listener.isConnected }));
 
   // Đồng bộ từ điện thoại: chỉ gắn listener sự kiện, không tự gửi yêu cầu nào
   const mobileSync = new MobileSyncSession({

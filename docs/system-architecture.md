@@ -114,6 +114,15 @@ Thao tác trên một tin ở dashboard (rê chuột: Trả lời, Chia sẻ, Th
   lời nhắn kèm là tin chữ thường ngay sau. Daemon gửi từng nơi bằng `api.forwardMessage({ message }, [threadId])` (mỗi lần
   MỘT nơi để biết mã tin / lỗi của từng nơi: zca-js gửi chung một clientId cho mọi nơi nên kết quả gộp không tách được),
   không báo "đang soạn"; lỗi trong `fail` -> đánh hỏng + bật kill switch. Chỉ tin chữ và link (zca-js chỉ chuyển tiếp chữ).
+- **Thả cảm xúc**: nút Thích ở góc bong bóng (rê vào hiện 6 cảm xúc nhanh) -> `POST /api/messages/:id/react`, hoặc lệnh MCP
+  `react_to_message` (cùng luật trong `outbox/request-message-reaction.ts`, MCP kiểm daemon sẵn sàng trước) -> ghi
+  `reaction_requests` (migration 29) rồi chờ tối đa 8 giây; `outbox/reaction-sender-loop.ts` trong daemon (nửa giây một
+  lượt, vòng chung file `daemon/start-recall-and-reaction-loops.ts` với thu hồi) gọi `api.addReaction`, đánh xong / lỗi.
+  Chặn khi Chỉ đọc / khóa khẩn cấp; hỏng không bật khóa khẩn cấp. Chỉ tin có mã Zalo thật (tin "mb_..." từ điện thoại thì
+  không). Cảm xúc vào kho qua listener như mọi cảm xúc khác.
+- **Gửi ngay từ dashboard**: ô nhập trống liền, bong bóng tạm hiện ngay cuối khung chat (`use-pending-outgoing.ts`) tới
+  khi tin thật (cùng mã tin) vào kho; không còn dòng "Đã gửi lúc"; hỏng thì bong bóng báo đỏ. Daemon không giả "đang soạn"
+  cho tin người dùng tự gõ trên dashboard, và vòng gửi hỏi hàng đợi mỗi nửa giây.
 - **Xóa khỏi kho**: `POST /api/messages/delete-preview` (số tin, số file + dung lượng sẽ mất cho hộp xác nhận) rồi
   `POST /api/messages/delete` -> `archive/delete-messages-from-archive.ts` -> `storage/deleted-message-store.ts` (dùng chung
   với lệnh xóa My Documents): xóa tin, đính kèm, cảm xúc, thu hồi, chỉ mục tìm; ghi mã tin vào `deleted_messages`; tính

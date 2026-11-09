@@ -58,7 +58,7 @@ tới nick Zalo hay tin nhắn).
 
 Dashboard có: Tổng quan (thống kê, khoảng mất kết nối), Hội thoại (đọc tin cũ, xem ảnh/file, gửi
 ngay / hẹn giờ / lưu nháp; rê chuột vào tin có Trả lời, Chia sẻ tới tối đa 100 hội thoại, Copy, Chọn nhiều tin
-nhắn, Xóa khỏi kho), Tìm kiếm (không phân biệt dấu), Hàng đợi, Tài khoản Zalo, Cài đặt (giới
+nhắn, Xóa khỏi kho, nút Thích + thanh 6 cảm xúc để thả cảm xúc; gõ tin là gửi ngay, tin hiện liền trong khung chat), Tìm kiếm (không phân biệt dấu), Hàng đợi, Tài khoản Zalo, Cài đặt (giới
 hạn gửi, khóa khẩn cấp).
 
 Xóa tin: "Xóa khỏi kho" chỉ xóa trong kho (Zalo vẫn còn), xóa luôn file ảnh / video / file không tin nào khác dùng để
@@ -89,6 +89,7 @@ claude mcp add zalo-archive -- node C:/duong-dan/zalo-archive-mcp/node_modules/t
 | Gửi | `schedule_message` | hẹn giờ một tin |
 | Gửi | `send_batch` | gửi nhiều người, mỗi người một nội dung, chỉ bạn bè, có nhịp |
 | Gửi | `draft_message`, `list_outbox`, `cancel_outbox` | nháp để duyệt trên dashboard, xem / hủy hàng đợi |
+| Gửi | `react_to_message` | thả cảm xúc (👍 ❤️ 😆 😮 😭 😡) vào một tin, số tin #N ở `read_thread` - chỉ khi bạn bảo |
 | Gửi | `recall_message` | thu hồi tin kho đã gửi - chỉ khi bạn bảo; Claude Code / Claude Desktop hỏi duyệt trước mỗi lần |
 
 Claude gửi ngay khi được bảo, không hỏi lại (người dùng chọn). Gửi chỉ chạy được khi daemon đang

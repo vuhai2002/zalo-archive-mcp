@@ -47,3 +47,11 @@ export const IconTrash = (p: IconProps) => (
     <path d="M10 11v5.5M14 11v5.5" />
   </svg>
 );
+
+/** Nút Thích ở góc bong bóng (rê vào hiện thanh cảm xúc) */
+export const IconThumbUp = (p: IconProps) => (
+  <svg {...iconBase(p)}>
+    <path d="M7.5 10.5v9H5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h2.5Z" />
+    <path d="M7.5 10.5 11 4.2a1.6 1.6 0 0 1 3 1v4h4.6a1.6 1.6 0 0 1 1.6 1.9l-1.2 6.6a1.6 1.6 0 0 1-1.6 1.3H7.5" />
+  </svg>
+);

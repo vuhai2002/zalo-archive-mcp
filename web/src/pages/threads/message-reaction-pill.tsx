@@ -1,7 +1,7 @@
 import type { ArchivedMessage } from "../../archive-api-types";
 
 /**
- * Cảm xúc trên một tin, như Zalo: viên nhỏ nằm đè mép dưới bên phải bong bóng, hiện tối
+ * Cảm xúc trên một tin, như Zalo: viên nhỏ (dải `MessageReactionRow` đặt đè mép dưới bên phải bong bóng), hiện tối
  * đa 3 loại cảm xúc nhiều nhất + tổng số lần bấm (bấm tim 3 lần = ❤️ 3). Rê chuột xem ai thả cái gì.
  */
 export function MessageReactionPill({ reactions }: { reactions: ArchivedMessage["reactions"] }) {
@@ -12,7 +12,7 @@ export function MessageReactionPill({ reactions }: { reactions: ArchivedMessage[
   return (
     <div
       title={title}
-      className="relative z-10 -mt-2 mr-1.5 flex items-center gap-0.5 self-end rounded-full border border-black/10 bg-bubble px-1.5 py-px text-[12px] leading-5 shadow-sm dark:border-white/10"
+      className="flex items-center gap-0.5 rounded-full border border-black/10 bg-bubble px-1.5 py-px text-[12px] leading-5 shadow-sm dark:border-white/10"
     >
       {top.map((r) => (
         <span key={r.icon} className={r.emoji ? "" : "text-[10px] text-chat-time"}>

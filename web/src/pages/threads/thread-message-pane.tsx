@@ -8,6 +8,8 @@ import { ChatItemRow, itemHasMessage, rowSelection } from "./chat-item-row";
 import { JumpToLatestButton } from "./jump-to-latest-button";
 import { MessageComposer } from "./message-composer";
 import { MessageSelectionBar } from "./message-selection-bar";
+import { PendingOutgoingBubbles } from "./pending-outgoing-bubbles";
+import { usePendingOutgoing } from "./use-pending-outgoing";
 import { useMessageActions } from "./use-message-actions";
 import { layoutMessages } from "./message-grouping";
 import { MediaViewerProvider } from "./media-viewer-context";
@@ -98,13 +100,8 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
     el.scrollTop = el.scrollHeight;
   }, [t.atLatest, backToLatest]);
 
-  // Tin daemon vừa gửi phải chờ listener ghi lại mới có trong kho - hỏi lại sau một nhịp
-  const afterSent = useCallback(() => {
-    if (!t.atLatest) return backToLatest();
-    intent.current = { kind: "bottom" };
-    stickToBottom.current = true;
-    setTimeout(() => void refreshLatest(), 2_000);
-  }, [refreshLatest, t.atLatest, backToLatest]);
+  // Tin vừa gõ hiện ngay (bong bóng tạm) tới khi daemon gửi xong và listener ghi tin thật vào kho
+  const pending = usePendingOutgoing({ messages: t.messages, scrollRef, stickToBottom, atLatest: t.atLatest, backToLatest, refreshLatest });
 
   // Xin lại link + tải lại mất vài giây (lâu hơn nếu phải chờ lượt): hỏi lại kho hai nhịp
   const afterMediaRetried = useCallback(() => {
@@ -190,6 +187,7 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
             selection={acts.selected ? rowSelection(acts.selected, item, acts.toggle) : undefined}
           />
         ))}
+        <PendingOutgoingBubbles items={pending.visible} onDismiss={pending.dismiss} />
         {/* Đang xem đoạn cũ (nhảy từ kết quả tìm): cuộn xuống là tải tiếp tin mới hơn */}
         <div ref={newerRef} aria-hidden="true" className="h-px" />
         {t.loadingNewer && <p className="pt-1 text-center text-[12px] text-chat-time">Đang tải tin mới hơn...</p>}
@@ -209,7 +207,7 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
         <MessageComposer
           threadId={threadId}
           threadName={threadDisplayName(t.thread?.name)}
-          onSent={afterSent}
+          onQueued={pending.add}
           replyTarget={acts.replyTarget}
           onCancelReply={acts.cancelReply}
         />

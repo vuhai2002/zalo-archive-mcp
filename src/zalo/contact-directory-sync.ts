@@ -39,6 +39,14 @@ const errorMessage = (err: unknown): string => String((err as { message?: unknow
 const nonEmpty = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
 
 /**
+ * Tên một người như Zalo PC hiện (khi mình chưa đặt tên gợi nhớ - tên gợi nhớ đè lên lúc đọc): tên Zalo người đó tự đặt
+ * (`zaloName`). `displayName` / `dName` Zalo trả theo phía mình - có thể là tên lưu trong danh bạ điện thoại (vd "Chị A (bạn cũ)"
+ * trong khi Zalo PC hiện "Thư Khúc") - chỉ dùng khi thiếu tên Zalo.
+ */
+export const personName = (p: { zaloName?: unknown; displayName?: unknown; dName?: unknown } | null | undefined): string | null =>
+  nonEmpty(p?.zaloName) ?? nonEmpty(p?.displayName) ?? nonEmpty(p?.dName);
+
+/**
  * Lấy danh sách bạn bè (tên, avatar, cờ bạn bè cho cổng gửi). Một lời gọi, giống
  * Zalo Web làm lúc mở.
  */
@@ -48,13 +56,13 @@ export async function syncFriendDirectory(api: API, db: DatabaseSync, log: Logge
     const list = Array.isArray(friends) ? friends : [];
     const n = replaceFriendDirectory(
       db,
-      list.map((f) => ({ threadId: String(f.userId), name: nonEmpty(f.displayName) ?? nonEmpty(f.zaloName) })),
+      list.map((f) => ({ threadId: String(f.userId), name: personName(f) })),
     );
     upsertContacts(
       db,
       list.map((f) => ({
         userId: String(f.userId),
-        displayName: nonEmpty(f.displayName) ?? nonEmpty(f.zaloName),
+        displayName: personName(f),
         avatarUrl: nonEmpty(f.avatar),
       })),
     );
@@ -126,7 +134,7 @@ function storeGroupMembers(db: DatabaseSync, groupId: string, info: unknown): vo
       .filter((m) => m.id)
       .map((m) => ({
         userId: String(m.id),
-        displayName: nonEmpty(m.dName) ?? nonEmpty(m.zaloName),
+        displayName: personName(m),
         avatarUrl: nonEmpty(m.avatar),
       })),
   );
@@ -145,7 +153,7 @@ export async function resolveUnknownContacts(api: API, db: DatabaseSync, log: Lo
     // Khóa trả về dạng "<uid>_0"; lấy uid từ chính hồ sơ cho chắc
     const entries = Object.entries(res.changed_profiles ?? {}).map(([key, p]) => ({
       userId: nonEmpty(p?.userId) ?? key.replace(/_\d+$/, ""),
-      displayName: nonEmpty(p?.displayName) ?? nonEmpty(p?.zaloName),
+      displayName: personName(p),
       avatarUrl: nonEmpty(p?.avatar),
     }));
     upsertContacts(db, entries);

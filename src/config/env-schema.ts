@@ -54,7 +54,8 @@ export const envSchema = z
     OFFLINE_REPLAY_ENABLED: flag(true),
     OFFLINE_REPLAY_MIN_INTERVAL_MINUTES: int(10, 1, 1440),
     ZALO_KEEPALIVE_MINUTES: int(0, 0, 1440),
-    DIRECTORY_SYNC_HOURS: int(12, 0, 168),
+    // Đồng bộ danh sách bạn bè + tên gợi nhớ (giờ): Zalo không báo khi mình đổi tên gợi nhớ, nên hỏi lại định kỳ (3 lệnh nhẹ)
+    DIRECTORY_SYNC_HOURS: int(1, 0, 168),
     // Hỏi hồ sơ người nhắn: mỗi lượt (50 người) cách nhau tối thiểu chừng này giây
     DIRECTORY_CONTACT_LOOKUP_GAP_SECONDS: int(60, 0, 3600),
     // Zalo báo hỏi quá nhiều (mã 221): nghỉ hỏi danh bạ chừng này phút, bị lại thì gấp đôi (tối đa 6 tiếng)

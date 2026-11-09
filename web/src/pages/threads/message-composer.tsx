@@ -11,6 +11,7 @@ import { MessageComposerSchedulePanel } from "./message-composer-schedule-panel"
 import { OutboxSendStatusLine } from "./outbox-send-status-line";
 import { useOutboxItemTracking } from "./use-outbox-item-tracking";
 
+const NOOP = () => {};
 /** Khớp MAX_TEXT_LENGTH phía server (src/outbox/enqueue-outbox-request.ts) */
 const MAX_TEXT = 2000;
 /** Ô nhập tự cao theo chữ tới chừng này (khoảng 6 dòng) rồi cuộn trong ô */
@@ -20,19 +21,20 @@ const MAX_INPUT_HEIGHT = 160;
  * Khung soạn tin cuối hội thoại, kiểu Zalo PC: hàng công cụ phía trên (Hẹn giờ, Lưu nháp - kho chỉ gửi được
  * chữ nên không có nút ảnh / file / sticker), dưới là ô nhập không viền tự cao theo chữ và nút gửi. Enter gửi
  * ngay như Zalo, Shift+Enter xuống dòng. Mọi nút chỉ ghi vào hàng đợi (`POST /api/outbox`); daemon mới là nơi
- * gửi thật. Gửi ngay = vào hàng đợi đã duyệt rồi theo dõi tới khi có kết quả. Đang trả lời một tin thì có dải trích dẫn
+ * gửi thật. Gửi ngay = vào hàng đợi đã duyệt; khung chat hiện tin ngay (bong bóng tạm) tới khi tin thật vào kho. Đang trả lời một tin thì có dải trích dẫn
  * phía trên ô nhập; tin gửi đi (ngay, hẹn giờ hay nháp) mang ô trích dẫn tin đó như Zalo.
  */
 export function MessageComposer({
   threadId,
   threadName,
-  onSent,
+  onQueued,
   replyTarget = null,
   onCancelReply,
 }: {
   threadId: string;
   threadName: string;
-  onSent: () => void;
+  /** Tin "gửi ngay" đã vào hàng đợi: khung chat hiện ngay bong bóng tạm (không chờ, không dòng "Đã gửi") */
+  onQueued: (item: OutboxItem, text: string, quote: ArchivedMessage | null) => void;
   replyTarget?: ArchivedMessage | null;
   onCancelReply?: () => void;
 }) {
@@ -43,7 +45,8 @@ export function MessageComposer({
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [sendDate, setSendDate] = useState("");
   const [sendTime, setSendTime] = useState("");
-  const tracking = useOutboxItemTracking(onSent);
+  // Chỉ còn dùng để hiện kết quả nháp / hẹn giờ; tin gửi ngay do bong bóng tạm trong khung chat lo
+  const tracking = useOutboxItemTracking(NOOP);
   const input = useRef<HTMLTextAreaElement>(null);
 
   const trimmed = text.trim();
@@ -68,22 +71,39 @@ export function MessageComposer({
       setError("Chọn đủ ngày và giờ gửi.");
       return;
     }
+    const base: SendRequest = { threadId, text: trimmed, when, ...(replyTarget ? { replyToMessageId: replyTarget.id } : {}) };
+    if (when === "now") return sendNow(base);
     setBusy(when);
     setError(null);
     try {
-      const base: SendRequest = { threadId, text: trimmed, when, ...(replyTarget ? { replyToMessageId: replyTarget.id } : {}) };
       const body: SendRequest = when === "schedule" ? { ...base, sendDate, sendTime } : base;
       const item: OutboxItem = await api.outboxCreate(body);
       setText("");
       onCancelReply?.();
       setScheduleOpen(false);
-      if (when === "now") tracking.track(item);
-      else tracking.show(item);
+      tracking.show(item);
     } catch (err) {
       // Giữ nguyên chữ đang soạn để sửa rồi gửi lại
       setError(errorText(err));
     } finally {
       setBusy(null);
+      input.current?.focus();
+    }
+  }
+
+  /** Gửi ngay như Zalo: ô nhập trống liền để gõ tin sau, tin hiện ngay trong khung chat; lỗi thì trả chữ về ô nhập */
+  async function sendNow(body: SendRequest) {
+    const quote = replyTarget;
+    setText("");
+    onCancelReply?.();
+    setError(null);
+    tracking.clear();
+    try {
+      onQueued(await api.outboxCreate(body), body.text, quote);
+    } catch (err) {
+      setText((cur) => cur || body.text);
+      setError(errorText(err));
+    } finally {
       input.current?.focus();
     }
   }
@@ -167,7 +187,6 @@ export function MessageComposer({
           className="flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-[14px] font-semibold text-zalo-500 hover:bg-tile disabled:text-ink-soft/50 disabled:hover:bg-transparent"
         >
           <IconSend size={20} />
-          {busy === "now" && <span>Đang gửi...</span>}
         </button>
       </div>
 

@@ -27,12 +27,16 @@ export function ThreadsPage() {
     [threadId, msg, location.key],
   );
   const path = (id: string) => `/threads/${encodeURIComponent(id)}`;
+  // Bấm icon Hội thoại ở thanh bên: mỗi lần bấm là một lần điều hướng mới (key đổi) - danh sách về đầu, thoát tìm kiếm.
+  // Nút quay lại từ khung tin (màn hẹp) thì KHÔNG đặt cờ này: danh sách giữ nguyên ô tìm + chỗ đang cuộn
+  const resetKey = (location.state as { resetThreadList?: boolean } | null)?.resetThreadList ? location.key : null;
 
   return (
     <div className="flex h-[calc(100dvh-109px)] min-h-[420px] lg:h-screen">
       <div className={`${threadId ? "hidden lg:flex" : "flex"} w-full shrink-0 flex-col border-line lg:w-80 lg:border-r xl:w-[360px]`}>
         <ThreadListPanel
           selectedId={threadId}
+          resetKey={resetKey}
           onSelect={(id) => navigate(path(id))}
           onOpenMessage={(id, messageId) => navigate(`${path(id)}?msg=${messageId}`)}
         />

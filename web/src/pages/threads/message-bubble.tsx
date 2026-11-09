@@ -12,8 +12,8 @@ import { RecalledNote, RecalledShownLabel } from "./message-recalled-note";
 import { useMediaViewer } from "./media-viewer-context";
 import { viewerItemFromMessage } from "./media-viewer-items";
 import { MessageLinkCard } from "./message-link-card";
-import { MessageReactionPill } from "./message-reaction-pill";
-import type { MessageActions } from "./message-action-rules";
+import { MessageReactionRow } from "./message-reaction-row";
+import { canReact, type MessageActions } from "./message-action-rules";
 import { MessageHoverActions } from "./message-hover-actions";
 import { MessageSystemNotice } from "./message-system-notice";
 import { isSystemMessage } from "./message-grouping";
@@ -96,6 +96,8 @@ export function MessageBubble({
   const showName = isGroup && !self && first;
   const showMeta = last || (recalled && revealed);
   const hoverActions = actions ? <MessageHoverActions msg={msg} album={album} actions={actions} self={self} /> : null;
+  const react = actions?.react;
+  const onReact = react && canReact(msg) ? (code: string) => react(msg, code) : undefined;
 
   const meta = (
     <div className="mt-1 flex items-center gap-2 text-[11px] text-chat-time">
@@ -140,7 +142,7 @@ export function MessageBubble({
                 {albumCaption}
               </div>
             )}
-            <MessageReactionPill reactions={album ? mergeAlbumReactions(album) : msg.reactions} />
+            <MessageReactionRow reactions={album ? mergeAlbumReactions(album) : msg.reactions} onReact={onReact} />
             {last && (
               <span title={timeTitle} className="mt-1 rounded-full bg-black/25 px-2 py-0.5 text-[11px] tabular-nums text-white dark:bg-white/15">
                 {formatClock(msg.sentAt, timeZone)}
@@ -179,7 +181,7 @@ export function MessageBubble({
             {showMeta && meta}
           </div>
         )}
-        {!bare && !hidden && <MessageReactionPill reactions={msg.reactions} />}
+        {!bare && !hidden && <MessageReactionRow reactions={msg.reactions} onReact={onReact} />}
       </div>
       {!self && hoverActions}
     </div>

@@ -46,8 +46,8 @@ export type OutboxSenderDeps = {
   random?: () => number;
 };
 
-/** Hàng đợi trống thì 2 giây kiểm một lần: tin "gửi ngay" phải đi trong vài giây */
-const IDLE_CHECK_MS = 2_000;
+/** Hàng đợi trống thì nửa giây kiểm một lần: tin gõ trên dashboard phải đi gần như ngay (hỏi DB nhỏ, rẻ) */
+const IDLE_CHECK_MS = 500;
 const LISTENER_DOWN_CHECK_MS = 10_000;
 const READ_ONLY_CHECK_MS = 10_000;
 /** Chờ dài nhất giữa hai lần kiểm, để tin mới / mở khóa có hiệu lực sớm */
@@ -155,8 +155,9 @@ export class OutboxSender {
 
   /** Báo "đang soạn" rồi chờ một lúc theo độ dài tin, như người gõ thật. Hỏng/treo thì bỏ qua. */
   private async typeLikeAHuman(item: OutboxItem): Promise<void> {
-    // Chuyển tiếp không gõ chữ nào, như bấm Chia sẻ trên Zalo
-    if (!this.d.sendTyping || item.forwardOf !== null) return;
+    // Chuyển tiếp không gõ chữ nào, như bấm Chia sẻ trên Zalo; tin người dùng tự gõ trên dashboard thì đã gõ thật rồi,
+    // đi ngay không giả "đang soạn"
+    if (!this.d.sendTyping || item.forwardOf !== null || item.createdBy === "dashboard") return;
     const sleep = this.d.sleep ?? ((t: number) => new Promise<void>((r) => setTimeout(r, t)));
     try {
       await Promise.race([

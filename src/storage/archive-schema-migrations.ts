@@ -387,4 +387,19 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE outbox ADD COLUMN forward_of_message_id INTEGER;
   `,
+  // 29: thả cảm xúc vào tin từ dashboard: dashboard ghi yêu cầu, daemon (nơi duy nhất gọi Zalo) thả rồi đánh xong / lỗi
+  `
+  CREATE TABLE reaction_requests (
+    id           INTEGER PRIMARY KEY,
+    msg_id       TEXT NOT NULL,
+    cli_msg_id   TEXT NOT NULL,
+    thread_id    TEXT NOT NULL,
+    thread_type  TEXT NOT NULL CHECK (thread_type IN ('user', 'group')),
+    icon         TEXT NOT NULL,
+    requested_at TEXT NOT NULL,
+    done_at      TEXT,
+    error        TEXT
+  );
+  CREATE INDEX reaction_requests_pending ON reaction_requests (id) WHERE done_at IS NULL AND error IS NULL;
+  `,
 ];
