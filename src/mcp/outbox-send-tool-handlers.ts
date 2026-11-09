@@ -31,8 +31,12 @@ const FINAL_STATUSES = new Set<OutboxStatus>(["sent", "failed", "cancelled", "re
 export type MentionArg = { user_id: string; text: string };
 const toMentions = (m?: MentionArg[]) => m?.map((x) => ({ userId: x.user_id, text: x.text }));
 const mentionNote = (m?: MentionArg[]) => (m?.length ? ` (nhắc tên ${m.map((x) => x.text).join(", ")})` : "");
+const replyNote = (id?: number) => (id === undefined ? "" : `, trả lời tin #${id}`);
+/** Tham số chung của tin lẻ: nhắc tên (@) và trả lời một tin (số tin #N ở read_thread) */
+type SingleArgs = { thread_id: string; text: string; mentions?: MentionArg[]; reply_to?: number };
+const singleReq = (a: SingleArgs) => ({ threadId: a.thread_id, text: a.text, mentions: toMentions(a.mentions), replyToMessageId: a.reply_to });
 
-export async function sendMessageTool(ctx: SendToolContext, args: { thread_id: string; text: string; mentions?: MentionArg[] }): Promise<ToolResult> {
+export async function sendMessageTool(ctx: SendToolContext, args: SingleArgs): Promise<ToolResult> {
   // Chốt DB của nick lúc gọi: người dùng đổi nick trong lúc chờ thì vẫn theo dõi đúng mục vừa xếp
   ctx = { ...ctx, db: ctx.db, readOnly: ctx.readOnly };
   if (ctx.readOnly) return toolError(READ_ONLY_ERROR);
@@ -46,7 +50,7 @@ export async function sendMessageTool(ctx: SendToolContext, args: { thread_id: s
     return toolError(`Chưa gửi: việc gửi đang bị KHÓA (${kill.reason ?? "không rõ lý do"}). Người dùng cần mở khóa trên dashboard.`);
   }
 
-  const r = enqueueSingle(ctx, { threadId: args.thread_id, text: args.text, mentions: toMentions(args.mentions), when: "now", createdBy: "mcp" });
+  const r = enqueueSingle(ctx, { ...singleReq(args), when: "now", createdBy: "mcp" });
   if (!r.ok) return toolError(r.error);
   const id = r.ids[0]!;
 
@@ -58,7 +62,7 @@ export async function sendMessageTool(ctx: SendToolContext, args: { thread_id: s
     item = getOutboxItem(ctx.db, id);
   }
   if (!item) return toolError(`Mục #${id} biến mất khỏi hàng đợi.`);
-  if (item.status === "sent") return toolOk(`Đã gửi tới thread_id=${item.threadId}${mentionNote(args.mentions)} (mục #${id}, msgId ${item.sentMsgId}).`);
+  if (item.status === "sent") return toolOk(`Đã gửi tới thread_id=${item.threadId}${mentionNote(args.mentions)}${replyNote(args.reply_to)} (mục #${id}, msgId ${item.sentMsgId}).`);
   if (item.status === "failed") return toolError(`Gửi hỏng (mục #${id}): ${item.error ?? "không rõ lỗi"}`);
   if (FINAL_STATUSES.has(item.status)) return toolError(`Mục #${id} đã bị ${item.status}, không gửi.`);
   // Hết giờ chờ: chưa ai giành thì HỦY luôn (để tin không đi muộn ngoài ý người dùng);
@@ -72,12 +76,10 @@ export async function sendMessageTool(ctx: SendToolContext, args: { thread_id: s
 
 export function scheduleMessageTool(
   ctx: SendToolContext,
-  args: { thread_id: string; text: string; send_date: string; send_time: string; note?: string; mentions?: MentionArg[] },
+  args: SingleArgs & { send_date: string; send_time: string; note?: string },
 ): ToolResult {
   const r = enqueueSingle(ctx, {
-    threadId: args.thread_id,
-    text: args.text,
-    mentions: toMentions(args.mentions),
+    ...singleReq(args),
     when: "schedule",
     sendDate: args.send_date,
     sendTime: args.send_time,
@@ -110,8 +112,8 @@ export function sendBatchTool(
   );
 }
 
-export function draftMessageTool(ctx: SendToolContext, args: { thread_id: string; text: string; note?: string; mentions?: MentionArg[] }): ToolResult {
-  const r = enqueueSingle(ctx, { threadId: args.thread_id, text: args.text, mentions: toMentions(args.mentions), when: "draft", note: args.note, createdBy: "mcp" });
+export function draftMessageTool(ctx: SendToolContext, args: SingleArgs & { note?: string }): ToolResult {
+  const r = enqueueSingle(ctx, { ...singleReq(args), when: "draft", note: args.note, createdBy: "mcp" });
   if (!r.ok) return toolError(r.error);
   return toolOk(`Đã lưu nháp #${r.ids[0]}. Chưa gửi: người dùng xem và bấm Duyệt trên dashboard (Hàng đợi).`);
 }
@@ -125,7 +127,8 @@ export function listOutboxTool(ctx: SendToolContext, args: { status?: OutboxStat
     const err = i.error ? ` lỗi: ${i.error}` : "";
     const preview = i.text.length > 80 ? `${i.text.slice(0, 80)}...` : i.text;
     const recall = i.recalledAt ? ", đã thu hồi" : i.recallError ? `, thu hồi lỗi: ${i.recallError}` : i.recallRequestedAt ? ", chờ thu hồi" : "";
-    return `#${i.id} [${i.status}${i.mode === "batch" ? ", lô" : ""}${recall}] -> ${i.threadId}${when}: ${preview}${err}`;
+    const reply = i.replyTo ? `, trả lời tin #${i.replyTo.messageId}` : "";
+    return `#${i.id} [${i.status}${i.mode === "batch" ? ", lô" : ""}${reply}${recall}] -> ${i.threadId}${when}: ${preview}${err}`;
   });
   return toolOk(lines.join("\n"));
 }

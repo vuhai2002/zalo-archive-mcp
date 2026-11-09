@@ -378,4 +378,8 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   UPDATE outbox SET recalled_at = (SELECT m.recalled_at FROM messages m WHERE m.msg_id = outbox.sent_msg_id AND m.is_self = 1)
   WHERE status = 'sent' AND sent_msg_id IS NOT NULL;
   `,
+  // 27: tin gửi dạng trả lời một tin (ô trích dẫn như Zalo): chụp tin gốc đúng dạng zca-js cần lúc xếp hàng, daemon gửi theo bản chụp
+  `
+  ALTER TABLE outbox ADD COLUMN reply_quote_json TEXT;
+  `,
 ];

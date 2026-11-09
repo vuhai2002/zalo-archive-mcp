@@ -1,3 +1,4 @@
+import type { ArchivedMessage } from "../../archive-api-types";
 import { MessageBubble } from "./message-bubble";
 import type { MessageLayout } from "./message-grouping";
 import type { ChatItem } from "./photo-album-grouping";
@@ -16,6 +17,7 @@ export function ChatItemRow({
   onMediaLoad,
   onMediaRetried,
   onJumpToMessage,
+  onReply,
 }: {
   item: ChatItem;
   layout: MessageLayout;
@@ -26,6 +28,8 @@ export function ChatItemRow({
   onMediaRetried: () => void;
   /** Bấm ô trích dẫn: nhảy tới tin gốc */
   onJumpToMessage: (id: number) => void;
+  /** Bấm Trả lời một tin; không truyền = không trả lời được */
+  onReply?: (msg: ArchivedMessage) => void;
 }) {
   return (
     <>
@@ -48,6 +52,7 @@ export function ChatItemRow({
           onMediaLoad={onMediaLoad}
           onMediaRetried={onMediaRetried}
           onJumpToMessage={onJumpToMessage}
+          onReply={onReply}
         />
       </div>
     </>

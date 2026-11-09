@@ -10,6 +10,7 @@ import { attachRenewLinkListener, RenewLinkReplyWaiter } from "../zalo/renew-lin
 import { installRenewMediaLinkApi } from "../zalo/zca-renew-media-link-api.js";
 import { OutboxRecaller } from "../outbox/outbox-recall-loop.js";
 import { OutboxSender } from "../outbox/outbox-sender-loop.js";
+import { toZaloMessage } from "../outbox/outbox-zalo-message-content.js";
 import { setMeta } from "../storage/thread-directory-store.js";
 import { recordSuspendGap } from "../storage/connection-event-store.js";
 import { HEARTBEAT_STALE_MS } from "../storage/daemon-liveness.js";
@@ -164,9 +165,9 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
     log: log.child({ part: "sender" }),
     isListenerConnected: listener.isConnected,
     isReadOnly: d.isReadOnly,
-    sendText: async (threadId, type, text, mentions) => {
-      // Có nhắc tên (@) thì gửi kèm danh sách nhắc - Zalo mới tô xanh và báo cho người được nhắc
-      const res = await api.sendMessage(mentions.length > 0 ? { msg: text, mentions } : text, threadId, toZaloType(type));
+    sendText: async (threadId, type, text, mentions, replyTo) => {
+      // Có nhắc tên (@) thì gửi kèm danh sách nhắc - Zalo mới tô xanh và báo cho người được nhắc; trả lời tin thì kèm tin gốc
+      const res = await api.sendMessage(toZaloMessage(text, mentions, replyTo), threadId, toZaloType(type));
       return { msgId: res.message?.msgId !== undefined ? String(res.message.msgId) : null };
     },
     sendTyping: async (threadId, type) => {

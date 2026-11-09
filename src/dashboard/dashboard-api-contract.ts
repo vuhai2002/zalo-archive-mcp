@@ -275,6 +275,8 @@ export type SendRequest = {
   when: "now" | "schedule" | "draft";
   sendDate?: string; // YYYY-MM-DD
   sendTime?: string; // HH:mm
+  /** Trả lời tin này (số tin trong kho): tin mới mang ô trích dẫn tin gốc như Zalo */
+  replyToMessageId?: number;
 };
 export type OutboxListResponse = { items: OutboxItem[] };
 

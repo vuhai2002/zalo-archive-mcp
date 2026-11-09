@@ -80,7 +80,7 @@ claude mcp add zalo-archive -- node C:/duong-dan/zalo-archive-mcp/node_modules/t
 | Nhóm | Tool | Việc |
 |---|---|---|
 | Đọc | `list_threads`, `read_thread`, `search_messages`, `get_attachment`, `sync_status` | đọc, tìm, xem file, xem kho phủ tới đâu |
-| Gửi | `send_message` | gửi ngay một tin, chờ tới khi gửi xong rồi báo kết quả; trong nhóm nhắc tên (@) được bằng `mentions` |
+| Gửi | `send_message` | gửi ngay một tin, chờ tới khi gửi xong rồi báo kết quả; trong nhóm nhắc tên (@) được bằng `mentions`; trả lời (trích dẫn) một tin bằng `reply_to` = số tin #N ở `read_thread` |
 | Gửi | `schedule_message` | hẹn giờ một tin |
 | Gửi | `send_batch` | gửi nhiều người, mỗi người một nội dung, chỉ bạn bè, có nhịp |
 | Gửi | `draft_message`, `list_outbox`, `cancel_outbox` | nháp để duyệt trên dashboard, xem / hủy hàng đợi |

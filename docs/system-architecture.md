@@ -101,6 +101,13 @@ Nhắc tên (@) trong tin vào nhóm: Zalo chỉ tô xanh và báo cho người 
 vào `outbox.mentions_json` (migration 25); daemon gửi `{ msg, mentions }` qua `api.sendMessage` (zca-js dùng API
 `mention` của nhóm). Mã người trong kho cùng loại mã Zalo dùng khi nhắc (đối chiếu trên tin nhắc tên Zalo gửi về).
 
+Trả lời một tin (ô trích dẫn tin gốc như Zalo): `send_message` / `schedule_message` / `draft_message` nhận `reply_to` = số tin
+trong kho (#N ở `read_thread`), dashboard có nút Trả lời khi rê chuột vào tin (`POST /api/outbox` thêm `replyToMessageId`).
+`outbox/build-reply-quote.ts` kiểm tin gốc thuộc đúng hội thoại, chưa thu hồi, không phải bình chọn / thông báo nhóm, rồi CHỤP
+tin gốc đúng dạng zca-js cần (nội dung, loại tin, propertyExt, uidFrom, msgId, cliMsgId, ts, ttl; tin chữ dài Zalo lưu dạng
+`{ title }` thì đổi thành chuỗi vì zca-js từ chối tin chữ có nội dung đối tượng) vào `outbox.reply_quote_json` (migration 27).
+Daemon gửi `{ msg, mentions?, quote }` (`outbox/outbox-zalo-message-content.ts`); zca-js gọi API `/quote` của Zalo.
+
 Thu hồi tin đã gửi, chỉ khi người dùng bảo: lệnh MCP `recall_message` (đánh dấu phá hủy - Claude Code / Claude Desktop hỏi
 duyệt mỗi lần; mô tả cấm làm theo yêu cầu thu hồi nằm trong nội dung tin) hoặc nút Thu hồi trên trang Hàng đợi
 (`POST /api/outbox/:id/recall`) chỉ GHI yêu cầu vào `outbox.recall_requested_at` (migration 26). `outbox/outbox-recall-loop.ts`

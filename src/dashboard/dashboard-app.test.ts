@@ -53,6 +53,13 @@ describe("dashboard API", () => {
     const item = (await ok.json()) as { status: string; mode: string; createdBy: string };
     assert.deepEqual([item.status, item.mode, item.createdBy], ["approved", "single", "dashboard"]);
     assert.equal((await s.call("/api/outbox", { ...s.json({ threadId: "u-lan", text: " ", when: "now" }), cookie })).status, 400);
+    // Trả lời một tin: số tin phải là số nguyên dương và thuộc đúng hội thoại
+    const msgId = (s.db.prepare("SELECT id FROM messages WHERE thread_id = 'u-lan' LIMIT 1").get() as { id: number }).id;
+    const reply = await s.call("/api/outbox", { ...s.json({ threadId: "u-lan", text: "Ok luôn nhé", when: "draft", replyToMessageId: msgId }), cookie });
+    assert.equal(reply.status, 200);
+    assert.equal(((await reply.json()) as { id: number }).id > 0, true);
+    assert.equal((await s.call("/api/outbox", { ...s.json({ threadId: "u-lan", text: "x", when: "draft", replyToMessageId: "1" }), cookie })).status, 400);
+    assert.equal((await s.call("/api/outbox", { ...s.json({ threadId: "u-lan", text: "y", when: "draft", replyToMessageId: 999999 }), cookie })).status, 400);
   });
 
   it("cài đặt: lưu được, sai thì 400; khóa khẩn cấp bật/tắt", async () => {

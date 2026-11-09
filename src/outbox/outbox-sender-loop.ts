@@ -11,14 +11,21 @@ import {
   revertSendingToApproved,
   type OutboxItem,
   type OutboxMention,
+  type OutboxReplyQuote,
 } from "../storage/outbox-store.js";
 import { setKillSwitch } from "../storage/send-control-store.js";
 import { getSendSettings } from "../storage/send-settings-store.js";
 import { blockReasonBeforeSend, gatherSendPolicyInput } from "./gather-send-policy-input.js";
 import { evaluateSendPolicy, randomGapMs } from "./send-policy.js";
 
-/** Gửi một tin chữ; `mentions` = nhắc tên (@) trong tin vào nhóm (rỗng = tin chữ thường) */
-export type SendTextFn = (threadId: string, threadType: ThreadKind, text: string, mentions: OutboxMention[]) => Promise<{ msgId: string | null }>;
+/** Gửi một tin chữ; `mentions` = nhắc tên (@) trong tin vào nhóm (rỗng = tin chữ thường); `replyTo` = tin gốc được trả lời */
+export type SendTextFn = (
+  threadId: string,
+  threadType: ThreadKind,
+  text: string,
+  mentions: OutboxMention[],
+  replyTo: OutboxReplyQuote | null,
+) => Promise<{ msgId: string | null }>;
 export type TypingFn = (threadId: string, threadType: ThreadKind) => Promise<void>;
 
 export type OutboxSenderDeps = {
@@ -128,7 +135,7 @@ export class OutboxSender {
   private async sendClaimed(item: OutboxItem): Promise<void> {
     const { db, log } = this.d;
     try {
-      const result = await this.d.sendText(item.threadId, item.threadType, item.text, item.mentions);
+      const result = await this.d.sendText(item.threadId, item.threadType, item.text, item.mentions, item.replyTo);
       if (!result.msgId) throw new Error("Zalo không trả msgId - không rõ tin đã tới chưa");
       markSent(db, item.id, result.msgId);
       log.info({ id: item.id, threadId: item.threadId, msgId: result.msgId }, "Đã gửi tin trong hàng đợi");

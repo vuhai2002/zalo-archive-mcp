@@ -32,6 +32,10 @@ export function outboxAndSettingsRoutes(ctx: DashboardContext): Hono {
     if (body.when !== "now" && body.when !== "schedule" && body.when !== "draft") {
       return c.json({ error: "when phải là now, schedule hoặc draft" }, 400);
     }
+    const replyTo = body.replyToMessageId;
+    if (replyTo !== undefined && (typeof replyTo !== "number" || !Number.isInteger(replyTo) || replyTo <= 0)) {
+      return c.json({ error: "replyToMessageId phải là số tin trong kho" }, 400);
+    }
     const r = enqueueSingle(
       { db, env, readOnly: ctx.readOnly() },
       {
@@ -40,6 +44,7 @@ export function outboxAndSettingsRoutes(ctx: DashboardContext): Hono {
         when: body.when,
         sendDate: body.sendDate,
         sendTime: body.sendTime,
+        replyToMessageId: replyTo,
         createdBy: "dashboard",
       },
     );

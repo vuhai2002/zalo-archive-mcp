@@ -91,3 +91,11 @@ export const IconLink = (p: IconProps) => (
     <path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1" />
   </svg>
 );
+
+/** Trả lời (trích dẫn) một tin, như nút mũi tên cong trên Zalo */
+export const IconReply = (p: IconProps) => (
+  <svg {...iconBase(p)}>
+    <path d="M9.5 6 4 11.5 9.5 17" />
+    <path d="M4.5 11.5H14a6 6 0 0 1 6 6V19" />
+  </svg>
+);

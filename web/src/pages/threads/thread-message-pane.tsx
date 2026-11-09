@@ -1,4 +1,5 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { ArchivedMessage } from "../../archive-api-types";
 import { useArchiveTimeZone, useDashboardShell } from "../../layout/dashboard-shell-context";
 import { threadDisplayName } from "../../shared/thread-kind-badge";
 import { EmptyState, ErrorNote, LoadingText } from "../../shared/ui-bits";
@@ -22,6 +23,8 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
   const tz = useArchiveTimeZone();
   // Nick Chỉ đọc: không có ô soạn tin (máy chủ cũng từ chối mọi lệnh gửi)
   const readOnly = useDashboardShell().session?.account?.readOnly ?? false;
+  // Tin đang được trả lời (bấm Trả lời trên một tin): khung soạn hiện ô trích dẫn, gửi xong thì bỏ
+  const [replyTarget, setReplyTarget] = useState<ArchivedMessage | null>(null);
   // Mở thẳng tại một tin (bấm kết quả tìm chung): trang đầu tải quanh tin đó thay vì trang mới nhất
   const initialFocusId = useRef(focus?.messageId).current;
   const t = useThreadMessages(threadId, initialFocusId);
@@ -182,6 +185,7 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
             onMediaLoad={onMediaLoad}
             onMediaRetried={afterMediaRetried}
             onJumpToMessage={jumpToQuoted}
+            onReply={readOnly ? undefined : setReplyTarget}
           />
         ))}
         {/* Đang xem đoạn cũ (nhảy từ kết quả tìm): cuộn xuống là tải tiếp tin mới hơn */}
@@ -198,7 +202,13 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
           Nick này đang ở chế độ <b>Chỉ đọc</b>: kho chỉ nghe và lưu tin, không gửi gì. Đổi trong trang Tài khoản Zalo.
         </div>
       ) : (
-        <MessageComposer threadId={threadId} threadName={threadDisplayName(t.thread?.name)} onSent={afterSent} />
+        <MessageComposer
+          threadId={threadId}
+          threadName={threadDisplayName(t.thread?.name)}
+          onSent={afterSent}
+          replyTarget={replyTarget}
+          onCancelReply={() => setReplyTarget(null)}
+        />
       )}
     </div>
     {side.panel === "info" && t.thread && <ThreadInfoPanel thread={t.thread} timeZone={tz} onClose={side.toggleInfo} />}

@@ -7,6 +7,21 @@ export type OutboxMode = "single" | "batch";
 export type OutboxCreator = "mcp" | "cli" | "dashboard";
 /** Một chỗ nhắc tên (@) trong tin gửi vào nhóm, đúng dạng Zalo cần: vị trí + độ dài đoạn "@Tên" trong chữ (đơn vị ký tự JS) */
 export type OutboxMention = { uid: string; pos: number; len: number };
+/**
+ * Tin gốc mà tin này trả lời (ô trích dẫn như Zalo), chụp lúc xếp hàng: `messageId` = số tin trong kho, các trường còn lại
+ * đúng dạng zca-js `sendMessage({ quote })` cần (mốc `ts` là chuỗi số ms như Zalo gửi).
+ */
+export type OutboxReplyQuote = {
+  messageId: number;
+  content: string | Record<string, unknown>;
+  msgType: string;
+  propertyExt: Record<string, unknown> | undefined;
+  uidFrom: string;
+  msgId: string;
+  cliMsgId: string;
+  ts: string;
+  ttl: number;
+};
 
 export type OutboxItem = {
   id: number;
@@ -27,6 +42,8 @@ export type OutboxItem = {
   error: string | null;
   /** Nhắc tên (@) gửi kèm; rỗng = tin chữ thường */
   mentions: OutboxMention[];
+  /** Tin gốc được trả lời; null = tin thường */
+  replyTo: OutboxReplyQuote | null;
   /** Thu hồi tin đã gửi: lúc người dùng yêu cầu, lúc Zalo thu hồi xong, lỗi nếu Zalo không cho */
   recallRequestedAt: string | null;
   recalledAt: string | null;
@@ -54,6 +71,7 @@ export function toItem(r: Record<string, unknown>): OutboxItem {
     sentMsgId: s("sent_msg_id"),
     error: s("error"),
     mentions: parseMentions(r.mentions_json),
+    replyTo: parseReplyTo(r.reply_quote_json),
     recallRequestedAt: s("recall_requested_at"),
     recalledAt: s("recalled_at"),
     recallError: s("recall_error"),
@@ -69,5 +87,15 @@ function parseMentions(v: unknown): OutboxMention[] {
       : [];
   } catch {
     return [];
+  }
+}
+
+function parseReplyTo(v: unknown): OutboxReplyQuote | null {
+  if (typeof v !== "string" || !v) return null;
+  try {
+    const q = JSON.parse(v) as Partial<OutboxReplyQuote> | null;
+    return q && Number.isInteger(q.messageId) && typeof q.msgId === "string" && typeof q.uidFrom === "string" ? (q as OutboxReplyQuote) : null;
+  } catch {
+    return null;
   }
 }

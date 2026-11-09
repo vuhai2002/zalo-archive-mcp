@@ -7,6 +7,7 @@ import { containsUnsafeControlChars } from "../shared/terminal-safe-text.js";
 import { findThread, type ThreadSummary } from "../storage/message-read-queries.js";
 import { enqueueOutboxItem, type OutboxCreator } from "../storage/outbox-store.js";
 import { getSendSettings } from "../storage/send-settings-store.js";
+import { buildReplyQuote } from "./build-reply-quote.js";
 import { resolveOutboxMentions, type MentionRequest } from "./resolve-outbox-mentions.js";
 
 /**
@@ -62,8 +63,14 @@ function isDuplicatePending(db: DatabaseSync, threadId: string, text: string): n
   return row?.id ?? null;
 }
 
-/** Một tin tới một hội thoại (tin lẻ: không trần, không khung giờ); vào nhóm thì có thể nhắc tên (@) người trong nhóm */
-export function enqueueSingle(ctx: EnqueueContext, req: Common & { threadId: string; text: string; mentions?: MentionRequest[] }): EnqueueResult {
+/**
+ * Một tin tới một hội thoại (tin lẻ: không trần, không khung giờ); vào nhóm thì có thể nhắc tên (@) người trong nhóm.
+ * `replyToMessageId` = số tin trong kho của tin được trả lời (tin mới mang ô trích dẫn tin đó, như Trả lời trên Zalo).
+ */
+export function enqueueSingle(
+  ctx: EnqueueContext,
+  req: Common & { threadId: string; text: string; mentions?: MentionRequest[]; replyToMessageId?: number },
+): EnqueueResult {
   if (ctx.readOnly) return { ok: false, error: READ_ONLY_ERROR };
   if (req.note && containsUnsafeControlChars(req.note)) return { ok: false, error: UNSAFE_CHARS_ERROR };
   const text = checkText(req.text);
@@ -72,6 +79,8 @@ export function enqueueSingle(ctx: EnqueueContext, req: Common & { threadId: str
   if ("error" in thread) return { ok: false, ...thread };
   const mentions = resolveOutboxMentions(ctx.db, thread, text, req.mentions);
   if ("error" in mentions) return { ok: false, ...mentions };
+  const reply = req.replyToMessageId === undefined ? { quote: null } : buildReplyQuote(ctx.db, thread, req.replyToMessageId);
+  if ("error" in reply) return { ok: false, ...reply };
   const schedule = resolveSchedule(ctx, req);
   if ("error" in schedule) return { ok: false, ...schedule };
   const dup = isDuplicatePending(ctx.db, thread.threadId, text);
@@ -88,6 +97,7 @@ export function enqueueSingle(ctx: EnqueueContext, req: Common & { threadId: str
     note: req.note?.slice(0, 500) ?? null,
     status: req.when === "draft" ? "draft" : "approved",
     mentions,
+    replyTo: reply.quote,
   });
   return { ok: true, ids: [id], batchId: null, notBefore: schedule.notBefore, warnings: [] };
 }

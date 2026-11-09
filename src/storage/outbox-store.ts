@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ThreadKind } from "../archive/archived-message-types.js";
-import { toItem, type OutboxCreator, type OutboxItem, type OutboxMention, type OutboxMode, type OutboxStatus } from "./outbox-item-mapping.js";
+import { toItem, type OutboxCreator, type OutboxItem, type OutboxMention, type OutboxMode, type OutboxReplyQuote, type OutboxStatus } from "./outbox-item-mapping.js";
 
 /**
  * Hàng đợi gửi. Vòng đời:
@@ -12,7 +12,7 @@ import { toItem, type OutboxCreator, type OutboxItem, type OutboxMention, type O
  * Mọi chuyển trạng thái là UPDATE có điều kiện trạng thái cũ, nên hai tiến trình
  * (MCP hủy, daemon gửi) không giẫm lên nhau.
  */
-export type { OutboxCreator, OutboxItem, OutboxMention, OutboxMode, OutboxStatus } from "./outbox-item-mapping.js";
+export type { OutboxCreator, OutboxItem, OutboxMention, OutboxMode, OutboxReplyQuote, OutboxStatus } from "./outbox-item-mapping.js";
 
 export type NewOutboxItem = {
   threadId: string;
@@ -27,6 +27,8 @@ export type NewOutboxItem = {
   status: "draft" | "approved";
   /** Nhắc tên (@) trong tin gửi vào nhóm */
   mentions?: OutboxMention[];
+  /** Trả lời một tin (ô trích dẫn) */
+  replyTo?: OutboxReplyQuote | null;
 };
 
 export function enqueueOutboxItem(db: DatabaseSync, d: NewOutboxItem): number {
@@ -34,8 +36,8 @@ export function enqueueOutboxItem(db: DatabaseSync, d: NewOutboxItem): number {
   const row = db
     .prepare(
       `INSERT INTO outbox (thread_id, thread_type, text, mode, batch_id, not_before, status, created_by, note,
-         created_at, approved_at, mentions_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+         created_at, approved_at, mentions_json, reply_quote_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
     )
     .get(
       d.threadId,
@@ -50,6 +52,7 @@ export function enqueueOutboxItem(db: DatabaseSync, d: NewOutboxItem): number {
       now,
       d.status === "approved" ? now : null,
       d.mentions?.length ? JSON.stringify(d.mentions) : null,
+      d.replyTo ? JSON.stringify(d.replyTo) : null,
     ) as { id: number };
   return Number(row.id);
 }

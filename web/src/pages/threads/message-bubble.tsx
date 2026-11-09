@@ -13,6 +13,7 @@ import { useMediaViewer } from "./media-viewer-context";
 import { viewerItemFromMessage } from "./media-viewer-items";
 import { MessageLinkCard } from "./message-link-card";
 import { MessageReactionPill } from "./message-reaction-pill";
+import { MessageReplyButton } from "./message-reply-button";
 import { MessageSystemNotice } from "./message-system-notice";
 import { isSystemMessage } from "./message-grouping";
 import { mergeAlbumReactions } from "./photo-album-grouping";
@@ -46,6 +47,7 @@ export function MessageBubble({
   onMediaLoad,
   onMediaRetried,
   onJumpToMessage,
+  onReply,
   album = null,
 }: {
   msg: ArchivedMessage;
@@ -60,6 +62,8 @@ export function MessageBubble({
   onMediaRetried: () => void;
   /** Bấm ô trích dẫn: nhảy tới tin gốc */
   onJumpToMessage?: (id: number) => void;
+  /** Bấm Trả lời (rê chuột vào tin): khung soạn trích dẫn tin này. Không truyền = không trả lời được (nick Chỉ đọc) */
+  onReply?: (msg: ArchivedMessage) => void;
 }) {
   const [revealed, setRevealed] = useState(false);
   const self = msg.isSelf;
@@ -90,6 +94,8 @@ export function MessageBubble({
   const albumCaption = album ? album.map((m) => m.text.trim()).filter(Boolean).join("\n") : "";
   const showName = isGroup && !self && first;
   const showMeta = last || (recalled && revealed);
+  // Zalo không cho trả lời tin đã thu hồi hay bình chọn
+  const reply = onReply && !recalled && msg.msgType !== "group.poll" ? <MessageReplyButton onClick={() => onReply(msg)} /> : null;
 
   const meta = (
     <div className="mt-1 flex items-center gap-2 text-[11px] text-chat-time">
@@ -105,7 +111,8 @@ export function MessageBubble({
   );
 
   return (
-    <div className={`flex gap-2 ${self ? "justify-end" : "justify-start"} ${first ? "mt-3" : "mt-1"}`}>
+    <div className={`group flex gap-2 ${self ? "justify-end" : "justify-start"} ${first ? "mt-3" : "mt-1"}`}>
+      {self && reply}
       {!self && (
         <div className="w-8 shrink-0">
           {first && <ContactAvatar name={name} seed={msg.senderId} url={msg.senderAvatarUrl} size="sm" />}
@@ -174,6 +181,7 @@ export function MessageBubble({
         )}
         {!bare && !hidden && <MessageReactionPill reactions={msg.reactions} />}
       </div>
+      {!self && reply}
     </div>
   );
 }
