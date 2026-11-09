@@ -127,7 +127,7 @@ export function listOutboxTool(ctx: SendToolContext, args: { status?: OutboxStat
     const err = i.error ? ` lỗi: ${i.error}` : "";
     const preview = i.text.length > 80 ? `${i.text.slice(0, 80)}...` : i.text;
     const recall = i.recalledAt ? ", đã thu hồi" : i.recallError ? `, thu hồi lỗi: ${i.recallError}` : i.recallRequestedAt ? ", chờ thu hồi" : "";
-    const reply = i.replyTo ? `, trả lời tin #${i.replyTo.messageId}` : "";
+    const reply = i.replyTo ? `, trả lời tin #${i.replyTo.messageId}` : i.forwardOf !== null ? `, chuyển tiếp tin #${i.forwardOf}` : "";
     return `#${i.id} [${i.status}${i.mode === "batch" ? ", lô" : ""}${reply}${recall}] -> ${i.threadId}${when}: ${preview}${err}`;
   });
   return toolOk(lines.join("\n"));

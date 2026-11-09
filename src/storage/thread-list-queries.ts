@@ -39,9 +39,12 @@ export function listThreads(db: DatabaseSync, opts: { query?: string; limit: num
  * Không có `query`: chỉ hội thoại ĐÃ có tin - bạn bè chưa từng nhắn (có hàng trăm
  * trên nick chính) không làm ngập danh sách. Có `query`: tìm cả họ, để gửi tin mới.
  */
+/** Lọc danh sách hội thoại như các tab của hộp Chia sẻ Zalo: chỉ nhóm, hoặc chỉ bạn bè */
+export type ThreadListKind = "group" | "friend";
+
 export function listThreadsPage(
   db: DatabaseSync,
-  opts: { query?: string; limit: number; offset: number; pinnedFirst?: boolean },
+  opts: { query?: string; limit: number; offset: number; pinnedFirst?: boolean; kind?: ThreadListKind },
 ): { threads: ThreadSummary[]; total: number } {
   const raw = opts.query?.trim() ?? "";
   // Lọc tên bằng JS vì cần bỏ dấu cả hai phía; vài nghìn hội thoại vẫn nhanh.
@@ -53,14 +56,15 @@ export function listThreadsPage(
     .all() as Array<Record<string, unknown>>;
 
   const needle = foldVietnameseForSearch(raw);
+  const ofKind = opts.kind ? rows.filter((r) => (opts.kind === "group" ? r.thread_type === "group" : r.thread_type === "user" && Number(r.is_friend) === 1)) : rows;
   const filtered = raw
-    ? rows.filter(
+    ? ofKind.filter(
         (r) =>
           r.thread_id === raw ||
           foldVietnameseForSearch(String(r.name ?? "")).includes(needle) ||
           foldVietnameseForSearch(String(r.other_name ?? "")).includes(needle),
       )
-    : rows;
+    : ofKind;
   const page = filtered.slice(opts.offset, opts.offset + opts.limit).map((r) => toThreadSummary(db, r));
   return { threads: page, total: filtered.length };
 }

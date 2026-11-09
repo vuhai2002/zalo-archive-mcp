@@ -1,13 +1,14 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { ArchivedMessage } from "../../archive-api-types";
 import { useArchiveTimeZone, useDashboardShell } from "../../layout/dashboard-shell-context";
 import { threadDisplayName } from "../../shared/thread-kind-badge";
 import { EmptyState, ErrorNote, LoadingText } from "../../shared/ui-bits";
 import { useArchiveLiveChanges } from "../../shared/use-archive-live-changes";
 import { useLoadMoreWhenVisible } from "../../shared/use-load-more-when-visible";
-import { ChatItemRow, itemHasMessage } from "./chat-item-row";
+import { ChatItemRow, itemHasMessage, rowSelection } from "./chat-item-row";
 import { JumpToLatestButton } from "./jump-to-latest-button";
 import { MessageComposer } from "./message-composer";
+import { MessageSelectionBar } from "./message-selection-bar";
+import { useMessageActions } from "./use-message-actions";
 import { layoutMessages } from "./message-grouping";
 import { MediaViewerProvider } from "./media-viewer-context";
 import { collapseAlbums } from "./photo-album-grouping";
@@ -23,11 +24,11 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
   const tz = useArchiveTimeZone();
   // Nick Chỉ đọc: không có ô soạn tin (máy chủ cũng từ chối mọi lệnh gửi)
   const readOnly = useDashboardShell().session?.account?.readOnly ?? false;
-  // Tin đang được trả lời (bấm Trả lời trên một tin): khung soạn hiện ô trích dẫn, gửi xong thì bỏ
-  const [replyTarget, setReplyTarget] = useState<ArchivedMessage | null>(null);
   // Mở thẳng tại một tin (bấm kết quả tìm chung): trang đầu tải quanh tin đó thay vì trang mới nhất
   const initialFocusId = useRef(focus?.messageId).current;
   const t = useThreadMessages(threadId, initialFocusId);
+  // Trả lời, Chia sẻ, Copy, Chọn nhiều tin nhắn, Xóa khỏi kho
+  const acts = useMessageActions({ readOnly, onDeleted: t.dropMessages });
   const scrollRef = useRef<HTMLDivElement>(null);
   const intent = useRef<ScrollIntent | null>(initialFocusId ? { kind: "message", id: initialFocusId } : { kind: "bottom" });
   const stickToBottom = useRef(!initialFocusId);
@@ -185,7 +186,8 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
             onMediaLoad={onMediaLoad}
             onMediaRetried={afterMediaRetried}
             onJumpToMessage={jumpToQuoted}
-            onReply={readOnly ? undefined : setReplyTarget}
+            actions={acts.actions}
+            selection={acts.selected ? rowSelection(acts.selected, item, acts.toggle) : undefined}
           />
         ))}
         {/* Đang xem đoạn cũ (nhảy từ kết quả tìm): cuộn xuống là tải tiếp tin mới hơn */}
@@ -197,7 +199,9 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
       {(!t.atLatest || awayFromBottom) && !t.loading && t.messages.length > 0 && <JumpToLatestButton onClick={goToLatest} />}
       </div>
 
-      {readOnly ? (
+      {acts.selected ? (
+        <MessageSelectionBar count={acts.selected.size} onDelete={acts.deleteSelected} onCancel={acts.cancelSelect} />
+      ) : readOnly ? (
         <div className="border-t border-line bg-surface px-4 py-3 text-center text-[13px] text-ink-soft">
           Nick này đang ở chế độ <b>Chỉ đọc</b>: kho chỉ nghe và lưu tin, không gửi gì. Đổi trong trang Tài khoản Zalo.
         </div>
@@ -206,10 +210,11 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
           threadId={threadId}
           threadName={threadDisplayName(t.thread?.name)}
           onSent={afterSent}
-          replyTarget={replyTarget}
-          onCancelReply={() => setReplyTarget(null)}
+          replyTarget={acts.replyTarget}
+          onCancelReply={acts.cancelReply}
         />
       )}
+      {acts.overlays}
     </div>
     {side.panel === "info" && t.thread && <ThreadInfoPanel thread={t.thread} timeZone={tz} onClose={side.toggleInfo} />}
     {side.panel === "search" && (

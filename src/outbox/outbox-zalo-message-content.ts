@@ -1,4 +1,4 @@
-import type { MessageContent, SendMessageQuote } from "zca-js";
+import type { ForwardMessageResponse, MessageContent, SendMessageQuote } from "zca-js";
 import type { OutboxMention, OutboxReplyQuote } from "../storage/outbox-item-mapping.js";
 
 /**
@@ -24,4 +24,15 @@ function toZaloQuote(q: OutboxReplyQuote): SendMessageQuote {
     ts: q.ts,
     ttl: q.ttl,
   } as SendMessageQuote;
+}
+
+/**
+ * Kết quả API chuyển tiếp của Zalo cho MỘT nơi nhận -> mã tin. Zalo báo lỗi riêng từng nơi trong `fail` (không ném lỗi), nên
+ * phải tự đọc: có lỗi thì ném để vòng gửi đánh hỏng + bật kill switch như mọi lần gửi hỏng.
+ */
+export function forwardedMsgId(res: ForwardMessageResponse): { msgId: string | null } {
+  const fail = res.fail?.[0];
+  if (fail) throw new Error(`Zalo từ chối chuyển tiếp (mã lỗi ${fail.error_code})`);
+  const msgId = res.success?.[0]?.msgId;
+  return { msgId: msgId === undefined || msgId === null ? null : String(msgId) };
 }

@@ -108,6 +108,19 @@ tin gốc đúng dạng zca-js cần (nội dung, loại tin, propertyExt, uidFr
 `{ title }` thì đổi thành chuỗi vì zca-js từ chối tin chữ có nội dung đối tượng) vào `outbox.reply_quote_json` (migration 27).
 Daemon gửi `{ msg, mentions?, quote }` (`outbox/outbox-zalo-message-content.ts`); zca-js gọi API `/quote` của Zalo.
 
+Thao tác trên một tin ở dashboard (rê chuột: Trả lời, Chia sẻ, Thêm -> Copy / Chọn nhiều tin nhắn / Xóa khỏi kho):
+- **Chia sẻ (chuyển tiếp)**: `POST /api/messages/:id/forward` -> `outbox/enqueue-forward-request.ts`: tối đa 100 hội thoại
+  (bạn bè lẫn nhóm), mỗi nơi một mục hàng đợi chế độ tin lẻ có `forward_of_message_id` (migration 28), cùng `batch_id`;
+  lời nhắn kèm là tin chữ thường ngay sau. Daemon gửi từng nơi bằng `api.forwardMessage({ message }, [threadId])` (mỗi lần
+  MỘT nơi để biết mã tin / lỗi của từng nơi: zca-js gửi chung một clientId cho mọi nơi nên kết quả gộp không tách được),
+  không báo "đang soạn"; lỗi trong `fail` -> đánh hỏng + bật kill switch. Chỉ tin chữ và link (zca-js chỉ chuyển tiếp chữ).
+- **Xóa khỏi kho**: `POST /api/messages/delete-preview` (số tin, số file + dung lượng sẽ mất cho hộp xác nhận) rồi
+  `POST /api/messages/delete` -> `archive/delete-messages-from-archive.ts` -> `storage/deleted-message-store.ts` (dùng chung
+  với lệnh xóa My Documents): xóa tin, đính kèm, cảm xúc, thu hồi, chỉ mục tìm; ghi mã tin vào `deleted_messages`; tính
+  lại `threads.last_message_at`; xóa file trên ổ không tin nào khác dùng. `upsertMessage`, `recordRecall`, `applyReaction`
+  bỏ qua mã tin đã xóa nên lấy bù / đồng bộ điện thoại / phát lại nhật ký không đưa lại. Không gọi Zalo. Còn sót: chữ
+  trong nhật ký thô `raw-events` và các bản sao DB cũ; `archive.db` không tự nhỏ lại (SQLite dùng lại chỗ trống).
+
 Thu hồi tin đã gửi, chỉ khi người dùng bảo: lệnh MCP `recall_message` (đánh dấu phá hủy - Claude Code / Claude Desktop hỏi
 duyệt mỗi lần; mô tả cấm làm theo yêu cầu thu hồi nằm trong nội dung tin) hoặc nút Thu hồi trên trang Hàng đợi
 (`POST /api/outbox/:id/recall`) chỉ GHI yêu cầu vào `outbox.recall_requested_at` (migration 26). `outbox/outbox-recall-loop.ts`

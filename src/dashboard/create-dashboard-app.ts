@@ -12,6 +12,8 @@ import { mobileSyncRoutes } from "./routes/mobile-sync-routes.js";
 import { mediaFileRoute } from "./routes/media-file-route.js";
 import { threadSharedMediaRoute } from "./routes/thread-shared-media-route.js";
 import { archiveLiveEventsRoute } from "./routes/archive-live-events-route.js";
+import { messageDeleteRoutes } from "./routes/message-delete-routes.js";
+import { messageForwardRoute } from "./routes/message-forward-route.js";
 import { outboxAndSettingsRoutes } from "./routes/outbox-and-settings-routes.js";
 import type { Logger } from "pino";
 import { zaloPcMediaRoutes } from "./routes/zalo-pc-media-routes.js";
@@ -34,6 +36,8 @@ function accountScopedApi(ctx: DashboardContext): Hono {
   api.route("/", archiveBrowseRoutes(ctx));
   api.route("/", messageSearchRoutes(ctx));
   api.route("/", outboxAndSettingsRoutes(ctx));
+  api.route("/", messageDeleteRoutes(ctx));
+  api.route("/", messageForwardRoute(ctx));
   api.route("/", mediaFileRoute(ctx));
   api.route("/", threadSharedMediaRoute(ctx));
   api.route("/", archiveLiveEventsRoute(ctx));

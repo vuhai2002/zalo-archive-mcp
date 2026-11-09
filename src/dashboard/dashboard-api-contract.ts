@@ -55,7 +55,7 @@ export type OverviewResponse = {
 };
 
 // ---------- Hội thoại + tin ----------
-// GET /api/threads?query=&limit=50&offset=0
+// GET /api/threads?query=&limit=50&offset=0&kind=group|friend  (kind: chỉ nhóm / chỉ bạn bè, cho hộp Chia sẻ)
 //   Không có query: chỉ hội thoại ĐÃ có tin. Có query: tìm cả bạn bè chưa từng nhắn (để gửi tin mới).
 export type ThreadSummary = {
   threadId: string;
@@ -258,9 +258,23 @@ export type OutboxItem = {
   /** Đang chờ daemon thu hồi / Zalo không cho thu hồi */
   recallRequestedAt: string | null;
   recallError: string | null;
+  /** Tin chuyển tiếp (hộp Chia sẻ); các mục của cùng một lần chia sẻ chung `batchId` */
+  forwarded: boolean;
 };
 
 // GET  /api/outbox?status=&limit=100           -> { items: OutboxItem[] }
+// POST /api/messages/delete-preview  body MessageDeleteRequest -> MessageDeletePreview (cho hộp xác nhận)
+// POST /api/messages/delete          body MessageDeleteRequest -> MessageDeleteResult
+//      Xóa tin khỏi KHO (không đụng Zalo), file không tin nào khác dùng thì xóa khỏi ổ; đồng bộ sau không đưa tin vào lại
+export type MessageDeleteRequest = { ids: number[] };
+export type MessageDeletePreview = { messages: number; files: number; bytes: number };
+export type MessageDeleteResult = { deleted: number; filesRemoved: number; bytes: number };
+
+// POST /api/messages/:id/forward  body ForwardRequestBody -> ForwardResult | 400 ApiError
+//      Chuyển tiếp (Chia sẻ) tin chữ / link tới tối đa 100 hội thoại; mỗi nơi một mục hàng đợi (+ lời nhắn nếu có)
+export type ForwardRequestBody = { threadIds: string[]; note?: string };
+export type ForwardResult = { ids: number[]; batchId: string };
+
 // POST /api/outbox  body SendRequest            -> 200 OutboxItem | 400 ApiError
 //      when "now": vào hàng đợi đã duyệt, daemon gửi trong vài giây (web hỏi lại GET /api/outbox/:id)
 //      when "schedule": cần sendDate + sendTime (giờ của kho)

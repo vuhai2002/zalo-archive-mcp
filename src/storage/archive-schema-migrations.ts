@@ -382,4 +382,9 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE outbox ADD COLUMN reply_quote_json TEXT;
   `,
+  // 28: chuyển tiếp (Chia sẻ) một tin tới nhiều hội thoại: mục hàng đợi nhớ số tin gốc trong kho, daemon gửi bằng API
+  // chuyển tiếp của Zalo thay vì gửi tin chữ
+  `
+  ALTER TABLE outbox ADD COLUMN forward_of_message_id INTEGER;
+  `,
 ];

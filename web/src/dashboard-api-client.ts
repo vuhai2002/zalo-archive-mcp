@@ -6,7 +6,11 @@
 import type {
   AccountsResponse,
   AuthStatusResponse,
+  ForwardRequestBody,
+  ForwardResult,
   MeResponse,
+  MessageDeletePreview,
+  MessageDeleteResult,
   MobileSyncResponse,
   ZaloPcMediaImportStatus,
   MobileSyncStartRequest,
@@ -111,7 +115,8 @@ export const api = {
 
   overview: (days: number) => request<OverviewResponse>(withQuery("/api/overview", { days })),
 
-  threads: (p: { query?: string; limit: number; offset: number }) =>
+  /** `kind`: chỉ nhóm / chỉ bạn bè (tab của hộp Chia sẻ) */
+  threads: (p: { query?: string; limit: number; offset: number; kind?: "group" | "friend" }) =>
     request<ThreadListResponse>(withQuery("/api/threads", p)),
   threadMessages: (threadId: string, p: { beforeId?: number; afterId?: number; aroundId?: number; limit: number }) =>
     request<ThreadMessagesResponse>(withQuery(`/api/threads/${enc(threadId)}/messages`, p)),
@@ -143,6 +148,12 @@ export const api = {
   outboxApprove: (id: number) => post<OutboxItem>(`/api/outbox/${id}/approve`),
   outboxCancel: (id: number) => post<OutboxItem>(`/api/outbox/${id}/cancel`),
   outboxRecall: (id: number) => post<OutboxItem>(`/api/outbox/${id}/recall`),
+
+  /** Xóa tin khỏi KHO (không đụng Zalo): xem trước cho hộp xác nhận, rồi xóa */
+  messageDeletePreview: (ids: number[]) => post<MessageDeletePreview>("/api/messages/delete-preview", { ids }),
+  messageDelete: (ids: number[]) => post<MessageDeleteResult>("/api/messages/delete", { ids }),
+  /** Chuyển tiếp (Chia sẻ) tin chữ / link tới tối đa 100 hội thoại */
+  messageForward: (id: number, body: ForwardRequestBody) => post<ForwardResult>(`/api/messages/${id}/forward`, body),
 
   settings: () => request<SettingsResponse>("/api/settings"),
   updateSettings: (patch: Partial<SendSettings>) =>

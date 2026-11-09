@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { MessageSource, NormalizedMessage, NormalizedRecall } from "../archive/archived-message-types.js";
 import { inTransaction } from "../shared/db-transaction.js";
 import { noteContactSeen } from "./contact-store.js";
-import { isDeletedMessage } from "./my-documents-deletion-store.js";
+import { isDeletedMessage } from "./deleted-message-store.js";
 import { findCliMsgIdTwin, isProvisionalMsgId, promoteProvisionalTwin } from "./provisional-message-id-twin.js";
 import { foldVietnameseForSearch } from "../shared/fold-vietnamese-for-search.js";
 
@@ -105,8 +105,9 @@ export function upsertMessage(
   });
 }
 
-/** Ghi lệnh thu hồi; tin gốc có rồi thì đánh dấu ngay, chưa có thì chờ tin tới */
+/** Ghi lệnh thu hồi; tin gốc có rồi thì đánh dấu ngay, chưa có thì chờ tin tới. Tin đã xóa khỏi kho thì bỏ qua */
 export function recordRecall(db: DatabaseSync, recall: NormalizedRecall): void {
+  if (isDeletedMessage(db, recall.msgId)) return;
   inTransaction(db, () => {
     db.prepare(
       `INSERT OR IGNORE INTO message_recalls (msg_id, thread_id, recalled_by, recalled_at, raw_json)

@@ -1,8 +1,7 @@
 import type { ThreadListItem } from "../../archive-api-types";
 import { IconImage, IconLink, IconPaperclip, IconPlay } from "../../shared/action-and-media-icons";
-import { ContactAvatar } from "../../shared/contact-avatar";
 import { IconPin, IconUsers } from "../../shared/dashboard-icons";
-import { MemberAvatarStack } from "../../shared/member-avatar-stack";
+import { ThreadAvatar } from "../../shared/thread-avatar";
 import { threadDisplayName } from "../../shared/thread-kind-badge";
 import { previewParts, zaloListTime, type PreviewIcon } from "../../shared/zalo-list-time-and-preview";
 
@@ -26,12 +25,6 @@ export function ThreadListRow({
 }) {
   const name = threadDisplayName(t.name);
   const preview = previewParts(t.lastMessage, t.threadType);
-  const avatar =
-    t.threadType === "group" && !t.avatarUrl && t.memberAvatars.length > 0 ? (
-      <MemberAvatarStack members={t.memberAvatars} memberCount={t.memberCount} seed={t.threadId} />
-    ) : (
-      <ContactAvatar name={name} seed={t.threadId} url={t.avatarUrl} size="lg" />
-    );
 
   return (
     <div className={`group relative transition-colors ${active ? "bg-zalo-50 dark:bg-zalo-500/15" : "hover:bg-tile/70"}`}>
@@ -41,7 +34,7 @@ export function ThreadListRow({
         aria-current={active ? "true" : undefined}
         className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left"
       >
-        {avatar}
+        <ThreadAvatar t={t} />
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
             <span className="flex min-w-0 flex-1 items-center gap-1.5">

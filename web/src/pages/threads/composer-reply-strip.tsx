@@ -1,5 +1,5 @@
 import type { ArchivedMessage } from "../../archive-api-types";
-import { IconReply } from "../../shared/action-and-media-icons";
+import { IconQuote } from "../../shared/message-action-icons";
 import { IconClose } from "../../shared/dashboard-icons";
 
 /** Nhãn của tin không có chữ, như ô trích dẫn Zalo */
@@ -28,7 +28,7 @@ export function ComposerReplyStrip({ target, onCancel }: { target: ArchivedMessa
   const name = target.senderName?.trim() || (target.isSelf ? "Bạn" : target.senderId);
   return (
     <div className="mx-3 mt-2 flex items-start gap-2 rounded-md border-l-2 border-zalo-500 bg-tile px-2.5 py-1.5 text-[12.5px]">
-      <IconReply size={16} className="mt-0.5 shrink-0 text-zalo-500" />
+      <IconQuote size={16} className="mt-0.5 shrink-0 text-zalo-500" />
       <div className="min-w-0 flex-1">
         <div className="text-ink">
           Trả lời <span className="font-semibold">{name}</span>

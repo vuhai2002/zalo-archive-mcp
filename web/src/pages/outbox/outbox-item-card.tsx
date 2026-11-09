@@ -38,7 +38,7 @@ export function OutboxItemCard({
         </Link>
         <ThreadKindBadge threadType={item.threadType} />
         <Badge tone={item.mode === "batch" ? "amber" : "gray"} dot={false}>
-          {item.mode === "batch" ? "Gửi lô" : "Tin lẻ"}
+          {item.mode === "batch" ? "Gửi lô" : item.forwarded ? "Chuyển tiếp" : "Tin lẻ"}
         </Badge>
         <span className="ml-auto flex items-center gap-1.5">
           {item.recalledAt && <Badge tone="gray">Đã thu hồi</Badge>}
@@ -72,7 +72,8 @@ export function OutboxItemCard({
         )}
         {item.batchId && (
           <div className="min-w-0 truncate">
-            <dt className="inline">Lô: </dt>
+            {/* Tin lẻ có mã nhóm = một phần của lần Chia sẻ (tin chuyển tiếp + lời nhắn) */}
+            <dt className="inline">{item.mode === "batch" ? "Lô: " : "Lần chia sẻ: "}</dt>
             <dd className="inline font-mono text-ink">{item.batchId}</dd>
           </div>
         )}

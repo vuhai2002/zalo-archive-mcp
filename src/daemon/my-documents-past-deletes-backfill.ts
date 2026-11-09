@@ -2,7 +2,8 @@ import type { DatabaseSync } from "node:sqlite";
 import type { Logger } from "pino";
 import { listJournalFiles, readJournalFile } from "../archive/raw-event-journal.js";
 import { removeOrphanMediaFiles } from "../media/remove-orphan-media-files.js";
-import { deleteMessagesForGood, myDocumentsThreadId } from "../storage/my-documents-deletion-store.js";
+import { deleteMessagesForGood } from "../storage/deleted-message-store.js";
+import { myDocumentsThreadId } from "../storage/my-documents-deletion-store.js";
 import { getMeta, setMeta } from "../storage/thread-directory-store.js";
 import { isLocalDeletePayload, localDeleteTargets, type RawListenerMessage } from "../zalo/normalize-zalo-event.js";
 

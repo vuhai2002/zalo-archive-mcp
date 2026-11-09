@@ -57,6 +57,8 @@ export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
       limit: clampInt(c.req.query("limit"), 50, 1, 200),
       offset: clampInt(c.req.query("offset"), 0, 0, 1_000_000),
       pinnedFirst: true,
+      // Tab Nhóm / Bạn bè của hộp Chia sẻ
+      kind: c.req.query("kind") === "group" ? "group" : c.req.query("kind") === "friend" ? "friend" : undefined,
     });
     const threads = page.threads.map((t) => ({
       ...t,

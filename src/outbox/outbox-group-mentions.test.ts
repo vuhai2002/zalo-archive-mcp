@@ -81,6 +81,7 @@ describe("nhắc tên (@) trong tin gửi vào nhóm", () => {
         calls.push({ text, mentions });
         return { msgId: String(500 + calls.length) };
       },
+      forwardText: async () => ({ msgId: null }),
       sendTyping: async () => {},
       sleep: async () => {},
       isListenerConnected: () => true,

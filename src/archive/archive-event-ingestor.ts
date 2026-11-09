@@ -2,7 +2,8 @@ import type { DatabaseSync } from "node:sqlite";
 import type { Logger } from "pino";
 import { applyReaction } from "../storage/message-reaction-store.js";
 import { recordRecall, upsertMessage } from "../storage/message-write-store.js";
-import { deleteMessagesForGood, myDocumentsThreadId } from "../storage/my-documents-deletion-store.js";
+import { deleteMessagesForGood } from "../storage/deleted-message-store.js";
+import { myDocumentsThreadId } from "../storage/my-documents-deletion-store.js";
 import { getMeta } from "../storage/thread-directory-store.js";
 import { groupEventNotice, normalizeReaction } from "../zalo/normalize-reaction-and-group-event.js";
 import {

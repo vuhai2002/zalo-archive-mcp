@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ThreadKind } from "../archive/archived-message-types.js";
 import { emojiForZaloCode } from "../archive/zalo-emoticon-emoji.js";
+import { isDeletedMessage } from "./deleted-message-store.js";
 
 /** Một lần bấm cảm xúc (hoặc gỡ cảm xúc), đã chuẩn hóa từ sự kiện zca-js */
 export type ReactionInput = {
@@ -21,14 +22,14 @@ export type ReactionSummary = { icon: string; emoji: string | null; count: numbe
 
 /**
  * Ghi một lần bấm. Sự kiện lặp (lấy bù, phát lại nhật ký) bị bỏ nhờ khóa (tin, id lần bấm),
- * nên đếm không bị nhân đôi; thứ tự tới không quan trọng vì lúc đọc mới tính theo mốc giờ.
+ * nên đếm không bị nhân đôi; thứ tự tới không quan trọng vì lúc đọc mới tính theo mốc giờ. Tin đã xóa khỏi kho thì bỏ qua.
  */
 export function applyReaction(db: DatabaseSync, r: ReactionInput): void {
   const stmt = db.prepare(
     `INSERT OR IGNORE INTO message_reaction_taps (msg_id, action_id, reactor_id, icon, reacted_at, thread_id, thread_type)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
   );
-  for (const msgId of r.targetMsgIds) stmt.run(msgId, r.actionId, r.reactorId, r.icon, r.reactedAt, r.threadId, r.threadType);
+  for (const msgId of r.targetMsgIds) if (!isDeletedMessage(db, msgId)) stmt.run(msgId, r.actionId, r.reactorId, r.icon, r.reactedAt, r.threadId, r.threadType);
 }
 
 type TapRow = { msg_id: string; reactor_id: string; icon: string; reacted_at: string; display_name: string | null };

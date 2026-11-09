@@ -44,6 +44,8 @@ export type OutboxItem = {
   mentions: OutboxMention[];
   /** Tin gốc được trả lời; null = tin thường */
   replyTo: OutboxReplyQuote | null;
+  /** Chuyển tiếp tin này (số tin trong kho): daemon gửi bằng API chuyển tiếp; null = tin thường */
+  forwardOf: number | null;
   /** Thu hồi tin đã gửi: lúc người dùng yêu cầu, lúc Zalo thu hồi xong, lỗi nếu Zalo không cho */
   recallRequestedAt: string | null;
   recalledAt: string | null;
@@ -72,6 +74,7 @@ export function toItem(r: Record<string, unknown>): OutboxItem {
     error: s("error"),
     mentions: parseMentions(r.mentions_json),
     replyTo: parseReplyTo(r.reply_quote_json),
+    forwardOf: r.forward_of_message_id == null ? null : Number(r.forward_of_message_id),
     recallRequestedAt: s("recall_requested_at"),
     recalledAt: s("recalled_at"),
     recallError: s("recall_error"),

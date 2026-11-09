@@ -79,5 +79,6 @@ export function toOutboxItemDto(db: DatabaseSync, item: StoredOutboxItem): Outbo
     recalledAt: item.recalledAt ?? (item.sentMsgId ? (sentMessageRecord(db, item.sentMsgId)?.recalledAt ?? null) : null),
     recallRequestedAt: item.recallRequestedAt,
     recallError: item.recallError,
+    forwarded: item.forwardOf !== null,
   };
 }

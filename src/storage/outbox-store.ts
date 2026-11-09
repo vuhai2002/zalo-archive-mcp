@@ -29,6 +29,8 @@ export type NewOutboxItem = {
   mentions?: OutboxMention[];
   /** Trả lời một tin (ô trích dẫn) */
   replyTo?: OutboxReplyQuote | null;
+  /** Chuyển tiếp tin này (số tin trong kho) */
+  forwardOf?: number | null;
 };
 
 export function enqueueOutboxItem(db: DatabaseSync, d: NewOutboxItem): number {
@@ -36,8 +38,8 @@ export function enqueueOutboxItem(db: DatabaseSync, d: NewOutboxItem): number {
   const row = db
     .prepare(
       `INSERT INTO outbox (thread_id, thread_type, text, mode, batch_id, not_before, status, created_by, note,
-         created_at, approved_at, mentions_json, reply_quote_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+         created_at, approved_at, mentions_json, reply_quote_json, forward_of_message_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
     )
     .get(
       d.threadId,
@@ -53,6 +55,7 @@ export function enqueueOutboxItem(db: DatabaseSync, d: NewOutboxItem): number {
       d.status === "approved" ? now : null,
       d.mentions?.length ? JSON.stringify(d.mentions) : null,
       d.replyTo ? JSON.stringify(d.replyTo) : null,
+      d.forwardOf ?? null,
     ) as { id: number };
   return Number(row.id);
 }

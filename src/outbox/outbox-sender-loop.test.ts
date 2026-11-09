@@ -31,6 +31,10 @@ function setup(opts: { now?: Date; connected?: boolean; send?: SendTextFn; typin
         sent.push([threadId, text]);
         return { msgId: String(1000 + sent.length) };
       }),
+    forwardText: async (threadId, _type, text) => {
+      sent.push([threadId, `[chuyển tiếp] ${text}`]);
+      return { msgId: String(1000 + sent.length) };
+    },
     sendTyping: opts.typing ?? (async () => {}),
     sleep: async () => {},
     isListenerConnected: () => opts.connected ?? true,

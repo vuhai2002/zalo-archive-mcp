@@ -93,6 +93,7 @@ describe("gửi tin trả lời một tin (ô trích dẫn như Zalo)", () => {
         calls.push({ text, replyMsgId: replyTo?.msgId ?? null });
         return { msgId: String(900 + calls.length) };
       },
+      forwardText: async () => ({ msgId: null }),
       sendTyping: async () => {},
       sleep: async () => {},
       isListenerConnected: () => true,

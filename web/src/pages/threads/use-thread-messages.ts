@@ -152,6 +152,13 @@ export function useThreadMessages(threadId: string, initialAroundId?: number) {
     }
   }, [threadId]);
 
+  /** Tin vừa xóa khỏi kho: bỏ khỏi khung chat ngay, không phải tải lại */
+  const dropMessages = useCallback((ids: readonly number[]) => {
+    const gone = new Set(ids);
+    setMessages((cur) => cur.filter((m) => !gone.has(m.id)));
+    setThread((t) => (t ? { ...t, messageCount: Math.max(0, t.messageCount - gone.size) } : t));
+  }, []);
+
   const hasOlder =
     !exhausted && messages.length > 0 && (lastPageFull || (thread !== null && messages.length < thread.messageCount));
 
@@ -170,5 +177,6 @@ export function useThreadMessages(threadId: string, initialAroundId?: number) {
     loadingNewer,
     loadNewer,
     refreshLatest,
+    dropMessages,
   };
 }

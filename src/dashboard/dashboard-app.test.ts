@@ -62,6 +62,29 @@ describe("dashboard API", () => {
     assert.equal((await s.call("/api/outbox", { ...s.json({ threadId: "u-lan", text: "y", when: "draft", replyToMessageId: 999999 }), cookie })).status, 400);
   });
 
+  it("xóa tin khỏi kho: xem trước rồi xóa; danh sách rỗng, số sai thì 400", async () => {
+    const s = await setup();
+    const cookie = await login(s);
+    const post = (p: string, body: unknown) => s.call(p, { ...s.json(body), cookie });
+    const id = (s.db.prepare("SELECT id FROM messages LIMIT 1").get() as { id: number }).id;
+    assert.equal((await post("/api/messages/delete-preview", { ids: [] })).status, 400);
+    assert.equal((await post("/api/messages/delete", { ids: ["1"] })).status, 400);
+    assert.deepEqual(await (await post("/api/messages/delete-preview", { ids: [id] })).json(), { messages: 1, files: 0, bytes: 0 });
+    assert.deepEqual(await (await post("/api/messages/delete", { ids: [id] })).json(), { deleted: 1, filesRemoved: 0, bytes: 0 });
+    assert.equal(s.db.prepare("SELECT 1 FROM messages WHERE id = ?").get(id), undefined);
+  });
+
+  it("chuyển tiếp: xếp mỗi nơi một mục hàng đợi; thiếu danh sách hội thoại thì 400", async () => {
+    const s = await setup();
+    const cookie = await login(s);
+    const id = (s.db.prepare("SELECT id FROM messages WHERE msg_type = 'webchat' LIMIT 1").get() as { id: number }).id;
+    const post = (body: unknown) => s.call(`/api/messages/${id}/forward`, { ...s.json(body), cookie });
+    assert.equal((await post({ note: "x" })).status, 400);
+    const ok = await post({ threadIds: ["u-lan"], note: "xem nhé" });
+    assert.equal(ok.status, 200);
+    assert.equal(((await ok.json()) as { ids: number[] }).ids.length, 2);
+  });
+
   it("cài đặt: lưu được, sai thì 400; khóa khẩn cấp bật/tắt", async () => {
     const s = await setup();
     const cookie = await login(s);

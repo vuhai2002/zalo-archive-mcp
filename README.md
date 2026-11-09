@@ -57,8 +57,13 @@ Quên mật khẩu dashboard: `pnpm reset-password` rồi tải lại trang đ�
 tới nick Zalo hay tin nhắn).
 
 Dashboard có: Tổng quan (thống kê, khoảng mất kết nối), Hội thoại (đọc tin cũ, xem ảnh/file, gửi
-ngay / hẹn giờ / lưu nháp), Tìm kiếm (không phân biệt dấu), Hàng đợi, Tài khoản Zalo, Cài đặt (giới
+ngay / hẹn giờ / lưu nháp; rê chuột vào tin có Trả lời, Chia sẻ tới tối đa 100 hội thoại, Copy, Chọn nhiều tin
+nhắn, Xóa khỏi kho), Tìm kiếm (không phân biệt dấu), Hàng đợi, Tài khoản Zalo, Cài đặt (giới
 hạn gửi, khóa khẩn cấp).
+
+Xóa tin: "Xóa khỏi kho" chỉ xóa trong kho (Zalo vẫn còn), xóa luôn file ảnh / video / file không tin nào khác dùng để
+giải phóng ổ, và đồng bộ sau này không lấy lại tin đó. Ngược lại, tin hay file bạn xóa trên điện thoại / Zalo PC thì kho
+vẫn giữ - trừ My Documents: xóa ở đó trên Zalo thì kho xóa theo.
 
 Chưa có nick để thử? Xem giao diện với dữ liệu giả:
 

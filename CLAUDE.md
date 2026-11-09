@@ -40,7 +40,11 @@ nằm trong mục "Câu hỏi còn mở" hoặc có bằng chứng mới.
   luôn có hiệu lực; lỗi gửi đầu tiên tự bật. Số chỉnh trên dashboard (Cài đặt).
 - **Không tool chuyển tiền / thanh toán / VietQR** (`zalo-agent-cli` có sẵn - không harvest).
 - **Không gửi kiểu campaign / bắn hàng loạt.** "Gửi nhiều người" = hàng đợi gửi TỪNG tin,
-  nội dung riêng từng người, nhịp ngẫu nhiên, chỉ tới bạn bè.
+  nội dung riêng từng người, nhịp ngẫu nhiên, chỉ tới bạn bè. Ngoại lệ người dùng chốt 2026-11-09: nút Chia sẻ
+  (chuyển tiếp) trên DASHBOARD, như Zalo, tối đa 100 hội thoại mỗi lần, cả nhóm; không mở cho MCP.
+- **Xóa tin:** "Xóa khỏi kho" trên dashboard xóa hẳn tin + file không ai dùng, ghi nhớ mã tin để đồng bộ sau không
+  lấy lại (người dùng chốt 2026-11-09). Xóa trên Zalo (điện thoại / PC) thì kho GIỮ, trừ My Documents (xóa theo).
+  Không mở lệnh xóa cho MCP.
 - **Không tự gửi lời mời kết bạn, tra số điện thoại, thêm người vào nhóm** - đây là các
   thao tác Zalo bóp mạnh nhất (xem report).
 - **Mọi thử nghiệm rủi ro chạy trên NICK PHỤ trước** (pha 0), rồi mới lên nick chính.
