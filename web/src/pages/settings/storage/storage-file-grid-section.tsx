@@ -16,7 +16,8 @@ import { useStoragePagedList } from "./use-storage-paged-list";
 
 /**
  * Lưới file như Zalo điện thoại: của một hội thoại hoặc file lớn hơn 5 MB của cả kho (theo màn đang mở trong cửa sổ Cài đặt), tab Tất cả / Ảnh /
- * Video / File / Tin nhắn thoại, lớn nhất trước. Chọn để Mở, Xem tin gốc, Lưu về máy, hoặc Xóa (xóa FILE, tin vẫn giữ).
+ * Video / File / Tin nhắn thoại, lớn nhất trước. Bấm vào ô để xem nhanh (lướt file trước / sau, chọn ngay trong cửa sổ xem), bấm vòng
+ * tròn để chọn; chọn rồi Mở, Xem tin gốc, Lưu về máy, hoặc Xóa (xóa FILE, tin vẫn giữ).
  */
 export function StorageFileGridSection() {
   const { view, go, openInMain } = useSettingsView();
@@ -27,7 +28,8 @@ export function StorageFileGridSection() {
   const [tab, setTab] = useState<StorageTab>("all");
   const [sort, setSort] = useState<"size" | "newest">("size");
   const [selected, setSelected] = useState<Map<number, StorageFile>>(new Map());
-  const [viewing, setViewing] = useState<StorageFile | null>(null);
+  // Vị trí file đang xem nhanh trong danh sách đã tải (null = đóng)
+  const [viewing, setViewing] = useState<number | null>(null);
   const fetchPage = useCallback(
     (offset: number) => api.storageFiles({ thread, tab, big: big ? "1" : undefined, sort, limit: 60, offset }),
     [thread, tab, big, sort],
@@ -52,10 +54,10 @@ export function StorageFileGridSection() {
   const one = selected.size === 1 ? [...selected.values()][0]! : null;
   const selectedBytes = [...selected.values()].reduce((s, f) => s + f.sizeBytes, 0);
   const open = (f: StorageFile) => {
-    if (f.kind === "photo" || f.kind === "gif" || f.kind === "video") return setViewing(f);
-    const url = sameOriginUrl(f.url);
-    if (url) window.open(url, "_blank", "noopener");
+    const i = list.items.findIndex((x) => x.id === f.id);
+    if (i >= 0) setViewing(i);
   };
+  const openOriginal = (f: StorageFile) => openInMain(`/threads/${encodeURIComponent(f.threadId)}?msg=${f.messageId}`);
 
   return (
     <div className="mx-auto flex h-full max-w-4xl flex-col">
@@ -97,7 +99,7 @@ export function StorageFileGridSection() {
         {list.error && <ErrorNote message={list.error} onRetry={list.reload} />}
         <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:grid-cols-5">
           {list.items.map((f) => (
-            <StorageFileTile key={f.id} file={f} selected={selected.has(f.id)} onToggle={() => toggle(f)} />
+            <StorageFileTile key={f.id} file={f} selected={selected.has(f.id)} onToggle={() => toggle(f)} onOpen={() => open(f)} />
           ))}
         </div>
         <div ref={sentinel} aria-hidden="true" className="h-px" />
@@ -107,7 +109,7 @@ export function StorageFileGridSection() {
 
       <div className="mt-2 grid grid-cols-4 gap-1 rounded-xl bg-surface p-1.5 shadow-sm">
         <ActionButton label="Mở" disabled={!one} onClick={() => one && open(one)} />
-        <ActionButton label="Xem tin gốc" disabled={!one} onClick={() => one && openInMain(`/threads/${encodeURIComponent(one.threadId)}?msg=${one.messageId}`)} />
+        <ActionButton label="Xem tin gốc" disabled={!one} onClick={() => one && openOriginal(one)} />
         {one ? (
           <a href={downloadUrlOf(sameOriginUrl(one.url) ?? one.url)} download={one.fileName ?? true} className="rounded-lg py-2 text-center text-[14px] font-medium text-ink hover:bg-tile">
             Lưu về máy
@@ -124,7 +126,20 @@ export function StorageFileGridSection() {
           Xóa{selected.size > 0 ? ` (${selected.size})` : ""}
         </button>
       </div>
-      {viewing && <StorageFileViewer file={viewing} onClose={() => setViewing(null)} />}
+      {viewing !== null && (
+        <StorageFileViewer
+          files={list.items}
+          index={viewing}
+          total={list.last?.total ?? list.items.length}
+          hasMore={list.hasMore}
+          isSelected={(f) => selected.has(f.id)}
+          onIndex={setViewing}
+          onLoadMore={list.loadMore}
+          onToggle={toggle}
+          onOpenOriginal={openOriginal}
+          onClose={() => setViewing(null)}
+        />
+      )}
       {removal.overlay}
     </div>
   );

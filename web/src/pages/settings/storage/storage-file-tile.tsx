@@ -8,19 +8,22 @@ import { formatDuration } from "./storage-display-rules";
 
 /**
  * Một ô trong lưới file như Zalo điện thoại: ảnh / video hiện hình (video lấy khung đầu), file / tin thoại hiện biểu tượng + tên;
- * góc dưới là dung lượng (+ thời lượng video), góc trên phải là vòng chọn. File dùng chung với tin khác có nhãn nhỏ.
+ * góc dưới là dung lượng (+ thời lượng video). Như Zalo PC: bấm vào ô để XEM (`onOpen`), bấm vòng tròn góc trên phải để CHỌN
+ * (`onToggle`) - hai nút riêng. File dùng chung với tin khác có nhãn nhỏ.
  */
 export function StorageFileTile({
   file: f,
   selected = false,
   compact = false,
   onToggle,
+  onOpen,
 }: {
   file: StorageFile;
   selected?: boolean;
-  /** Ô nhỏ ở dải xem trước (không chọn được) */
+  /** Ô nhỏ ở dải xem trước (không chọn, không mở được) */
   compact?: boolean;
   onToggle?: () => void;
+  onOpen?: () => void;
 }) {
   const url = sameOriginUrl(f.url);
   const visual = f.kind === "photo" || f.kind === "gif" || f.kind === "video";
@@ -28,20 +31,7 @@ export function StorageFileTile({
   const title = [f.fileName, f.threadName, formatFileSize(f.sizeBytes)].filter(Boolean).join(" - ");
 
   return (
-    <div
-      role={onToggle ? "checkbox" : undefined}
-      aria-checked={onToggle ? selected : undefined}
-      tabIndex={onToggle ? 0 : undefined}
-      title={title}
-      onClick={onToggle}
-      onKeyDown={(e) => {
-        if (onToggle && (e.key === " " || e.key === "Enter")) {
-          e.preventDefault();
-          onToggle();
-        }
-      }}
-      className={`relative aspect-square overflow-hidden rounded-md border border-line bg-tile ${onToggle ? "cursor-pointer" : ""} ${selected ? "ring-2 ring-zalo-500" : ""}`}
-    >
+    <div title={title} className={`relative aspect-square overflow-hidden rounded-md border border-line bg-tile ${selected ? "ring-2 ring-zalo-500" : ""}`}>
       {visual && url ? (
         f.kind === "video" ? (
           <video src={`${url}#t=0.5`} preload="metadata" muted playsInline className="h-full w-full object-cover" />
@@ -75,13 +65,31 @@ export function StorageFileTile({
           </div>
         </>
       )}
+      {/* Phủ cả ô: bấm để xem nhanh (nằm trên hình / video để video không bắt cú bấm) */}
+      {onOpen && (
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={`Xem ${f.fileName ?? "file"}`}
+          className="absolute inset-0 z-[1] cursor-zoom-in hover:bg-black/10 focus-visible:outline-2 focus-visible:outline-zalo-500"
+        />
+      )}
+      {/* Vòng chọn: vùng bấm rộng hơn hình tròn cho dễ trúng */}
       {onToggle && (
-        <span
-          aria-hidden="true"
-          className={`absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full border-2 ${selected ? "border-zalo-500 bg-zalo-500 text-white" : "border-white bg-black/20"}`}
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={selected}
+          aria-label={selected ? "Bỏ chọn file" : "Chọn file"}
+          onClick={onToggle}
+          className="absolute right-0 top-0 z-[2] p-1.5"
         >
-          {selected && <IconCheck size={13} strokeWidth={3} />}
-        </span>
+          <span
+            className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${selected ? "border-zalo-500 bg-zalo-500 text-white" : "border-white bg-black/20 hover:bg-black/40"}`}
+          >
+            {selected && <IconCheck size={13} strokeWidth={3} />}
+          </span>
+        </button>
       )}
     </div>
   );

@@ -11,10 +11,14 @@ export function useStoragePagedList<T, R extends { items: T[]; total: number }>(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const generation = useRef(0);
+  // Trang đang tải dở: lưới (cuộn tới đáy) và cửa sổ xem nhanh (gần cuối) cùng gọi loadMore - gọi trùng thì bỏ, không nhân đôi file
+  const pendingOffset = useRef<number | null>(null);
 
   const load = useCallback(
     async (offset: number) => {
+      if (offset > 0 && pendingOffset.current === offset) return;
       const gen = offset === 0 ? ++generation.current : generation.current;
+      pendingOffset.current = offset;
       setLoading(true);
       setError(null);
       try {
@@ -25,7 +29,10 @@ export function useStoragePagedList<T, R extends { items: T[]; total: number }>(
       } catch (err) {
         if (gen === generation.current) setError(errorText(err));
       } finally {
-        if (gen === generation.current) setLoading(false);
+        if (gen === generation.current) {
+          pendingOffset.current = null;
+          setLoading(false);
+        }
       }
     },
     [fetchPage],

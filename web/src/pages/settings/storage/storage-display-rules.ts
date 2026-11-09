@@ -1,4 +1,4 @@
-import type { StorageOverviewResponse, StorageTab } from "../../../archive-api-types";
+import type { StorageFile, StorageOverviewResponse, StorageTab } from "../../../archive-api-types";
 
 type Disk = NonNullable<StorageOverviewResponse["disk"]>;
 
@@ -32,6 +32,24 @@ export const TAB_LABELS: Array<[StorageTab, string]> = [
   ["file", "File"],
   ["voice", "Tin nhắn thoại"],
 ];
+
+export type PreviewKind = "image" | "video" | "audio" | "file";
+
+// Chỉ những đuôi trình duyệt tự xem / phát được; còn lại (heic, avi, mkv, amr, pdf...) hiện thẻ file + Mở trong tab mới
+const PREVIEW_EXTS: Array<[PreviewKind, string[]]> = [
+  ["image", ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"]],
+  ["video", ["mp4", "m4v", "webm", "mov"]],
+  ["audio", ["mp3", "m4a", "wav", "aac", "ogg", "flac"]],
+];
+
+/** Cửa sổ xem nhanh hiện file theo kiểu nào: ảnh / video / tin thoại theo loại Zalo; file gửi dạng "file" thì theo đuôi tên */
+export function previewKind(f: { kind: StorageFile["kind"]; fileName: string | null }): PreviewKind {
+  if (f.kind === "photo" || f.kind === "gif") return "image";
+  if (f.kind === "video") return "video";
+  if (f.kind === "voice") return "audio";
+  const ext = /\.([a-z0-9]{1,5})$/i.exec(f.fileName?.trim() ?? "")?.[1]?.toLowerCase();
+  return PREVIEW_EXTS.find(([, exts]) => ext && exts.includes(ext))?.[0] ?? "file";
+}
 
 /** "04:09" / "1:02:03" từ số mili giây (thời lượng video như Zalo) */
 export function formatDuration(ms: number | null): string | null {

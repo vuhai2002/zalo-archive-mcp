@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { archiveTotalBytes, downloadUrlOf, driveBarParts, driveLabel, formatDuration } from "./storage-display-rules";
+import { archiveTotalBytes, downloadUrlOf, driveBarParts, driveLabel, formatDuration, previewKind } from "./storage-display-rules";
 
 const GB = 1024 ** 3;
 const disk = {
@@ -32,5 +32,16 @@ describe("hiển thị dung lượng kho", () => {
     assert.equal(formatDuration(249_000), "04:09");
     assert.equal(formatDuration(3_723_000), "1:02:03");
     assert.equal(formatDuration(null), null);
+  });
+
+  it("xem nhanh: ảnh / video / tin thoại theo loại; file gửi dạng file thì theo đuôi, đuôi trình duyệt không mở được thì là file", () => {
+    assert.equal(previewKind({ kind: "photo", fileName: null }), "image");
+    assert.equal(previewKind({ kind: "voice", fileName: null }), "audio");
+    assert.equal(previewKind({ kind: "file", fileName: "zz-mau-07.MP4" }), "video");
+    assert.equal(previewKind({ kind: "file", fileName: "Nhạc nền buổi họp_03.mp3" }), "audio");
+    assert.equal(previewKind({ kind: "file", fileName: "anh.jpeg" }), "image");
+    assert.equal(previewKind({ kind: "file", fileName: "zz-bao-cao-09.pdf" }), "file");
+    assert.equal(previewKind({ kind: "file", fileName: "IMG_1.HEIC" }), "file");
+    assert.equal(previewKind({ kind: "file", fileName: null }), "file");
   });
 });
