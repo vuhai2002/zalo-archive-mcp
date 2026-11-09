@@ -16,6 +16,7 @@ const ATTACHMENT_STATUS_TEXT: Record<string, string> = {
   failed: "tải hỏng",
   too_large: "quá cỡ, không tải",
   blocked_host: "host lạ, không tải",
+  removed: "người dùng đã xóa file khỏi kho (tin vẫn giữ)",
 };
 
 function formatAttachment(a: AttachmentRow): string {

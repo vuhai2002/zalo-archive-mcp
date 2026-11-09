@@ -76,7 +76,7 @@ phải đúng MD5 Zalo ghi trong tin (thử lần lượt từng bản). File tr
 2026-11-08). Ảnh lấy bản JPEG xem trước làm file hiện + giữ bản gốc HD cạnh (`<sha>.orig.jxl`), chỉ có JXL thì đổi PNG
 (luồng phụ, vài file cùng lúc - xem dưới); đánh `done` kèm `attachments.recovered_from = 'zalo_pc'` (migration 19).
 File Zalo PC không ghép được vào tin nào trong kho (tin kho không có, ảnh kiểu cũ `picture\<hội thoại>\z<...>`) thì bỏ,
-không giữ bản sao (người dùng chốt 2026-11-08). Chạy theo nút trên trang Tài khoản Zalo.
+không giữ bản sao (người dùng chốt 2026-11-08). Chạy theo nút ở Cài đặt > Đồng bộ và sao lưu.
 
 Đổi ảnh JXL sang PNG (trình duyệt không hiện JXL) tốn vài giây một ảnh lớn, phần lớn là mã hóa PNG, và
 chặn luồng đang chạy. Daemon chỉ có một luồng chính cho dashboard + listener + hàng đợi gửi, nên việc đổi chạy ở
@@ -107,6 +107,25 @@ trong kho (#N ở `read_thread`), dashboard có nút Trả lời khi rê chuột
 tin gốc đúng dạng zca-js cần (nội dung, loại tin, propertyExt, uidFrom, msgId, cliMsgId, ts, ttl; tin chữ dài Zalo lưu dạng
 `{ title }` thì đổi thành chuỗi vì zca-js từ chối tin chữ có nội dung đối tượng) vào `outbox.reply_quote_json` (migration 27).
 Daemon gửi `{ msg, mentions?, quote }` (`outbox/outbox-zalo-message-content.ts`); zca-js gọi API `/quote` của Zalo.
+
+Quản lý dữ liệu (Cài đặt, người dùng chốt 2026-11-09, xóa file giữ tin): đính kèm có trạng thái `removed` (+ `removed_at`,
+migration 31 dựng lại bảng `attachments` để thêm vào CHECK, thêm chỉ mục `local_path`). `storage/attachment-file-removal-store.ts`
+chỉ xóa đính kèm đã tải (bỏ sticker), ghi DB trước rồi mới xóa file; file trên ổ khử trùng theo nội dung nên chỉ xóa khi không
+còn đính kèm nào dùng bất kỳ bản nào cùng tên sha (`mediaFamilyRange`: file chính + `.orig` / `.jxl` đi kèm - "Xóa khỏi kho"
+dùng cùng phép kiểm này). Luồng tải / xin link / lấy từ Zalo PC / đồng bộ chọn theo trạng thái cụ thể nên không đụng `removed`;
+đồng bộ lại tin không chèn đính kèm mới vì đã có đính kèm cùng loại. `storage/storage-browse-queries.ts`: hội thoại theo dung
+lượng và lưới file (tính dung lượng mỗi file một lần). `archive/archive-storage-summary.ts`: đo thư mục kho bất đồng bộ ở nền
+(không chặn daemon), nhớ trong `meta`. Route `/api/storage*` (`storage-management-routes.ts`);
+`/api/media/:id?download=1` cho Lưu về máy. Thư mục web là `pages/settings/storage/` (tên `data/` trùng luật `.gitignore`).
+
+Cài đặt trên web là cửa sổ (modal) như Zalo PC, không phải trang: shell giữ `openSettings(section)` trong context
+(`layout/dashboard-shell-context.ts`), menu bánh răng `layout/sidebar-settings-menu.tsx` và nút khóa khẩn cấp gọi nó.
+Điều hướng bên trong cửa sổ (mục, danh sách hội thoại, lưới file) là state `SettingsView` (`pages/settings/settings-view-context.ts`),
+không đổi URL; "Xem tin gốc" đóng cửa sổ rồi `navigate` tới tin. Route `/settings/*` chỉ còn để mở cửa sổ đúng mục rồi
+chuyển về `/threads` (`settings-route-opener.tsx`). Tài khoản Zalo cũng là một mục của cửa sổ (`pages/zalo-account/zalo-account-panel.tsx`),
+riêng `/zalo` khi CHƯA có nick nào vẫn là trang đăng nhập QR lần đầu (shell `AccountGate` đưa mọi trang về đó), có nick
+rồi thì `/zalo` mở cửa sổ ở mục Tài khoản (`zalo-account-route.tsx`). `/` chuyển về `/threads`; Tổng quan ở `/overview`. Giao diện: `shared/use-theme.ts` lưu Sáng / Tối trong `localStorage`;
+"Theo hệ thống" = xóa khóa đó và đi theo `prefers-color-scheme`.
 
 Thao tác trên một tin ở dashboard (rê chuột: Trả lời, Chia sẻ, Thêm -> Copy / Chọn nhiều tin nhắn / Xóa khỏi kho):
 - **Chia sẻ (chuyển tiếp)**: `POST /api/messages/:id/forward` -> `outbox/enqueue-forward-request.ts`: tối đa 100 hội thoại

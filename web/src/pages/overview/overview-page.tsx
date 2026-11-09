@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import type { OverviewResponse } from "../../archive-api-types";
 import { api, errorText } from "../../dashboard-api-client";
 import { useDashboardShell } from "../../layout/dashboard-shell-context";
@@ -19,7 +18,7 @@ import { PhoneSyncGapBanner } from "./phone-sync-gap-banner";
 const DAY_OPTIONS = [7, 14, 30, 90].map((d) => ({ value: String(d), label: `${d} ngày` }));
 
 export function OverviewPage() {
-  const { me, session } = useDashboardShell();
+  const { me, session, openSettings } = useDashboardShell();
   const [days, setDays] = useState(30);
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,9 +48,9 @@ export function OverviewPage() {
         <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[13px] text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
           <span className="font-semibold">Kho đang không nhận tin mới</span> - phiên Zalo:{" "}
           {session.state === "running" ? (listenerRetryText(session, tz) ?? "listener chưa kết nối") : SESSION_STATE_LABEL[session.state]}.{" "}
-          <Link to="/zalo" className="font-medium underline underline-offset-2">
-            Mở trang Tài khoản Zalo
-          </Link>
+          <button type="button" onClick={() => openSettings("account")} className="font-medium underline underline-offset-2">
+            Mở Tài khoản Zalo
+          </button>
         </div>
       )}
 

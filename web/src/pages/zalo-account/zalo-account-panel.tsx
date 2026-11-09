@@ -2,20 +2,20 @@ import { useCallback, useEffect, useState } from "react";
 import type { AccountSummary, SessionStatus } from "../../archive-api-types";
 import { api, errorText } from "../../dashboard-api-client";
 import { useDashboardShell } from "../../layout/dashboard-shell-context";
-import { PageHeader } from "../../layout/page-header";
 import { IconQr } from "../../shared/action-and-media-icons";
 import { useConfirmDialog } from "../../shared/confirm-dialog";
-import { IconSignal } from "../../shared/dashboard-icons";
 import { BTN_PRIMARY, ErrorNote, SectionCard } from "../../shared/ui-bits";
-import { MobileHistorySyncCard } from "./mobile-history-sync-card";
-import { ZaloPcMediaImportCard } from "./zalo-pc-media-import-card";
 import { nickLabel, ZaloNickListCard } from "./zalo-nick-list-card";
 import { ZaloQrLoginPanel } from "./zalo-qr-login-panel";
 import { ZaloSessionStatusCard, type SessionAction } from "./zalo-session-status-card";
 
 type Action = SessionAction | "switch";
 
-export function ZaloAccountPage() {
+/**
+ * Nick đang dùng (trạng thái nghe tin, Dừng / Đăng xuất Zalo), đăng nhập QR, danh sách nick (chuyển nick, Chỉ đọc, thêm nick).
+ * Dùng ở mục "Tài khoản Zalo" của cửa sổ Cài đặt, và ở trang đăng nhập lần đầu khi chưa có nick nào.
+ */
+export function ZaloAccountPanel() {
   const { session, applySession, me } = useDashboardShell();
   const [busy, setBusy] = useState<Action | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -99,8 +99,6 @@ export function ZaloAccountPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader icon={IconSignal} title="Tài khoản Zalo" subtitle="Đăng nhập, đổi nick và trạng thái nghe tin" />
-
       {error && <ErrorNote message={error} />}
 
       {session.account ? (
@@ -139,9 +137,6 @@ export function ZaloAccountPage() {
           onToggleReadOnly={toggleReadOnly}
         />
       )}
-
-      {session.account && <MobileHistorySyncCard confirm={confirm} />}
-      {session.account && <ZaloPcMediaImportCard confirm={confirm} />}
 
       {confirmDialog}
     </div>

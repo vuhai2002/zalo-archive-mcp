@@ -18,6 +18,8 @@ const EXPIRED_LABEL: Record<AttachmentInfo["kind"], string> = {
 const EXPIRED_HINT =
   "Zalo chỉ giữ file trên máy chủ một thời gian rồi xóa. File này bị xóa trước khi kho kịp tải nên không xem được nữa.";
 
+const REMOVED_HINT = "Bạn đã xóa file này khỏi kho (Cài đặt > Quản lý dữ liệu) để giải phóng dung lượng. Tin nhắn vẫn giữ, Zalo vẫn còn file.";
+
 /** Nhãn trạng thái của file chưa xem được; link hết hạn có nhãn riêng */
 function statusLabel(att: AttachmentInfo, retried: boolean): string {
   if (retried || att.renewState === "waiting") return "Đang xin lại link";
@@ -67,6 +69,7 @@ export function UnavailableAttachment({
 }) {
   const r = useRetry(att, onRetried);
   const deleted = att.renewState === "deleted";
+  const hint = deleted ? EXPIRED_HINT : att.status === "removed" ? REMOVED_HINT : undefined;
   const Icon = isImageKind(att.kind) ? IconImage : IconFileText;
   const retryButton = r.canRetry && (
     <button
@@ -82,7 +85,7 @@ export function UnavailableAttachment({
 
   if (compact) {
     return (
-      <div className="flex flex-col items-center gap-1 text-center text-[11.5px] leading-tight text-chat-time" title={deleted ? EXPIRED_HINT : undefined}>
+      <div className="flex flex-col items-center gap-1 text-center text-[11.5px] leading-tight text-chat-time" title={hint}>
         <Icon size={18} />
         <span>{deleted ? "Đã hết hạn" : statusLabel(att, r.retried)}</span>
         {retryButton}
@@ -95,7 +98,7 @@ export function UnavailableAttachment({
   return (
     <div
       className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-black/15 bg-bubble px-3 py-2 text-[13px] text-chat-time dark:border-white/15"
-      title={deleted ? EXPIRED_HINT : undefined}
+      title={hint}
     >
       <Icon size={16} />
       {label ? (

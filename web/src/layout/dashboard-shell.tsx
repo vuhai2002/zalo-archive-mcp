@@ -2,16 +2,15 @@ import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } f
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import type { MeResponse, SessionStatus } from "../archive-api-types";
 import { api, ApiError, errorText, loginPath } from "../dashboard-api-client";
-import { IconLogout, IconMoon, IconSun } from "../shared/dashboard-icons";
 import { ErrorNote, LoadingText } from "../shared/ui-bits";
-import { useTheme } from "../shared/use-theme";
-import { DashboardShellContext, type DashboardShellValue } from "./dashboard-shell-context";
+import { SettingsModal } from "../pages/settings/settings-modal";
+import { DashboardShellContext, type DashboardShellValue, type SettingsSection } from "./dashboard-shell-context";
 import { SidebarNav } from "./sidebar-nav";
 import { useShellStatusPolling } from "./use-shell-status-polling";
 
 /**
  * Nội dung các trang theo NICK ĐANG DÙNG:
- * - chưa có nick nào thì đưa thẳng tới trang Tài khoản Zalo để quét QR;
+ * - chưa có nick nào thì đưa thẳng tới trang Tài khoản Zalo để quét QR (đã có nick thì Tài khoản là mục của cửa sổ Cài đặt);
  * - đổi nick thì dựng lại trang (key theo nick) để không còn dữ liệu nick cũ trên màn hình.
  */
 function AccountGate({ session, children }: { session: SessionStatus | null; children: ReactNode }) {
@@ -31,7 +30,10 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [me, setMe] = useState<MeResponse | null>(null);
   const [gateError, setGateError] = useState<string | null>(null);
-  const { theme, toggle } = useTheme();
+  // Cửa sổ Cài đặt mở đè lên trang đang xem (như Zalo PC); null = đóng
+  const [settingsAt, setSettingsAt] = useState<SettingsSection | null>(null);
+  const openSettings = useCallback((section: SettingsSection = "send") => setSettingsAt(section), []);
+  const closeSettings = useCallback(() => setSettingsAt(null), []);
   const fullBleed = useLocation().pathname.startsWith("/threads");
   const { session, killSwitch, applySession, applyKillSwitch } = useShellStatusPolling(me !== null);
 
@@ -59,8 +61,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   }, [navigate]);
 
   const ctx = useMemo<DashboardShellValue | null>(
-    () => (me ? { me, session, killSwitch, applySession, applyKillSwitch } : null),
-    [me, session, killSwitch, applySession, applyKillSwitch],
+    () => (me ? { me, session, killSwitch, applySession, applyKillSwitch, openSettings } : null),
+    [me, session, killSwitch, applySession, applyKillSwitch, openSettings],
   );
 
   if (!ctx) {
@@ -81,16 +83,10 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         <div className="flex min-w-0 flex-1 flex-col lg:h-screen lg:overflow-hidden">
           {/* Topbar chỉ ở mobile - desktop đã có cột icon cố định */}
           <header className="sticky top-0 z-30 flex h-[53px] items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur lg:hidden">
-            <Link to="/" className="flex min-w-0 flex-1 items-center gap-2" title="Về trang chính">
+            <Link to="/threads" className="flex min-w-0 flex-1 items-center gap-2" title="Về trang tin nhắn">
               <img src="/app-logo.png" alt="" className="h-7 w-7 shrink-0" />
               <span className="truncate text-[15px] font-semibold text-ink">Kho Zalo</span>
             </Link>
-            <button type="button" onClick={toggle} aria-label="Đổi giao diện sáng/tối" className="rounded-lg p-1.5 text-ink-soft hover:bg-tile hover:text-ink">
-              {theme === "dark" ? <IconSun size={18} /> : <IconMoon size={18} />}
-            </button>
-            <button type="button" onClick={logout} aria-label="Đăng xuất khỏi dashboard" className="rounded-lg p-1.5 text-ink-soft hover:bg-tile hover:text-ink">
-              <IconLogout size={18} />
-            </button>
           </header>
 
           {/* Trang Hội thoại chiếm sát mép như Zalo PC; trang khác nền trơn + khoảng đệm */}
@@ -103,6 +99,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           >
             <AccountGate session={session}>{children}</AccountGate>
           </main>
+          {settingsAt && <SettingsModal initial={settingsAt} onClose={closeSettings} />}
         </div>
       </div>
     </DashboardShellContext.Provider>

@@ -53,6 +53,7 @@ function fromArchive(db: DatabaseSync, dirs: Dirs, id: number): OutboxFile | str
     | { kind: string; file_name: string | null; local_path: string | null; status: string }
     | undefined;
   if (!a) return `không có đính kèm #${id} trong kho`;
+  if (a.status === "removed") return `đính kèm #${id} đã bị xóa file khỏi kho (dọn dữ liệu)`;
   if (a.status !== "done" || !a.local_path) return `đính kèm #${id} chưa tải về kho (trạng thái ${a.status})`;
   const ext = path.extname(a.local_path);
   const name = a.file_name && path.extname(a.file_name) ? path.basename(a.file_name) : `${a.kind}-${id}${ext}`;

@@ -26,7 +26,7 @@ export function threadSharedMedia(
 ): { items: SharedAttachmentRow[]; total: number } {
   const where = `FROM attachments a JOIN messages m ON m.msg_id = a.msg_id
     LEFT JOIN contacts c ON c.user_id = m.sender_id
-    WHERE m.thread_id = :threadId AND m.thread_type = :threadType AND a.kind IN ${KINDS[q.kind]}`;
+    WHERE m.thread_id = :threadId AND m.thread_type = :threadType AND a.kind IN ${KINDS[q.kind]} AND a.status != 'removed'`;
   const total = (db.prepare(`SELECT COUNT(*) AS n ${where}`).get({ threadId: q.threadId, threadType: q.threadType }) as { n: number }).n;
   const rows = db
     .prepare(

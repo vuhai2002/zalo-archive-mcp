@@ -41,7 +41,7 @@ export function toArchivedMessage(m: MessageRow): ArchivedMessage {
  * và cùng số có thể đổi file (xin lại link rồi tải lại) - thiếu dấu thì trình duyệt (giữ đệm 1 ngày) lấy
  * nhầm ảnh của nick khác / bản cũ. Máy chủ bỏ qua `?v=`, chỉ trình duyệt dùng nó làm khóa đệm.
  */
-function mediaUrl(a: AttachmentRow): string {
+export function mediaUrl(a: { id: number; sha256: string | null }): string {
   return a.sha256 ? `/api/media/${a.id}?v=${a.sha256.slice(0, 16)}` : `/api/media/${a.id}`;
 }
 

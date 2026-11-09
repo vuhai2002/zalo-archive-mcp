@@ -22,6 +22,8 @@ import { useCallback, useEffect, useState } from "react";
  */
 
 export type Theme = "light" | "dark";
+/** Lựa chọn trong Cài đặt > Giao diện như Zalo PC: sáng, tối, hoặc theo hệ điều hành (chưa / bỏ tự chọn) */
+export type ThemeChoice = Theme | "system";
 
 const KEY = "zalo-archive-theme";
 
@@ -48,7 +50,29 @@ function datTheme(moi: Theme): void {
   phatTin(moi);
 }
 
-export function useTheme(): { theme: Theme; toggle: () => void } {
+/** Lựa chọn đang lưu: chưa tự chọn lần nào thì "system" */
+function luaChonHienTai(): ThemeChoice {
+  try {
+    const v = localStorage.getItem(KEY);
+    return v === "light" || v === "dark" ? v : "system";
+  } catch {
+    return "system";
+  }
+}
+
+/** Theo hệ thống: bỏ lựa chọn đã lưu, áp ngay chế độ của hệ điều hành */
+function theoHeThong(): void {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    /* không xóa được thì thôi */
+  }
+  const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.classList.toggle("dark", dark);
+  phatTin(dark ? "dark" : "light");
+}
+
+export function useTheme(): { theme: Theme; choice: ThemeChoice; toggle: () => void; choose: (c: ThemeChoice) => void } {
   const [theme, setTheme] = useState<Theme>(themeHienTai);
 
   // Đăng ký nhận thông báo khi BẤT KỲ nơi nào đổi theme
@@ -64,6 +88,7 @@ export function useTheme(): { theme: Theme; toggle: () => void } {
   const toggle = useCallback(() => {
     datTheme(themeHienTai() === "dark" ? "light" : "dark");
   }, []);
+  const choose = useCallback((c: ThemeChoice) => (c === "system" ? theoHeThong() : datTheme(c)), []);
 
   /**
    * Người dùng đổi chế độ ở HỆ ĐIỀU HÀNH trong lúc đang mở tab: đổi theo, NHƯNG
@@ -88,5 +113,6 @@ export function useTheme(): { theme: Theme; toggle: () => void } {
     return () => mql.removeEventListener("change", onChange);
   }, []);
 
-  return { theme, toggle };
+  // "choice" đọc lại mỗi lần vẽ (theme đổi thì hook vẽ lại): lựa chọn nằm ở localStorage, không cần state riêng
+  return { theme, choice: luaChonHienTai(), toggle, choose };
 }

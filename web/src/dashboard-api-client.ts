@@ -25,6 +25,13 @@ import type {
   SendSettings,
   SessionStatus,
   SettingsResponse,
+  StorageFilesResponse,
+  StorageOverviewResponse,
+  StorageRemovePreview,
+  StorageRemoveRequest,
+  StorageRemoveResult,
+  StorageTab,
+  StorageThreadsResponse,
   ThreadListResponse,
   ThreadMessagesResponse,
   ThreadSendersResponse,
@@ -157,6 +164,16 @@ export const api = {
   messageReact: (id: number, icon: string) => post<ReactResult>(`/api/messages/${id}/react`, { icon }),
   /** Chuyển tiếp (Chia sẻ) tin chữ / link tới tối đa 100 hội thoại */
   messageForward: (id: number, body: ForwardRequestBody) => post<ForwardResult>(`/api/messages/${id}/forward`, body),
+
+  /** Quản lý dữ liệu: dung lượng kho (refresh: đo lại ổ ở nền), hội thoại theo dung lượng, lưới file, xóa FILE giữ tin */
+  storage: (refresh = false) => request<StorageOverviewResponse>(refresh ? "/api/storage?refresh=1" : "/api/storage"),
+  storageThreads: (p: { sort: string; query?: string; limit: number; offset: number }) =>
+    request<StorageThreadsResponse>(withQuery("/api/storage/threads", p)),
+  storageFiles: (p: { thread?: string; tab: StorageTab; big?: "1"; sort: string; limit: number; offset: number }) =>
+    request<StorageFilesResponse>(withQuery("/api/storage/files", p)),
+  storageRemovePreview: (body: StorageRemoveRequest) => post<StorageRemovePreview>("/api/storage/remove-preview", body),
+  storageRemove: (body: StorageRemoveRequest) => post<StorageRemoveResult>("/api/storage/remove", body),
+  storageDeleteBackups: (names: string[]) => post<StorageOverviewResponse>("/api/storage/backups/delete", { names }),
 
   settings: () => request<SettingsResponse>("/api/settings"),
   updateSettings: (patch: Partial<SendSettings>) =>

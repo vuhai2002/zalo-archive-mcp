@@ -31,11 +31,13 @@ pnpm start
 Mở http://127.0.0.1:3210:
 
 1. Lần đầu: tạo mật khẩu dashboard (nhập hai lần). Các lần sau đăng nhập bằng mật khẩu đó.
-2. Vào **Tài khoản Zalo** -> **Đăng nhập bằng QR**, quét bằng app Zalo trên điện thoại.
+2. Chưa có nick nào thì dashboard tự mở trang **Tài khoản Zalo**: bấm **Đăng nhập bằng QR**, quét bằng app Zalo trên
+   điện thoại. Có nick rồi thì vào kho là thấy trang tin nhắn; Tài khoản Zalo nằm trong cửa sổ Cài đặt (bấm avatar hoặc
+   bánh răng -> Thông tin tài khoản).
 
 Từ đó daemon tự lưu mọi tin; lần sau `pnpm start` tự đăng nhập lại bằng cookie đã lưu (mã hóa).
 
-**Nhiều nick:** mỗi lúc chỉ MỘT nick nghe tin. Trang Tài khoản Zalo có danh sách các nick đã đăng
+**Nhiều nick:** mỗi lúc chỉ MỘT nick nghe tin. Cài đặt > Tài khoản Zalo có danh sách các nick đã đăng
 nhập, nút **Chuyển sang** và **Thêm nick khác**. Đổi nick không xóa gì: dữ liệu từng nick giữ riêng,
 quay lại nick cũ thì nối tiếp. Tin đến trong lúc một nick không chạy được Zalo gửi bù khi nick đó
 chạy lại, nhưng chỉ khoảng 2 tuần gần nhất. Mỗi lần đăng nhập Zalo cách nhau tối thiểu 30 giây để
@@ -56,10 +58,21 @@ mỗi lần đăng nhập Windows daemon tự chạy ẩn (không cửa sổ), l
 Quên mật khẩu dashboard: `pnpm reset-password` rồi tải lại trang để tạo mật khẩu mới (không đụng
 tới nick Zalo hay tin nhắn).
 
-Dashboard có: Tổng quan (thống kê, khoảng mất kết nối), Hội thoại (đọc tin cũ, xem ảnh/file, gửi
+Dashboard mở vào trang Hội thoại như Zalo (đọc tin cũ, xem ảnh/file, gửi
 ngay / hẹn giờ / lưu nháp; rê chuột vào tin có Trả lời, Chia sẻ tới tối đa 100 hội thoại, Copy, Chọn nhiều tin
-nhắn, Xóa khỏi kho, nút Thích + thanh 6 cảm xúc để thả cảm xúc; gõ tin là gửi ngay, tin hiện liền trong khung chat), Tìm kiếm (không phân biệt dấu), Hàng đợi, Tài khoản Zalo, Cài đặt (giới
-hạn gửi, khóa khẩn cấp).
+nhắn, Xóa khỏi kho, nút Thích + thanh 6 cảm xúc để thả cảm xúc; gõ tin là gửi ngay, tin hiện liền trong khung chat; tìm kiếm không phân biệt dấu ngay trong cột trái).
+Thanh bên trái: avatar nick (chấm màu = trạng thái nghe tin, bấm mở Tài khoản Zalo), Hội thoại, Hàng đợi gửi; dưới
+cùng Tổng quan (thống kê, khoảng mất kết nối, ở `/overview`) và nút bánh răng.
+
+Nút bánh răng mở menu như Zalo PC: Thông tin tài khoản, Cài đặt, Dữ liệu (Đồng bộ và sao lưu, Quản lý dữ
+liệu), Giao diện (Sáng / Tối / Theo hệ thống), Đăng xuất. Cài đặt là **cửa sổ mở đè lên trang đang xem** (không đổi trang;
+Esc, nút X hoặc bấm ra nền để đóng), menu trái: Tài khoản Zalo (nick đang dùng, Dừng / Đăng xuất Zalo, danh sách nick,
+thêm nick bằng QR), Gửi tin và giới hạn, Khóa khẩn cấp, Đồng bộ và sao lưu (lịch sử cũ từ điện thoại, lấy media từ
+Zalo PC), Quản lý dữ liệu, Giao diện. Link cũ `/settings/...` và `/zalo` vẫn mở đúng mục trong cửa sổ. Quản lý dữ liệu: tổng dung lượng kho +
+thanh ổ đĩa, ảnh / video / file theo hội thoại (xếp theo dung lượng), file lớn hơn 5 MB, tin nhắn, bản sao DB cũ; lưới file như
+Zalo điện thoại (tab Ảnh / Video / File / Tin nhắn thoại) để Mở, Xem tin gốc, Lưu về máy, Xóa. Xóa ở đây là **xóa file, giữ
+tin** (như "Xóa dữ liệu" của Zalo): tin vẫn còn, chỗ file hiện "Đã xóa file khỏi kho", kho không tải lại; file dùng chung với
+tin khác thì ghi rõ và chỉ giải phóng ổ khi không còn tin nào dùng.
 
 Xóa tin: "Xóa khỏi kho" chỉ xóa trong kho (Zalo vẫn còn), xóa luôn file ảnh / video / file không tin nào khác dùng để
 giải phóng ổ, và đồng bộ sau này không lấy lại tin đó. Ngược lại, tin hay file bạn xóa trên điện thoại / Zalo PC thì kho
@@ -71,7 +84,7 @@ Chưa có nick để thử? Xem giao diện với dữ liệu giả:
 pnpm seed-demo
 ```
 
-rồi `pnpm start`, vào **Tài khoản Zalo** và chuyển sang nick "demo".
+rồi `pnpm start`, vào Cài đặt > **Tài khoản Zalo** và chuyển sang nick "demo".
 
 Thử trên NICK PHỤ trước khi dùng nick chính. Mỗi thư mục `data/` chỉ một daemon (có khóa chống chạy
 trùng), và KHÔNG chạy daemon này cùng zalo-agent trên cùng một tài khoản.

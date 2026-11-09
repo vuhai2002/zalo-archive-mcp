@@ -2,13 +2,14 @@ import fs from "node:fs";
 import path from "node:path";
 
 /**
- * Xóa file media không còn tin nào dùng (tin vừa bị xóa hẳn): file chính và các bản đi kèm cạnh nó cùng
- * tên sha - bản JXL gốc của ảnh đã đổi PNG (`<sha>.jxl`), bản gốc HD lấy từ Zalo PC (`<sha>.orig.<đuôi>`).
- * Đường dẫn ra ngoài thư mục media thì bỏ qua. Trả số file đã xóa.
+ * Xóa file media không còn tin nào dùng: file chính và các bản đi kèm cạnh nó cùng tên sha - bản JXL gốc của ảnh đã đổi PNG
+ * (`<sha>.jxl`), bản gốc HD lấy từ Zalo PC (`<sha>.orig.<đuôi>`). Đường dẫn ra ngoài thư mục media thì bỏ qua. Trả số file đã
+ * xóa và tổng dung lượng thật đã giải phóng trên ổ.
  */
-export function removeOrphanMediaFiles(mediaDir: string, relPaths: readonly string[]): number {
+export function removeOrphanMediaFilesMeasured(mediaDir: string, relPaths: readonly string[]): { files: number; bytes: number } {
   const root = path.resolve(mediaDir);
-  let removed = 0;
+  let files = 0;
+  let bytes = 0;
   for (const rel of relPaths) {
     const file = path.resolve(root, rel);
     if (!file.startsWith(root + path.sep)) continue;
@@ -17,9 +18,34 @@ export function removeOrphanMediaFiles(mediaDir: string, relPaths: readonly stri
     if (!stem || !fs.existsSync(dir)) continue;
     for (const name of fs.readdirSync(dir)) {
       if (name !== stem && !name.startsWith(`${stem}.`)) continue;
-      fs.rmSync(path.join(dir, name), { force: true });
-      removed++;
+      const target = path.join(dir, name);
+      try {
+        bytes += fs.statSync(target).size;
+      } catch {
+        // file vừa biến mất: không tính
+      }
+      fs.rmSync(target, { force: true });
+      files++;
     }
   }
-  return removed;
+  return { files, bytes };
+}
+
+/** Như trên, chỉ trả số file đã xóa */
+export function removeOrphanMediaFiles(mediaDir: string, relPaths: readonly string[]): number {
+  return removeOrphanMediaFilesMeasured(mediaDir, relPaths).files;
+}
+
+/** Ký tự lớn nhất trong BMP: đặt sau tiền tố để lấy khoảng khóa "mọi chuỗi bắt đầu bằng tiền tố" */
+const LAST_CHAR = String.fromCharCode(0xffff);
+
+/**
+ * Đường dẫn trong kho (vd `ab/abcd...ef.jpg`) -> khoảng khóa của mọi bản cùng tên sha (`ab/abcd...ef.<gì đó>`), để hỏi "còn
+ * đính kèm nào dùng họ file này không" bằng chỉ mục thay vì so đúng đường dẫn (xóa là xóa cả họ).
+ */
+export function mediaFamilyRange(localPath: string): { exact: string; from: string; to: string } {
+  const slash = Math.max(localPath.lastIndexOf("/"), localPath.lastIndexOf("\\"));
+  const dir = localPath.slice(0, slash + 1);
+  const stem = localPath.slice(slash + 1).split(".")[0] ?? "";
+  return { exact: `${dir}${stem}`, from: `${dir}${stem}.`, to: `${dir}${stem}.${LAST_CHAR}` };
 }

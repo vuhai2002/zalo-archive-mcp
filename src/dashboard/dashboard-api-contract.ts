@@ -17,6 +17,8 @@ export type ThreadKind = "user" | "group";
 
 // Đăng nhập dashboard, phiên Zalo, danh sách nick: dashboard-auth-and-account-contract.ts
 export type * from "./dashboard-auth-and-account-contract.js";
+// Quản lý dữ liệu (dung lượng kho, xóa file giữ tin): storage-management-contract.ts
+export type * from "./storage-management-contract.js";
 
 // ---------- Tổng quan / thống kê ----------
 // GET /api/overview?days=30
@@ -97,7 +99,8 @@ export type AttachmentInfo = {
   id: number;
   /** sticker: ảnh sticker Zalo đã tải về kho - hiện như ảnh, không khung bong bóng */
   kind: "photo" | "video" | "file" | "voice" | "gif" | "sticker";
-  status: "pending" | "downloading" | "done" | "failed" | "too_large" | "blocked_host";
+  /** removed = người dùng đã xóa file khỏi kho (dọn dữ liệu), tin vẫn giữ */
+  status: "pending" | "downloading" | "done" | "failed" | "too_large" | "blocked_host" | "removed";
   fileName: string | null;
   sizeBytes: number | null;
   /** Có khi status = "done": GET url này (cùng cookie) để xem/tải file */

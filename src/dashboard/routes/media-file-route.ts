@@ -40,7 +40,8 @@ export function mediaFileRoute(ctx: DashboardContext): Hono {
     const fileName = typeof a.file_name === "string" ? a.file_name : path.basename(file);
     const headers: Record<string, string> = {
       "content-type": typeof a.mime === "string" && a.mime ? a.mime : "application/octet-stream",
-      "content-disposition": `inline; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      // ?download=1: nút Lưu về máy - trình duyệt tải file về với tên gốc thay vì mở
+      "content-disposition": `${c.req.query("download") === "1" ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(fileName)}`,
       "x-content-type-options": "nosniff",
       "content-security-policy": "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; sandbox",
       "cache-control": "private, max-age=86400",

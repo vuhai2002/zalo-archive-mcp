@@ -16,6 +16,7 @@ const MEDIA_STATUS: Record<AttachmentInfo["status"], string> = {
   failed: "Tải hỏng",
   too_large: "Quá cỡ, không tải",
   blocked_host: "Máy chủ file bị chặn",
+  removed: "Đã xóa file khỏi kho",
 };
 export const mediaStatusLabel = (status: string) => lookup(MEDIA_STATUS, status);
 

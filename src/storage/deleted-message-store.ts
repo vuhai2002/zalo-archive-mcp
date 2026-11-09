@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { mediaFamilyRange } from "../media/remove-orphan-media-files.js";
 import { inTransaction } from "../shared/db-transaction.js";
 
 /**
@@ -51,7 +52,12 @@ export function deleteMessagesForGood(
       );
     }
     // File khử trùng theo nội dung: tin khác (hội thoại khác) có thể dùng chung file này
-    const stillUsed = db.prepare("SELECT 1 FROM attachments WHERE local_path = ? LIMIT 1");
-    return { deleted, orphanFiles: [...freed].filter((f) => !stillUsed.get(f)) };
+    // Xóa file là xóa cả họ cùng tên sha (bản HD, JXL đi kèm): còn đính kèm nào dùng bất kỳ bản nào của họ thì giữ
+    const stillUsed = db.prepare("SELECT 1 FROM attachments WHERE local_path = ? OR (local_path >= ? AND local_path < ?) LIMIT 1");
+    const inUse = (f: string) => {
+      const r = mediaFamilyRange(f);
+      return !!stillUsed.get(r.exact, r.from, r.to);
+    };
+    return { deleted, orphanFiles: [...freed].filter((f) => !inUse(f)) };
   });
 }

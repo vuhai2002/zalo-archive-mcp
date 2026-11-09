@@ -406,4 +406,44 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE outbox ADD COLUMN files_json TEXT;
   `,
+  // 31: dọn dữ liệu kiểu Zalo - "xóa file, giữ tin": trạng thái đính kèm mới 'removed' (file đã xóa khỏi ổ theo ý người
+  // dùng, không tải / xin link / lấy từ Zalo PC lại) + lúc xóa. SQLite không sửa được CHECK nên dựng lại bảng, giữ đủ cột + chỉ mục
+  `
+  CREATE TABLE attachments_v31 (
+    id              INTEGER PRIMARY KEY,
+    msg_id          TEXT NOT NULL REFERENCES messages (msg_id),
+    kind            TEXT NOT NULL CHECK (kind IN ('photo', 'video', 'file', 'voice', 'gif', 'sticker')),
+    remote_url      TEXT NOT NULL,
+    file_name       TEXT,
+    declared_size   INTEGER,
+    status          TEXT NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending', 'downloading', 'done', 'failed', 'too_large', 'blocked_host', 'removed')),
+    local_path      TEXT,
+    sha256          TEXT,
+    size_bytes      INTEGER,
+    mime            TEXT,
+    attempts        INTEGER NOT NULL DEFAULT 0,
+    last_error      TEXT,
+    next_attempt_at TEXT,
+    created_at      TEXT NOT NULL,
+    fetched_at      TEXT,
+    needs_renew     INTEGER NOT NULL DEFAULT 0,
+    renewed_at      TEXT,
+    original_url    TEXT,
+    recovered_from  TEXT,
+    removed_at      TEXT,
+    UNIQUE (msg_id, remote_url)
+  );
+  INSERT INTO attachments_v31 (id, msg_id, kind, remote_url, file_name, declared_size, status, local_path, sha256, size_bytes,
+    mime, attempts, last_error, next_attempt_at, created_at, fetched_at, needs_renew, renewed_at, original_url, recovered_from)
+  SELECT id, msg_id, kind, remote_url, file_name, declared_size, status, local_path, sha256, size_bytes,
+    mime, attempts, last_error, next_attempt_at, created_at, fetched_at, needs_renew, renewed_at, original_url, recovered_from
+  FROM attachments;
+  DROP TABLE attachments;
+  ALTER TABLE attachments_v31 RENAME TO attachments;
+  CREATE INDEX attachments_queue ON attachments (status, next_attempt_at);
+  CREATE INDEX attachments_fetched ON attachments (fetched_at);
+  CREATE INDEX attachments_renew_ok ON attachments (kind, renewed_at) WHERE original_url IS NOT NULL;
+  CREATE INDEX attachments_local_path ON attachments (local_path) WHERE local_path IS NOT NULL;
+  `,
 ];
