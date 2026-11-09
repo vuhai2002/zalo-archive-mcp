@@ -245,6 +245,10 @@ export type OutboxItem = {
   threadId: string;
   threadType: ThreadKind;
   threadName: string | null;
+  threadAvatarUrl: string | null;
+  /** Nhóm không có ảnh riêng: vài thành viên để ghép avatar như danh sách hội thoại */
+  memberAvatars: MemberAvatar[];
+  memberCount: number | null;
   text: string;
   mode: OutboxMode;
   batchId: string | null;
@@ -267,7 +271,8 @@ export type OutboxItem = {
   files: Array<{ name: string; size: number; kind: "image" | "video" | "file" }>;
 };
 
-// GET  /api/outbox?status=&limit=100           -> { items: OutboxItem[] }
+// GET  /api/outbox?status=&limit=100           -> OutboxListResponse (status: một hoặc nhiều, cách bằng dấu phẩy;
+//      counts = số mục mỗi trạng thái của CẢ hàng đợi, cho số trên tab)
 // POST /api/messages/delete-preview  body MessageDeleteRequest -> MessageDeletePreview (cho hộp xác nhận)
 // POST /api/messages/delete          body MessageDeleteRequest -> MessageDeleteResult
 //      Xóa tin khỏi KHO (không đụng Zalo), file không tin nào khác dùng thì xóa khỏi ổ; đồng bộ sau không đưa tin vào lại
@@ -302,7 +307,7 @@ export type SendRequest = {
   /** Trả lời tin này (số tin trong kho): tin mới mang ô trích dẫn tin gốc như Zalo */
   replyToMessageId?: number;
 };
-export type OutboxListResponse = { items: OutboxItem[] };
+export type OutboxListResponse = { items: OutboxItem[]; counts: Record<OutboxStatus, number> };
 
 // ---------- Cài đặt gửi + khóa khẩn cấp ----------
 // GET /api/settings            -> SettingsResponse

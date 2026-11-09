@@ -3,6 +3,7 @@ import type { AttachmentRow, MessageRow } from "../storage/message-read-queries.
 import { sentMessageRecord } from "../storage/outbox-recall-store.js";
 import type { OutboxItem as StoredOutboxItem } from "../storage/outbox-store.js";
 import { threadLabel } from "../storage/thread-directory-store.js";
+import { groupMosaicIfNoAvatar } from "../storage/thread-list-extras.js";
 import type { ArchivedMessage, AttachmentInfo, OutboxItem } from "./dashboard-api-contract.js";
 
 /** Đổi dữ liệu kho sang hình dạng trong hợp đồng API (không lộ đường dẫn file trên máy) */
@@ -59,11 +60,14 @@ export function toAttachmentInfo(a: AttachmentRow): AttachmentInfo {
 }
 
 export function toOutboxItemDto(db: DatabaseSync, item: StoredOutboxItem): OutboxItem {
+  const label = threadLabel(db, item.threadId);
   return {
     id: item.id,
     threadId: item.threadId,
     threadType: item.threadType,
-    threadName: threadLabel(db, item.threadId)?.name ?? null,
+    threadName: label?.name ?? null,
+    threadAvatarUrl: label?.avatarUrl ?? null,
+    ...groupMosaicIfNoAvatar(db, item.threadType, item.threadId, label?.avatarUrl ?? null),
     text: item.text,
     mode: item.mode,
     batchId: item.batchId,

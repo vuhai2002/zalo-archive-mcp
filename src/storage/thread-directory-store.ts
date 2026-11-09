@@ -92,18 +92,24 @@ export function isFriend(db: DatabaseSync, threadId: string): boolean {
 }
 
 /**
- * Tên + cờ bạn bè của một hội thoại - RẺ (một dòng theo khóa chính), khác
- * `findThread` vốn đếm cả số tin. Dùng khi phải tra cho nhiều mục một lúc.
+ * Tên + avatar + cờ bạn bè của một hội thoại - RẺ (một dòng theo khóa chính), khác
+ * `findThread` vốn đếm cả số tin. Dùng khi phải tra cho nhiều mục một lúc. Tên lấy như
+ * danh sách hội thoại: tên gợi nhớ, tên hội thoại, rồi tên trong danh bạ (vd My Documents
+ * không có tên hội thoại, chỉ có tên trong danh bạ).
  */
-export function threadLabel(db: DatabaseSync, threadId: string): { name: string | null; isFriend: boolean } | null {
+export function threadLabel(
+  db: DatabaseSync,
+  threadId: string,
+): { name: string | null; avatarUrl: string | null; isFriend: boolean } | null {
   const row = db
     .prepare(
-      `SELECT COALESCE(c.alias, t.name) AS name, t.is_friend FROM threads t
+      `SELECT COALESCE(c.alias, t.name, c.display_name) AS name, COALESCE(t.avatar_url, c.avatar_url) AS avatar_url, t.is_friend
+       FROM threads t
        LEFT JOIN contacts c ON t.thread_type = 'user' AND c.user_id = t.thread_id
        WHERE t.thread_id = ? ORDER BY t.last_message_at DESC LIMIT 1`,
     )
-    .get(threadId) as { name: string | null; is_friend: number } | undefined;
-  return row ? { name: row.name, isFriend: row.is_friend === 1 } : null;
+    .get(threadId) as { name: string | null; avatar_url: string | null; is_friend: number } | undefined;
+  return row ? { name: row.name, avatarUrl: row.avatar_url, isFriend: row.is_friend === 1 } : null;
 }
 
 export function getMeta(db: DatabaseSync, key: string): string | null {

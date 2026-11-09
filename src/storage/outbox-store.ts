@@ -82,6 +82,14 @@ export function listOutbox(db: DatabaseSync, opts: { statuses?: OutboxStatus[]; 
   return rows.map(toItem);
 }
 
+/** Số mục mỗi trạng thái của cả hàng đợi (trạng thái không có mục nào = 0) */
+export function outboxStatusCounts(db: DatabaseSync): Record<OutboxStatus, number> {
+  const counts: Record<OutboxStatus, number> = { draft: 0, approved: 0, sending: 0, sent: 0, failed: 0, cancelled: 0, rejected: 0 };
+  const rows = db.prepare("SELECT status, COUNT(*) AS n FROM outbox GROUP BY status").all() as Array<{ status: OutboxStatus; n: number }>;
+  for (const r of rows) if (r.status in counts) counts[r.status] = Number(r.n);
+  return counts;
+}
+
 /** Chuyển trạng thái có điều kiện. Trả false nếu mục không còn ở trạng thái `from`. */
 function transition(
   db: DatabaseSync,

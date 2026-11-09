@@ -3,10 +3,9 @@ import path from "node:path";
 import { Hono } from "hono";
 import { BACKUP_NAME, storageSummaryState } from "../../archive/archive-storage-summary.js";
 import { MAX_REMOVE_ATTACHMENTS, MAX_REMOVE_THREADS, previewRemoval, removeAttachmentFiles, type RemovalTarget } from "../../archive/remove-attachment-files.js";
-import { GROUP_MOSAIC_MEMBERS } from "../../storage/contact-store.js";
 import { findThread } from "../../storage/message-read-queries.js";
 import { storedMediaFiles, threadsByMediaSize, type FileTab, type StoredMediaFile, type ThreadSizeSort } from "../../storage/storage-browse-queries.js";
-import { groupMemberAvatars } from "../../storage/thread-list-extras.js";
+import { groupMosaicIfNoAvatar } from "../../storage/thread-list-extras.js";
 import type { DashboardContext } from "../dashboard-context.js";
 import { mediaUrl } from "../dashboard-dto-mappers.js";
 import type { StorageFile, StorageFilesResponse, StorageOverviewResponse, StorageRemoveRequest, StorageTab, StorageThreadsResponse } from "../storage-management-contract.js";
@@ -75,7 +74,7 @@ export function storageManagementRoutes(ctx: DashboardContext): Hono {
       threadType: t.threadType,
       name: t.name,
       avatarUrl: t.avatarUrl,
-      ...(t.threadType === "group" && !t.avatarUrl ? groupMemberAvatars(db, t.threadId, GROUP_MOSAIC_MEMBERS) : { memberAvatars: [], memberCount: null }),
+      ...groupMosaicIfNoAvatar(db, t.threadType, t.threadId, t.avatarUrl),
       files,
       bytes,
       lastAt,

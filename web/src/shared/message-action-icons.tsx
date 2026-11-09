@@ -48,6 +48,22 @@ export const IconTrash = (p: IconProps) => (
   </svg>
 );
 
+/** Tin nháp chờ duyệt (trang Hàng đợi) */
+export const IconPencil = (p: IconProps) => (
+  <svg {...iconBase(p)}>
+    <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" />
+    <path d="m13.5 6.5 4 4" />
+  </svg>
+);
+
+/** Thu hồi tin đã gửi */
+export const IconUndo = (p: IconProps) => (
+  <svg {...iconBase(p)}>
+    <path d="M9 14 4 9l5-5" />
+    <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+  </svg>
+);
+
 /** Nút Thích ở góc bong bóng (rê vào hiện thanh cảm xúc) */
 export const IconThumbUp = (p: IconProps) => (
   <svg {...iconBase(p)}>

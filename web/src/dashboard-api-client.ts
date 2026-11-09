@@ -148,9 +148,9 @@ export const api = {
   }) => request<SearchResponse>(withQuery("/api/search", p)),
   threadSenders: (threadId: string) => request<ThreadSendersResponse>(`/api/threads/${enc(threadId)}/senders`),
 
-  /** Bỏ trống `status` = mọi trạng thái */
-  outboxList: (status: OutboxStatus | undefined, limit: number) =>
-    request<OutboxListResponse>(withQuery("/api/outbox", { status, limit })),
+  /** Mảng trạng thái rỗng = mọi trạng thái; kèm số mục mỗi trạng thái của cả hàng đợi */
+  outboxList: (statuses: OutboxStatus[], limit: number) =>
+    request<OutboxListResponse>(withQuery("/api/outbox", { status: statuses.length > 0 ? statuses.join(",") : undefined, limit })),
   outboxGet: (id: number) => request<OutboxItem>(`/api/outbox/${id}`),
   outboxCreate: (body: SendRequest) => post<OutboxItem>("/api/outbox", body),
   outboxApprove: (id: number) => post<OutboxItem>(`/api/outbox/${id}/approve`),

@@ -45,6 +45,17 @@ describe("tên gợi nhớ (alias) như Zalo PC", () => {
     assert.equal(lastMessagePreview(db, "g-1", "group")?.senderName, "Bác Tám Hàng Xóm");
   });
 
+  it("hội thoại không có tên riêng (vd My Documents): lấy tên + avatar trong danh bạ như danh sách hội thoại", () => {
+    const db = seeded();
+    upsertContacts(db, [{ userId: "u-docs", displayName: "My Documents", avatarUrl: "https://s.zalo.me/zds_cic_my_documents.png" }]);
+    upsertMessage(db, sampleMessage({ msgId: "3", threadId: "u-docs", senderId: "me", isSelf: true, text: "cất file" }), live);
+    db.prepare("UPDATE threads SET name = NULL WHERE thread_id = 'u-docs'").run();
+    const label = threadLabel(db, "u-docs");
+    assert.equal(label?.name, "My Documents");
+    assert.equal(label?.name, findThread(db, "u-docs")?.name);
+    assert.equal(label?.avatarUrl, "https://s.zalo.me/zds_cic_my_documents.png");
+  });
+
   it("tìm theo tên gợi nhớ hay tên thật đều ra; danh sách mới thay cả bộ (bỏ tên gợi nhớ thì về tên thật)", () => {
     const db = seeded();
     assert.deepEqual(listThreads(db, { query: "cong ty", limit: 5 }).map((t) => t.threadId), ["u-trucngan"]);

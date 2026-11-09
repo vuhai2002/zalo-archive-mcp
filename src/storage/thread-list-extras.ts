@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ThreadKind } from "../archive/archived-message-types.js";
 import { withZaloEmoticons } from "../archive/zalo-emoticon-emoji.js";
+import { GROUP_MOSAIC_MEMBERS } from "./contact-store.js";
 import { createNoticeRenderer } from "./system-notice-display.js";
 
 /**
@@ -73,6 +74,16 @@ export function groupMemberAvatars(
     return { memberAvatars: fromMembers.map((r) => ({ userId: r.user_id, name: r.display_name, avatarUrl: r.avatar_url })), memberCount };
   }
   return { memberAvatars: recentSendersWithSelf(db, groupId, limit), memberCount };
+}
+
+/** Nhóm không có ảnh riêng thì lấy vài thành viên đầu để ghép avatar như Zalo; hội thoại khác / nhóm có ảnh: không cần */
+export function groupMosaicIfNoAvatar(
+  db: DatabaseSync,
+  threadType: string,
+  threadId: string,
+  avatarUrl: string | null,
+): { memberAvatars: MemberAvatar[]; memberCount: number | null } {
+  return threadType === "group" && !avatarUrl ? groupMemberAvatars(db, threadId, GROUP_MOSAIC_MEMBERS) : { memberAvatars: [], memberCount: null };
 }
 
 function recentSendersWithSelf(db: DatabaseSync, groupId: string, limit: number): MemberAvatar[] {

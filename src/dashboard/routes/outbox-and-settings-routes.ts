@@ -2,7 +2,14 @@ import { Hono } from "hono";
 import { enqueueSingle, READ_ONLY_ERROR } from "../../outbox/enqueue-outbox-request.js";
 import { recallProblem } from "../../outbox/outbox-recall-loop.js";
 import { requestRecall } from "../../storage/outbox-recall-store.js";
-import { approveDraft, cancelOutboxItem, getOutboxItem, listOutbox, type OutboxStatus } from "../../storage/outbox-store.js";
+import {
+  approveDraft,
+  cancelOutboxItem,
+  getOutboxItem,
+  listOutbox,
+  outboxStatusCounts,
+  type OutboxStatus,
+} from "../../storage/outbox-store.js";
 import { getKillSwitch, setKillSwitch } from "../../storage/send-control-store.js";
 import { getSendSettings, updateSendSettings, type SendSettings } from "../../storage/send-settings-store.js";
 import type { OutboxListResponse, SendRequest, SettingsResponse } from "../dashboard-api-contract.js";
@@ -18,10 +25,11 @@ export function outboxAndSettingsRoutes(ctx: DashboardContext): Hono {
   const itemOr404 = (id: number) => getOutboxItem(db, id);
 
   app.get("/outbox", (c) => {
-    const status = c.req.query("status") as OutboxStatus | undefined;
+    // Một hoặc nhiều trạng thái cách bằng dấu phẩy (tab "Lỗi" = failed,rejected); trạng thái lạ bị bỏ, không còn gì = tất cả
+    const statuses = (c.req.query("status") ?? "").split(",").filter((s): s is OutboxStatus => STATUSES.has(s as OutboxStatus));
     const limit = Math.min(500, Math.max(1, Math.trunc(Number(c.req.query("limit"))) || 100));
-    const items = listOutbox(db, { statuses: status && STATUSES.has(status) ? [status] : undefined, limit });
-    return c.json({ items: items.map((i) => toOutboxItemDto(db, i)) } satisfies OutboxListResponse);
+    const items = listOutbox(db, { statuses, limit });
+    return c.json({ items: items.map((i) => toOutboxItemDto(db, i)), counts: outboxStatusCounts(db) } satisfies OutboxListResponse);
   });
 
   app.post("/outbox", async (c) => {
