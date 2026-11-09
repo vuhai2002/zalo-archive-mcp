@@ -92,7 +92,8 @@ export function StorageFileGridSection() {
         ))}
       </div>
 
-      <div ref={scroll} className="mt-2 min-h-[260px] flex-1 overflow-y-auto max-h-[min(58dvh,600px)]">
+      {/* Lấp hết chiều cao còn lại của cửa sổ Cài đặt (thanh nút sát đáy), màn thấp thì tối thiểu 260px */}
+      <div ref={scroll} className="mt-2 min-h-[260px] flex-1 overflow-y-auto">
         {list.error && <ErrorNote message={list.error} onRetry={list.reload} />}
         <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:grid-cols-5">
           {list.items.map((f) => (

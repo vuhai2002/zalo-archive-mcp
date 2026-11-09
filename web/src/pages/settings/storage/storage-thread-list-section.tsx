@@ -79,7 +79,8 @@ export function StorageThreadListSection() {
         <Check on={allChosen} /> Chọn tất cả
       </button>
 
-      <div ref={scroll} className="mt-2 min-h-[240px] flex-1 overflow-y-auto rounded-xl bg-surface shadow-sm max-h-[min(54dvh,560px)]">
+      {/* Lấp hết chiều cao còn lại của cửa sổ Cài đặt (thanh Xóa dữ liệu sát đáy), màn thấp thì tối thiểu 240px */}
+      <div ref={scroll} className="mt-2 min-h-[240px] flex-1 overflow-y-auto rounded-xl bg-surface shadow-sm">
         {list.error && <ErrorNote message={list.error} onRetry={list.reload} />}
         {list.items.map((t) => (
           <div key={t.threadId} className="flex items-center gap-3 border-b border-line px-3 py-2 last:border-b-0 hover:bg-tile/60">
