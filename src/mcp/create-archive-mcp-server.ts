@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getAttachmentTool, listThreadsTool, readThreadTool, searchMessagesTool, type ReadToolContext } from "./archive-read-tool-handlers.js";
 import { syncStatusTool } from "./archive-sync-status-tool.js";
+import { listGroupMembersTool } from "./group-members-tool.js";
 import { registerSendTools } from "./register-send-tools.js";
 import { safeToolHandler } from "./tool-result.js";
 
@@ -29,10 +30,14 @@ export function createArchiveMcpServer(ctx: ReadToolContext & { readonly readOnl
   server.registerTool(
     "read_thread",
     {
-      description: "Đọc tin của một hội thoại theo thời gian. Phân trang lùi bằng before_id (id tin cũ nhất trang trước).",
+      description:
+        "Đọc tin của một hội thoại theo thời gian (mặc định trang mới nhất). Mỗi tin có số #N (dùng cho reply_to, react_to_message, " +
+        "around_id). Dùng MỘT trong: before_id (tin cũ hơn), after_id (tin mới hơn), around_id (đoạn quanh một tin, vd tin vừa tìm ra).",
       inputSchema: {
         thread_id: z.string().min(1).max(64),
         before_id: z.number().int().positive().optional(),
+        after_id: z.number().int().positive().optional(),
+        around_id: z.number().int().positive().optional(),
         limit: z.number().int().min(1).max(200).optional(),
       },
       annotations: READ_ONLY,
@@ -43,10 +48,14 @@ export function createArchiveMcpServer(ctx: ReadToolContext & { readonly readOnl
   server.registerTool(
     "search_messages",
     {
-      description: "Tìm toàn văn trong kho (không phân biệt dấu, mọi từ phải có). Lọc theo hội thoại và khoảng ngày.",
+      description:
+        "Tìm trong kho (không phân biệt dấu, mọi từ phải có). Lọc theo hội thoại, người gửi (sender_id = số trong ngoặc sau tên ở " +
+        "read_thread), khoảng ngày, chỉ tin có file (files_only - tìm theo tên file). Cần ít nhất query, sender_id hoặc ngày.",
       inputSchema: {
-        query: z.string().min(1).max(200),
+        query: z.string().min(1).max(200).optional(),
         thread_id: z.string().max(64).optional(),
+        sender_id: z.string().regex(/^\d+$/).max(32).optional(),
+        files_only: z.boolean().optional(),
         from_date: dateField.optional(),
         to_date: dateField.optional(),
         limit: z.number().int().min(1).max(100).optional(),
@@ -54,6 +63,21 @@ export function createArchiveMcpServer(ctx: ReadToolContext & { readonly readOnl
       annotations: READ_ONLY,
     },
     safeToolHandler((a) => searchMessagesTool(ctx, a)),
+  );
+
+  server.registerTool(
+    "list_group_members",
+    {
+      description:
+        "Thành viên một NHÓM (tên + user_id), lọc theo tên không dấu - để nhắc tên (@) người chưa nhắn trong nhóm, hay xem ai trong nhóm.",
+      inputSchema: {
+        thread_id: z.string().min(1).max(64),
+        query: z.string().max(100).optional(),
+        limit: z.number().int().min(1).max(500).optional(),
+      },
+      annotations: READ_ONLY,
+    },
+    safeToolHandler((a) => listGroupMembersTool(ctx, a)),
   );
 
   server.registerTool(

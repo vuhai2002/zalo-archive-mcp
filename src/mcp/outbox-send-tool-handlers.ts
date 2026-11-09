@@ -1,10 +1,9 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { AppEnv } from "../config/env-schema.js";
-import { enqueueBatch, enqueueSingle, READ_ONLY_ERROR } from "../outbox/enqueue-outbox-request.js";
-import { daemonSendReadiness } from "../storage/daemon-liveness.js";
-import { getKillSwitch } from "../storage/send-control-store.js";
+import { enqueueBatch, enqueueSingle } from "../outbox/enqueue-outbox-request.js";
 import { cancelOutboxItem, getOutboxItem, listOutbox, type OutboxStatus } from "../storage/outbox-store.js";
 import { formatLocalTime } from "./format-messages-for-model.js";
+import { sendNowAndAwait } from "./send-now-and-await.js";
 import { toolError, toolOk, type ToolResult } from "./tool-result.js";
 
 /**
@@ -21,15 +20,15 @@ export type SendToolContext = {
   sleep?: (ms: number) => Promise<void>;
   /** Chờ daemon gửi xong tối đa bao lâu */
   waitTimeoutMs?: number;
+  /** Thư mục media của kho (file đính kèm #N) và thư mục dữ liệu (chặn gửi file nội bộ) - cho send_file */
+  readonly mediaRoot?: string;
 };
 
 const DEFAULT_WAIT_MS = 60_000;
-const POLL_MS = 500;
-const FINAL_STATUSES = new Set<OutboxStatus>(["sent", "failed", "cancelled", "rejected"]);
 
 /** Nhắc tên (@) trong tin vào nhóm: tham số MCP -> yêu cầu của hàng đợi */
 export type MentionArg = { user_id: string; text: string };
-const toMentions = (m?: MentionArg[]) => m?.map((x) => ({ userId: x.user_id, text: x.text }));
+export const toMentions = (m?: MentionArg[]) => m?.map((x) => ({ userId: x.user_id, text: x.text }));
 const mentionNote = (m?: MentionArg[]) => (m?.length ? ` (nhắc tên ${m.map((x) => x.text).join(", ")})` : "");
 const replyNote = (id?: number) => (id === undefined ? "" : `, trả lời tin #${id}`);
 /** Tham số chung của tin lẻ: nhắc tên (@) và trả lời một tin (số tin #N ở read_thread) */
@@ -37,41 +36,10 @@ type SingleArgs = { thread_id: string; text: string; mentions?: MentionArg[]; re
 const singleReq = (a: SingleArgs) => ({ threadId: a.thread_id, text: a.text, mentions: toMentions(a.mentions), replyToMessageId: a.reply_to });
 
 export async function sendMessageTool(ctx: SendToolContext, args: SingleArgs): Promise<ToolResult> {
-  // Chốt DB của nick lúc gọi: người dùng đổi nick trong lúc chờ thì vẫn theo dõi đúng mục vừa xếp
-  ctx = { ...ctx, db: ctx.db, readOnly: ctx.readOnly };
-  if (ctx.readOnly) return toolError(READ_ONLY_ERROR);
-  const now = (ctx.now ?? (() => new Date()))();
-  const readiness = daemonSendReadiness(ctx.db, now.getTime());
-  if (!readiness.ready) return toolError(`Chưa gửi được: ${readiness.reason}`);
-  // Đang khóa thì báo thẳng, không xếp hàng: tin nằm chờ rồi bị viết lại và gửi lại
-  // nhiều bản khi người dùng mở khóa là đúng kiểu sự cố cần tránh
-  const kill = getKillSwitch(ctx.db);
-  if (kill.killed) {
-    return toolError(`Chưa gửi: việc gửi đang bị KHÓA (${kill.reason ?? "không rõ lý do"}). Người dùng cần mở khóa trên dashboard.`);
-  }
-
-  const r = enqueueSingle(ctx, { ...singleReq(args), when: "now", createdBy: "mcp" });
-  if (!r.ok) return toolError(r.error);
-  const id = r.ids[0]!;
-
-  const sleep = ctx.sleep ?? ((ms: number) => new Promise<void>((res) => setTimeout(res, ms)));
-  const deadline = Date.now() + (ctx.waitTimeoutMs ?? DEFAULT_WAIT_MS);
-  let item = getOutboxItem(ctx.db, id);
-  while (item && !FINAL_STATUSES.has(item.status) && Date.now() < deadline) {
-    await sleep(POLL_MS);
-    item = getOutboxItem(ctx.db, id);
-  }
-  if (!item) return toolError(`Mục #${id} biến mất khỏi hàng đợi.`);
-  if (item.status === "sent") return toolOk(`Đã gửi tới thread_id=${item.threadId}${mentionNote(args.mentions)}${replyNote(args.reply_to)} (mục #${id}, msgId ${item.sentMsgId}).`);
-  if (item.status === "failed") return toolError(`Gửi hỏng (mục #${id}): ${item.error ?? "không rõ lỗi"}`);
-  if (FINAL_STATUSES.has(item.status)) return toolError(`Mục #${id} đã bị ${item.status}, không gửi.`);
-  // Hết giờ chờ: chưa ai giành thì HỦY luôn (để tin không đi muộn ngoài ý người dùng);
-  // daemon đã giành thì tin đang trên đường đi - tuyệt đối không gửi lại
-  const waited = Math.round((ctx.waitTimeoutMs ?? DEFAULT_WAIT_MS) / 1000);
-  if (cancelOutboxItem(ctx.db, id)) {
-    return toolError(`Daemon không gửi kịp trong ${waited} giây nên đã HỦY mục #${id} - tin CHƯA đi. Kiểm tra dashboard rồi thử lại.`);
-  }
-  return toolError(`Mục #${id} đang được gửi nhưng chưa xác nhận xong. KHÔNG gửi lại; xem kết quả bằng list_outbox.`);
+  return sendNowAndAwait(ctx, singleReq(args), {
+    defaultWaitMs: DEFAULT_WAIT_MS,
+    describe: (item) => `Đã gửi tới thread_id=${item.threadId}${mentionNote(args.mentions)}${replyNote(args.reply_to)}`,
+  });
 }
 
 export function scheduleMessageTool(
@@ -127,8 +95,9 @@ export function listOutboxTool(ctx: SendToolContext, args: { status?: OutboxStat
     const err = i.error ? ` lỗi: ${i.error}` : "";
     const preview = i.text.length > 80 ? `${i.text.slice(0, 80)}...` : i.text;
     const recall = i.recalledAt ? ", đã thu hồi" : i.recallError ? `, thu hồi lỗi: ${i.recallError}` : i.recallRequestedAt ? ", chờ thu hồi" : "";
+    const files = i.files.length ? ` [${i.files.length} file: ${i.files.map((f) => f.name).join(", ")}]` : "";
     const reply = i.replyTo ? `, trả lời tin #${i.replyTo.messageId}` : i.forwardOf !== null ? `, chuyển tiếp tin #${i.forwardOf}` : "";
-    return `#${i.id} [${i.status}${i.mode === "batch" ? ", lô" : ""}${reply}${recall}] -> ${i.threadId}${when}: ${preview}${err}`;
+    return `#${i.id} [${i.status}${i.mode === "batch" ? ", lô" : ""}${reply}${recall}] -> ${i.threadId}${when}: ${preview}${files}${err}`;
   });
   return toolOk(lines.join("\n"));
 }

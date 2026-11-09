@@ -5,7 +5,7 @@ import { inTransaction } from "../shared/db-transaction.js";
 import { localWallClockToUtc } from "../shared/local-date-range.js";
 import { containsUnsafeControlChars } from "../shared/terminal-safe-text.js";
 import { findThread, type ThreadSummary } from "../storage/message-read-queries.js";
-import { enqueueOutboxItem, type OutboxCreator } from "../storage/outbox-store.js";
+import { enqueueOutboxItem, type OutboxCreator, type OutboxFile } from "../storage/outbox-store.js";
 import { getSendSettings } from "../storage/send-settings-store.js";
 import { buildReplyQuote } from "./build-reply-quote.js";
 import { resolveOutboxMentions, type MentionRequest } from "./resolve-outbox-mentions.js";
@@ -28,9 +28,10 @@ export type EnqueueResult =
 
 type Common = { when: SendWhen; sendDate?: string; sendTime?: string; note?: string; createdBy: OutboxCreator };
 
-function checkText(rawText: string): string | { error: string } {
+/** `allowEmpty`: tin gửi file thì chữ (chú thích) không bắt buộc */
+function checkText(rawText: string, allowEmpty = false): string | { error: string } {
   const text = rawText.trim();
-  if (!text) return { error: "Nội dung tin trống." };
+  if (!text) return allowEmpty ? "" : { error: "Nội dung tin trống." };
   if (text.length > MAX_TEXT_LENGTH) return { error: `Nội dung dài ${text.length} ký tự, tối đa ${MAX_TEXT_LENGTH}.` };
   if (containsUnsafeControlChars(text)) return { error: UNSAFE_CHARS_ERROR };
   return text;
@@ -69,11 +70,12 @@ function isDuplicatePending(db: DatabaseSync, threadId: string, text: string): n
  */
 export function enqueueSingle(
   ctx: EnqueueContext,
-  req: Common & { threadId: string; text: string; mentions?: MentionRequest[]; replyToMessageId?: number },
+  req: Common & { threadId: string; text: string; mentions?: MentionRequest[]; replyToMessageId?: number; files?: OutboxFile[] },
 ): EnqueueResult {
   if (ctx.readOnly) return { ok: false, error: READ_ONLY_ERROR };
   if (req.note && containsUnsafeControlChars(req.note)) return { ok: false, error: UNSAFE_CHARS_ERROR };
-  const text = checkText(req.text);
+  const files = req.files ?? [];
+  const text = checkText(req.text, files.length > 0);
   if (typeof text !== "string") return { ok: false, ...text };
   const thread = checkThread(ctx.db, req.threadId);
   if ("error" in thread) return { ok: false, ...thread };
@@ -83,7 +85,8 @@ export function enqueueSingle(
   if ("error" in reply) return { ok: false, ...reply };
   const schedule = resolveSchedule(ctx, req);
   if ("error" in schedule) return { ok: false, ...schedule };
-  const dup = isDuplicatePending(ctx.db, thread.threadId, text);
+  // Tin kèm file: cùng chú thích mà khác file là chuyện thường, không coi là trùng
+  const dup = files.length === 0 ? isDuplicatePending(ctx.db, thread.threadId, text) : null;
   if (dup) return { ok: false, error: `Tin y hệt cho người này đang chờ gửi (#${dup}).` };
 
   const id = enqueueOutboxItem(ctx.db, {
@@ -98,6 +101,7 @@ export function enqueueSingle(
     status: req.when === "draft" ? "draft" : "approved",
     mentions,
     replyTo: reply.quote,
+    files,
   });
   return { ok: true, ids: [id], batchId: null, notBefore: schedule.notBefore, warnings: [] };
 }

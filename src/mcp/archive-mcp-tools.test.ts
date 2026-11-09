@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, it } from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -39,6 +42,7 @@ describe("MCP server kho", () => {
       "cancel_outbox",
       "draft_message",
       "get_attachment",
+      "list_group_members",
       "list_outbox",
       "list_threads",
       "react_to_message",
@@ -47,11 +51,14 @@ describe("MCP server kho", () => {
       "schedule_message",
       "search_messages",
       "send_batch",
+      "send_file",
       "send_message",
       "sync_status",
     ]);
     // Thu hồi đánh dấu phá hủy: ứng dụng của người dùng hỏi duyệt trước mỗi lần gọi
     assert.equal(tools.find((t) => t.name === "recall_message")?.annotations?.destructiveHint, true);
+    // Gửi file cũng vậy: người dùng thấy người nhận + file + chữ và bấm duyệt mỗi lần
+    assert.equal(tools.find((t) => t.name === "send_file")?.annotations?.destructiveHint, true);
   });
 
   it("nội dung tin được bọc ranh giới có nonce; thẻ đóng giả trong tin bị vô hiệu", async () => {
@@ -94,6 +101,19 @@ describe("MCP server kho", () => {
     assert.equal(r.isError, true);
     assert.match(textOf(r), /Daemon chưa sẵn sàng/);
     assert.equal((db.prepare("SELECT COUNT(*) AS n FROM reaction_requests").get() as { n: number }).n, 0);
+  });
+
+  it("send_file: file bí mật bị chặn trước mọi thứ; daemon không chạy thì báo lỗi; không xếp gì vào hàng đợi", async () => {
+    const { client, db } = await connectClient();
+    const secret = await client.callTool({ name: "send_file", arguments: { thread_id: "u-lan", file_paths: ["C:\\Users\\a\\.env"] } });
+    assert.equal(secret.isError, true);
+    assert.match(textOf(secret), /bị chặn: file biến môi trường/);
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mcp-file-"));
+    fs.writeFileSync(path.join(dir, "bao-gia.pdf"), "pdf");
+    const down = await client.callTool({ name: "send_file", arguments: { thread_id: "u-lan", file_paths: [path.join(dir, "bao-gia.pdf")] } });
+    assert.match(textOf(down), /Daemon chưa sẵn sàng/);
+    assert.equal((db.prepare("SELECT COUNT(*) AS n FROM outbox").get() as { n: number }).n, 0);
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 
   it("tham số sai bị từ chối ở tầng schema, không chạm handler", async () => {

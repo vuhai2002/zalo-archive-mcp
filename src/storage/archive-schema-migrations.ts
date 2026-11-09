@@ -402,4 +402,8 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX reaction_requests_pending ON reaction_requests (id) WHERE done_at IS NULL AND error IS NULL;
   `,
+  // 30: gửi file kèm tin (lệnh MCP send_file): đường dẫn + tên + cỡ từng file, daemon đọc file lúc gửi
+  `
+  ALTER TABLE outbox ADD COLUMN files_json TEXT;
+  `,
 ];

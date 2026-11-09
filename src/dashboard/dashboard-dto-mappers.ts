@@ -80,5 +80,6 @@ export function toOutboxItemDto(db: DatabaseSync, item: StoredOutboxItem): Outbo
     recallRequestedAt: item.recallRequestedAt,
     recallError: item.recallError,
     forwarded: item.forwardOf !== null,
+    files: item.files.map((f) => ({ name: f.name, size: f.size, kind: f.kind })),
   };
 }

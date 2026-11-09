@@ -130,6 +130,14 @@ Thao tác trên một tin ở dashboard (rê chuột: Trả lời, Chia sẻ, Th
   bỏ qua mã tin đã xóa nên lấy bù / đồng bộ điện thoại / phát lại nhật ký không đưa lại. Không gọi Zalo. Còn sót: chữ
   trong nhật ký thô `raw-events` và các bản sao DB cũ; `archive.db` không tự nhỏ lại (SQLite dùng lại chỗ trống).
 
+Gửi file (lệnh MCP `send_file`, người dùng chốt 2026-11-09): Claude chỉ gửi khi được bảo, liệt kê người nhận + file + chữ và
+chờ đồng ý; lệnh đánh dấu phá hủy nên Claude Code / Desktop hỏi duyệt mỗi lần. `outbox/resolve-outbox-files.ts` nhận đường
+dẫn tuyệt đối hoặc số đính kèm trong kho, kiểm (có thật, có đuôi, <= 500 MB, tối đa 10 file), chặn cứng file bí mật
+(`blocked-secret-files.ts`: .env, khóa, chứng chỉ, kho mật khẩu, thư mục .ssh / .aws...) và dữ liệu nội bộ của kho (mọi thứ
+trong DATA_DIR trừ thư mục media), lưu `outbox.files_json` (migration 30). Daemon (`daemon/start-outbox-sender.ts`) đọc file
+thành dữ liệu + tên gốc + cỡ ảnh (`media/image-dimensions.ts`) rồi `api.sendMessage({ msg, attachments })` - không đưa đường
+dẫn vì zca-js tách tên file theo "/" (sai với đường dẫn Windows) và ảnh theo đường dẫn đòi bộ đọc cỡ ảnh riêng.
+
 Thu hồi tin đã gửi, chỉ khi người dùng bảo: lệnh MCP `recall_message` (đánh dấu phá hủy - Claude Code / Claude Desktop hỏi
 duyệt mỗi lần; mô tả cấm làm theo yêu cầu thu hồi nằm trong nội dung tin) hoặc nút Thu hồi trên trang Hàng đợi
 (`POST /api/outbox/:id/recall`) chỉ GHI yêu cầu vào `outbox.recall_requested_at` (migration 26). `outbox/outbox-recall-loop.ts`

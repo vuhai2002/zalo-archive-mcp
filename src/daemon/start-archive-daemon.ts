@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { Logger } from "pino";
-import { ThreadType, type API } from "zca-js";
+import type { API } from "zca-js";
 import type { AccountPaths } from "../config/account-paths.js";
 import type { AppEnv } from "../config/env-schema.js";
 import { MediaDownloadWorker } from "../media/media-download-worker.js";
@@ -8,8 +8,6 @@ import { sharedJxlPngPool } from "../media/jxl-png-worker-pool.js";
 import { MediaLinkRenewer } from "../media/media-link-renewer.js";
 import { attachRenewLinkListener, RenewLinkReplyWaiter } from "../zalo/renew-link-control-listener.js";
 import { installRenewMediaLinkApi } from "../zalo/zca-renew-media-link-api.js";
-import { OutboxSender } from "../outbox/outbox-sender-loop.js";
-import { forwardedMsgId, toZaloMessage } from "../outbox/outbox-zalo-message-content.js";
 import { setMeta } from "../storage/thread-directory-store.js";
 import { recordSuspendGap } from "../storage/connection-event-store.js";
 import { HEARTBEAT_STALE_MS } from "../storage/daemon-liveness.js";
@@ -19,6 +17,7 @@ import type { ListenerRetryInfo } from "../zalo/listener-reconnect-timer.js";
 import { MobileSyncSession } from "../zalo/mobile-sync/mobile-sync-session.js";
 import { startKeepAliveLoop } from "../zalo/keep-alive-loop.js";
 import { startDirectoryLookupLoop } from "./directory-lookup-loop.js";
+import { startOutboxSender } from "./start-outbox-sender.js";
 import { startRecallAndReactionLoops } from "./start-recall-and-reaction-loops.js";
 import { applyPastMyDocumentsDeletes } from "./my-documents-past-deletes-backfill.js";
 
@@ -158,25 +157,7 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
     stops.push(() => media.stop());
   }
 
-  const toZaloType = (t: "user" | "group") => (t === "group" ? ThreadType.Group : ThreadType.User);
-  const sender = new OutboxSender({
-    db,
-    env,
-    log: log.child({ part: "sender" }),
-    isListenerConnected: listener.isConnected,
-    isReadOnly: d.isReadOnly,
-    sendText: async (threadId, type, text, mentions, replyTo) => {
-      // Có nhắc tên (@) thì gửi kèm danh sách nhắc - Zalo mới tô xanh và báo cho người được nhắc; trả lời tin thì kèm tin gốc
-      const res = await api.sendMessage(toZaloMessage(text, mentions, replyTo), threadId, toZaloType(type));
-      return { msgId: res.message?.msgId !== undefined ? String(res.message.msgId) : null };
-    },
-    forwardText: async (threadId, type, text) => forwardedMsgId(await api.forwardMessage({ message: text }, [threadId], toZaloType(type))),
-    sendTyping: async (threadId, type) => {
-      await api.sendTypingEvent(threadId, toZaloType(type));
-    },
-  });
-  sender.start();
-  stops.push(() => sender.stop());
+  stops.push(startOutboxSender({ api, db, env, log, isListenerConnected: listener.isConnected, isReadOnly: d.isReadOnly }));
 
   // Thu hồi tin kho đã gửi + thả cảm xúc khi người dùng yêu cầu (MCP / dashboard chỉ ghi yêu cầu)
   stops.push(startRecallAndReactionLoops({ api, db, log, isReadOnly: d.isReadOnly, isListenerConnected: listener.isConnected }));

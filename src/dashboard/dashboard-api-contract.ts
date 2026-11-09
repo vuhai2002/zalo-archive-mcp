@@ -260,6 +260,8 @@ export type OutboxItem = {
   recallError: string | null;
   /** Tin chuyển tiếp (hộp Chia sẻ); các mục của cùng một lần chia sẻ chung `batchId` */
   forwarded: boolean;
+  /** File gửi kèm (lệnh send_file của Claude): tên + cỡ, không kèm đường dẫn trên máy */
+  files: Array<{ name: string; size: number; kind: "image" | "video" | "file" }>;
 };
 
 // GET  /api/outbox?status=&limit=100           -> { items: OutboxItem[] }

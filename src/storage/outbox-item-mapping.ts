@@ -7,6 +7,8 @@ export type OutboxMode = "single" | "batch";
 export type OutboxCreator = "mcp" | "cli" | "dashboard";
 /** Một chỗ nhắc tên (@) trong tin gửi vào nhóm, đúng dạng Zalo cần: vị trí + độ dài đoạn "@Tên" trong chữ (đơn vị ký tự JS) */
 export type OutboxMention = { uid: string; pos: number; len: number };
+/** File gửi kèm (lệnh send_file): đường dẫn tuyệt đối trên máy, tên hiển thị trên Zalo, cỡ, loại theo đuôi */
+export type OutboxFile = { path: string; name: string; size: number; kind: "image" | "video" | "file" };
 /**
  * Tin gốc mà tin này trả lời (ô trích dẫn như Zalo), chụp lúc xếp hàng: `messageId` = số tin trong kho, các trường còn lại
  * đúng dạng zca-js `sendMessage({ quote })` cần (mốc `ts` là chuỗi số ms như Zalo gửi).
@@ -46,6 +48,8 @@ export type OutboxItem = {
   replyTo: OutboxReplyQuote | null;
   /** Chuyển tiếp tin này (số tin trong kho): daemon gửi bằng API chuyển tiếp; null = tin thường */
   forwardOf: number | null;
+  /** File gửi kèm; rỗng = tin chữ */
+  files: OutboxFile[];
   /** Thu hồi tin đã gửi: lúc người dùng yêu cầu, lúc Zalo thu hồi xong, lỗi nếu Zalo không cho */
   recallRequestedAt: string | null;
   recalledAt: string | null;
@@ -75,6 +79,7 @@ export function toItem(r: Record<string, unknown>): OutboxItem {
     mentions: parseMentions(r.mentions_json),
     replyTo: parseReplyTo(r.reply_quote_json),
     forwardOf: r.forward_of_message_id == null ? null : Number(r.forward_of_message_id),
+    files: parseFiles(r.files_json),
     recallRequestedAt: s("recall_requested_at"),
     recalledAt: s("recalled_at"),
     recallError: s("recall_error"),
@@ -100,5 +105,15 @@ function parseReplyTo(v: unknown): OutboxReplyQuote | null {
     return q && Number.isInteger(q.messageId) && typeof q.msgId === "string" && typeof q.uidFrom === "string" ? (q as OutboxReplyQuote) : null;
   } catch {
     return null;
+  }
+}
+
+function parseFiles(v: unknown): OutboxFile[] {
+  if (typeof v !== "string" || !v) return [];
+  try {
+    const list = JSON.parse(v) as unknown;
+    return Array.isArray(list) ? list.filter((f): f is OutboxFile => typeof f?.path === "string" && typeof f?.name === "string") : [];
+  } catch {
+    return [];
   }
 }

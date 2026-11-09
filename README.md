@@ -84,11 +84,12 @@ claude mcp add zalo-archive -- node C:/duong-dan/zalo-archive-mcp/node_modules/t
 
 | Nhóm | Tool | Việc |
 |---|---|---|
-| Đọc | `list_threads`, `read_thread`, `search_messages`, `get_attachment`, `sync_status` | đọc, tìm, xem file, xem kho phủ tới đâu |
+| Đọc | `list_threads`, `read_thread`, `search_messages`, `get_attachment`, `list_group_members`, `sync_status` | đọc (lùi / tới / quanh một tin), tìm (chữ, người gửi, tên file, ngày), xem file, thành viên nhóm, kho phủ tới đâu |
 | Gửi | `send_message` | gửi ngay một tin, chờ tới khi gửi xong rồi báo kết quả; trong nhóm nhắc tên (@) được bằng `mentions`; trả lời (trích dẫn) một tin bằng `reply_to` = số tin #N ở `read_thread` |
 | Gửi | `schedule_message` | hẹn giờ một tin |
 | Gửi | `send_batch` | gửi nhiều người, mỗi người một nội dung, chỉ bạn bè, có nhịp |
 | Gửi | `draft_message`, `list_outbox`, `cancel_outbox` | nháp để duyệt trên dashboard, xem / hủy hàng đợi |
+| Gửi | `send_file` | gửi file / ảnh / video (kèm chữ) - chỉ khi bạn bảo; Claude liệt kê người nhận + file + chữ, ứng dụng hỏi bạn duyệt mỗi lần; file bí mật (.env, khóa, mật khẩu) và dữ liệu nội bộ của kho bị chặn |
 | Gửi | `react_to_message` | thả cảm xúc (👍 ❤️ 😆 😮 😭 😡) vào một tin, số tin #N ở `read_thread` - chỉ khi bạn bảo |
 | Gửi | `recall_message` | thu hồi tin kho đã gửi - chỉ khi bạn bảo; Claude Code / Claude Desktop hỏi duyệt trước mỗi lần |
 

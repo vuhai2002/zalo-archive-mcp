@@ -26,6 +26,8 @@ export type SendTextFn = (
   mentions: OutboxMention[],
   replyTo: OutboxReplyQuote | null,
 ) => Promise<{ msgId: string | null }>;
+/** Gửi file (kèm chữ, nhắc tên, trả lời nếu có) - mục hàng đợi có `files` */
+export type SendFilesFn = (item: OutboxItem) => Promise<{ msgId: string | null }>;
 /** Chuyển tiếp chữ của một tin bằng API chuyển tiếp của Zalo (tin chữ / link) */
 export type ForwardTextFn = (threadId: string, threadType: ThreadKind, text: string) => Promise<{ msgId: string | null }>;
 export type TypingFn = (threadId: string, threadType: ThreadKind) => Promise<void>;
@@ -36,6 +38,8 @@ export type OutboxSenderDeps = {
   log: Logger;
   sendText: SendTextFn;
   forwardText: ForwardTextFn;
+  /** Không có thì mục kèm file đánh hỏng (bản giả trong test cũ không cần) */
+  sendFiles?: SendFilesFn;
   sendTyping?: TypingFn;
   /** Không gửi khi listener đang rớt: không thấy được tin dội về, và trạng thái phiên chưa rõ */
   isListenerConnected: () => boolean;
@@ -139,9 +143,11 @@ export class OutboxSender {
     const { db, log } = this.d;
     try {
       const result =
-        item.forwardOf !== null
-          ? await this.d.forwardText(item.threadId, item.threadType, item.text)
-          : await this.d.sendText(item.threadId, item.threadType, item.text, item.mentions, item.replyTo);
+        item.files.length > 0
+          ? await this.sendFiles(item)
+          : item.forwardOf !== null
+            ? await this.d.forwardText(item.threadId, item.threadType, item.text)
+            : await this.d.sendText(item.threadId, item.threadType, item.text, item.mentions, item.replyTo);
       if (!result.msgId) throw new Error("Zalo không trả msgId - không rõ tin đã tới chưa");
       markSent(db, item.id, result.msgId);
       log.info({ id: item.id, threadId: item.threadId, msgId: result.msgId }, "Đã gửi tin trong hàng đợi");
@@ -153,11 +159,16 @@ export class OutboxSender {
     }
   }
 
+  private sendFiles(item: OutboxItem): Promise<{ msgId: string | null }> {
+    if (!this.d.sendFiles) throw new Error("Daemon chưa hỗ trợ gửi file");
+    return this.d.sendFiles(item);
+  }
+
   /** Báo "đang soạn" rồi chờ một lúc theo độ dài tin, như người gõ thật. Hỏng/treo thì bỏ qua. */
   private async typeLikeAHuman(item: OutboxItem): Promise<void> {
     // Chuyển tiếp không gõ chữ nào, như bấm Chia sẻ trên Zalo; tin người dùng tự gõ trên dashboard thì đã gõ thật rồi,
     // đi ngay không giả "đang soạn"
-    if (!this.d.sendTyping || item.forwardOf !== null || item.createdBy === "dashboard") return;
+    if (!this.d.sendTyping || item.forwardOf !== null || item.files.length > 0 || item.createdBy === "dashboard") return;
     const sleep = this.d.sleep ?? ((t: number) => new Promise<void>((r) => setTimeout(r, t)));
     try {
       await Promise.race([

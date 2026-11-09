@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import type { OutboxItem } from "../../archive-api-types";
 import { createdByLabel, outboxStatusLabel, outboxStatusTone } from "../../shared/archive-status-labels";
+import { IconPaperclip } from "../../shared/action-and-media-icons";
 import { formatDateTime } from "../../shared/format-archive-time";
+import { formatFileSize } from "../../shared/format-file-size";
 import { ThreadKindBadge, threadDisplayName } from "../../shared/thread-kind-badge";
 import { Badge, btnClass } from "../../shared/ui-bits";
 
@@ -47,9 +49,22 @@ export function OutboxItemCard({
         </span>
       </div>
 
-      <p className="mt-2.5 whitespace-pre-wrap rounded-lg bg-tile/50 px-3 py-2 text-[14px] leading-relaxed text-ink [overflow-wrap:anywhere]">
-        {item.text}
-      </p>
+      {/* Tin chỉ có file (không chữ) thì không có khung chữ rỗng */}
+      {item.text && (
+        <p className="mt-2.5 whitespace-pre-wrap rounded-lg bg-tile/50 px-3 py-2 text-[14px] leading-relaxed text-ink [overflow-wrap:anywhere]">
+          {item.text}
+        </p>
+      )}
+      {item.files.length > 0 && (
+        <ul className="mt-1.5 space-y-0.5 text-[13px] text-ink">
+          {item.files.map((f, i) => (
+            <li key={i} className="flex items-center gap-1.5 [overflow-wrap:anywhere]">
+              <IconPaperclip size={14} className="shrink-0 text-ink-soft" />
+              {f.name} <span className="text-ink-soft">({formatFileSize(f.size)})</span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <dl className="mt-2.5 grid grid-cols-1 gap-x-4 gap-y-1 text-[12px] text-ink-soft sm:grid-cols-2">
         <div>

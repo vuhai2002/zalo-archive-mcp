@@ -12,6 +12,7 @@ import {
 } from "./outbox-send-tool-handlers.js";
 import { REACTION_CODES, reactToMessageTool, type ReactionName } from "./message-reaction-tool-handler.js";
 import { recallMessageTool } from "./outbox-recall-tool-handler.js";
+import { registerSendFileTool } from "./register-send-file-tool.js";
 import { safeToolHandler } from "./tool-result.js";
 
 const SENDS = { readOnlyHint: false, destructiveHint: false, openWorldHint: true } as const;
@@ -59,6 +60,8 @@ export function registerSendTools(server: McpServer, ctx: SendToolContext): void
     },
     safeToolHandler((a) => sendMessageTool(ctx, a)),
   );
+
+  registerSendFileTool(server, ctx, { threadId, mentions, replyTo });
 
   server.registerTool(
     "schedule_message",

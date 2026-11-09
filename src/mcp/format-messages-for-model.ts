@@ -24,6 +24,12 @@ function formatAttachment(a: AttachmentRow): string {
   return `  - đính kèm #${a.id} ${a.kind}${name}: ${status}`;
 }
 
+/** Tin trả lời: số tin gốc trong kho (dùng được cho reply_to / around_id) + đầu tin gốc để hiểu ngữ cảnh */
+function quoteFlag(m: MessageRow): string {
+  const snippet = m.quote?.text ? ` "${m.quote.text.replace(/\s+/g, " ").trim().slice(0, 60)}"` : "";
+  return m.quote?.id ? `trả lời tin #${m.quote.id}${snippet}` : `trả lời một tin không có trong kho${snippet}`;
+}
+
 function formatReactions(m: MessageRow): string[] {
   if (m.reactions.length === 0) return [];
   return [`  - cảm xúc: ${m.reactions.map((r) => `${r.emoji ?? r.icon} x${r.count} (${r.names.join(", ")})`).join("; ")}`];
@@ -35,7 +41,7 @@ export function formatMessage(m: MessageRow, timeZone: string): string {
   const who = m.isSelf ? "Tôi" : `${m.senderName ?? "?"} (${m.senderId})`;
   const flags = [
     m.recalledAt ? "ĐÃ THU HỒI" : null,
-    m.quoteMsgId ? `trả lời tin ${m.quoteMsgId}` : null,
+    m.quoteMsgId ? quoteFlag(m) : null,
     m.source !== "live" ? `nguồn: ${m.source}` : null,
   ].filter(Boolean);
   const head = `[#${m.id} ${formatLocalTime(m.sentAt, timeZone)}] ${who}${flags.length ? ` (${flags.join(", ")})` : ""}:`;
