@@ -78,6 +78,17 @@ describe("MCP server kho", () => {
     assert.match(status, /Daemon: chưa từng chạy/);
   });
 
+  it("list_threads unreplied_only: hội thoại chờ trả lời, đầu tin nằm trong khối bọc, lọc được theo tên", async () => {
+    const { client } = await connectClient();
+    const all = textOf(await client.callTool({ name: "list_threads", arguments: { unreplied_only: true, from_date: "2026-10-01" } }));
+    assert.match(all, /^2 hội thoại chờ bạn trả lời từ 01\/10\/2026/);
+    assert.match(all, /<zalo_data_[0-9a-f]{8} [^>]*>[\s\S]*Bình \| thread_id=u-binh \| 1-1 \(chưa kết bạn\) \| 1 tin chưa trả lời \(từ #2\)/);
+    const one = textOf(await client.callTool({ name: "list_threads", arguments: { unreplied_only: true, from_date: "2026-10-01", query: "binh" } }));
+    assert.match(one, /^1 hội thoại/);
+    const none = textOf(await client.callTool({ name: "list_threads", arguments: { unreplied_only: true, from_date: "2026-10-29" } }));
+    assert.match(none, /Không có hội thoại nào chờ bạn trả lời từ 29\/10\/2026/);
+  });
+
   it("sync_status trên nick Chỉ đọc nói rõ không gửi được, không ghi 'đang gửi được'", async () => {
     const db = seededDb();
     db.prepare("INSERT INTO meta (key, value) VALUES ('daemon_session_state', 'running')").run();

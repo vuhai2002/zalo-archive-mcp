@@ -5,6 +5,7 @@ import { syncStatusTool } from "./archive-sync-status-tool.js";
 import { listGroupMembersTool } from "./group-members-tool.js";
 import { registerSendTools } from "./register-send-tools.js";
 import { safeToolHandler } from "./tool-result.js";
+import { unrepliedThreadsTool } from "./unreplied-threads-tool.js";
 
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const;
 const dateField = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Ngày YYYY-MM-DD theo giờ của kho");
@@ -20,11 +21,20 @@ export function createArchiveMcpServer(ctx: ReadToolContext & { readonly readOnl
   server.registerTool(
     "list_threads",
     {
-      description: "Liệt kê hội thoại Zalo trong kho (mới nhất trước). Lọc theo tên (không phân biệt dấu) hoặc đúng thread_id.",
-      inputSchema: { query: z.string().max(200).optional(), limit: z.number().int().min(1).max(200).optional() },
+      description:
+        "Liệt kê hội thoại Zalo trong kho (mới nhất trước). Lọc theo tên (không phân biệt dấu) hoặc đúng thread_id. " +
+        "unreplied_only=true: chỉ hội thoại ĐANG CHỜ người dùng trả lời (câu 'có tin nào tôi chưa rep') - 1-1 có tin cuối của " +
+        "người kia, nhóm có tin nhắc tên / trả lời người dùng mà họ chưa đáp; kèm số tin chờ và đầu tin. Xét tin từ from_date " +
+        "(mặc định 14 ngày qua).",
+      inputSchema: {
+        query: z.string().max(200).optional(),
+        limit: z.number().int().min(1).max(200).optional(),
+        unreplied_only: z.boolean().optional(),
+        from_date: dateField.optional().describe("Chỉ dùng với unreplied_only: xét tin từ ngày này (YYYY-MM-DD, giờ của kho)"),
+      },
       annotations: READ_ONLY,
     },
-    safeToolHandler((a) => listThreadsTool(ctx, a)),
+    safeToolHandler(({ unreplied_only, from_date, ...a }) => (unreplied_only ? unrepliedThreadsTool(ctx, { ...a, from_date }) : listThreadsTool(ctx, a))),
   );
 
   server.registerTool(
