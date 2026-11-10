@@ -50,6 +50,8 @@ describe("lệnh đọc cho Claude: điều hướng, lọc, thành viên nhóm"
     const after = textOf(readThreadTool(s.ctx, { thread_id: "g-1", after_id: s.idOf("704") }));
     assert.ok(after.includes("tin số 5") && after.includes("tin số 6") && !after.includes("bao-gia"));
     assert.ok(after.includes(`trả lời tin #${s.idOf("702")} \\"tin số 2\\"`), after);
+    // Gợi ý cách trả lời nằm NGOÀI khối dữ liệu, ở cuối kết quả: phiên Claude cũ (mô tả lệnh nạp trước khi có reply_to) vẫn thấy
+    assert.match(after, /<\/zalo_data_[0-9a-f]{8}>[\s\S]*send_message hoặc send_file với reply_to = số #/);
     assert.equal(readThreadTool(s.ctx, { thread_id: "g-1", before_id: 9, after_id: 1 }).ok, false);
     assert.equal(readThreadTool(s.ctx, { thread_id: "g-1", around_id: 999_999 }).ok, false);
   });
@@ -60,6 +62,7 @@ describe("lệnh đọc cho Claude: điều hướng, lọc, thành viên nhóm"
     assert.ok(byLan.includes("tin số 2") && !byLan.includes("tin số 3"));
     const files = textOf(searchMessagesTool(s.ctx, { query: "bao gia", files_only: true }));
     assert.ok(files.includes("1 tin khớp") && files.includes("bao-gia-thang-11.pdf"), files);
+    assert.ok(files.includes("reply_to = số #"), files);
     assert.equal(searchMessagesTool(s.ctx, {}).ok, false);
   });
 

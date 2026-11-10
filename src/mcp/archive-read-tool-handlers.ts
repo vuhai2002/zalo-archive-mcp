@@ -13,6 +13,12 @@ import { wrapUntrustedContent } from "./wrap-untrusted-content.js";
 /** `accountId`: thư mục nick đang dùng. Bản chạy thật đọc lại mỗi lần (xem active-account-tool-context.ts) */
 export type ReadToolContext = { db: DatabaseSync; env: AppEnv; mediaRoot: string; accountId: string };
 
+/**
+ * Nhắc cách trả lời (trích dẫn) ngay trong KẾT QUẢ đọc: phiên Claude chạy nhiều ngày giữ mô tả lệnh gửi nạp từ trước khi có
+ * `reply_to` (và cả kết luận cũ "không trả lời được"); kết quả đọc thì luôn mới nên phiên cũ vẫn thấy.
+ */
+const REPLY_HINT = "Trả lời (trích dẫn) một tin như bấm Trả lời trên Zalo: send_message hoặc send_file với reply_to = số # của tin đó.";
+
 export function listThreadsTool(ctx: ReadToolContext, args: { query?: string; limit?: number }): ToolResult {
   const threads = listThreads(ctx.db, { query: args.query, limit: args.limit ?? 30 });
   if (threads.length === 0) {
@@ -50,7 +56,7 @@ export function readThreadTool(
   // Tên hội thoại do người khác đặt nên nằm TRONG khối bọc, cùng nội dung tin
   const body = `Tên hội thoại: ${thread.name ?? "(chưa rõ tên)"}\n${formatMessages(messages, tz)}`;
   const more = `Tin cũ hơn: before_id=${messages[0]!.id}. Tin mới hơn: after_id=${messages.at(-1)!.id}.`;
-  return toolOk([header, wrapUntrustedContent(body, `hội thoại ${args.thread_id}`), more].join("\n"));
+  return toolOk([header, wrapUntrustedContent(body, `hội thoại ${args.thread_id}`), more, REPLY_HINT].join("\n"));
 }
 
 /** Tìm tin: theo chữ (không dấu), người gửi, chỉ tin có file (tìm theo tên file), hội thoại, khoảng ngày - cần ít nhất một điều kiện */
@@ -76,7 +82,7 @@ export function searchMessagesTool(
   });
   if (results.length === 0) return toolOk(`Không tìm thấy tin nào khớp${args.query ? ` "${args.query}"` : ""} (tìm không phân biệt dấu).`);
   const lines = results.map((m) => `(thread_id=${m.threadId})\n${formatMessages([m], tz)}`).join("\n");
-  return toolOk(`${results.length} tin khớp, mới nhất trước:\n${wrapUntrustedContent(lines, `tìm "${args.query ?? ""}"`)}`);
+  return toolOk(`${results.length} tin khớp, mới nhất trước:\n${wrapUntrustedContent(lines, `tìm "${args.query ?? ""}"`)}\n${REPLY_HINT}`);
 }
 
 export function getAttachmentTool(ctx: ReadToolContext, args: { attachment_id: number }): ToolResult {
