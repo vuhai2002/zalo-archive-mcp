@@ -10,7 +10,7 @@ import { MessageQuoteBlock } from "./message-quote-block";
 import { RecalledNote, RecalledShownLabel } from "./message-recalled-note";
 import { useMediaViewer } from "./media-viewer-context";
 import { viewerItemFromMessage } from "./media-viewer-items";
-import { MessageLinkCard } from "./message-link-card";
+import { hasLinkCard, LINK_BUBBLE_WIDTH_CLASS, MessageLinkCard } from "./message-link-card";
 import { MessageReactionRow } from "./message-reaction-row";
 import { canReact, type MessageActions } from "./message-action-rules";
 import { MessageHoverActions } from "./message-hover-actions";
@@ -162,7 +162,7 @@ export function MessageBubble({
           />
         ) : (
           <div
-            className={`min-w-0 max-w-full rounded-lg px-3.5 py-2.5 text-[15px] leading-[1.5] text-chat-ink ${
+            className={`min-w-0 max-w-full rounded-lg px-3.5 py-2.5 text-[15px] leading-[1.5] text-chat-ink ${!hidden && hasLinkCard(msg.link) ? LINK_BUBBLE_WIDTH_CLASS : ""} ${
               self ? "border border-bubble-self-line bg-bubble-self" : "border border-black/5 bg-bubble shadow-[0_1px_1px_rgba(0,0,0,0.05)] dark:border-white/5"
             } ${recalled && revealed ? "opacity-75" : ""}`}
           >

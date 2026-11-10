@@ -22,9 +22,10 @@ function barPosition(btn: DOMRect): CSSProperties {
 
 /**
  * Nút Thích ở góc dưới bong bóng như Zalo PC: bấm là thả 👍; rê chuột vào thì hiện thanh 6 cảm xúc phía trên để chọn.
- * Chỉ hiện khi rê vào tin (cha có lớp `group`) hoặc khi thanh đang mở.
+ * Chỉ hiện khi rê vào tin (cha có lớp `group`) hoặc khi thanh đang mở. Mình đã thả cảm xúc (`mine`): nút hiện cảm xúc đó,
+ * LUÔN hiện, bấm là thả thêm đúng loại đó - như Zalo PC.
  */
-export function QuickReactionButton({ onReact }: { onReact: (code: string) => void }) {
+export function QuickReactionButton({ onReact, mine = null }: { onReact: (code: string) => void; mine?: (typeof QUICK_REACTIONS)[number] | null }) {
   const [barAt, setBarAt] = useState<CSSProperties | null>(null);
   const btn = useRef<HTMLButtonElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -57,15 +58,15 @@ export function QuickReactionButton({ onReact }: { onReact: (code: string) => vo
       <button
         ref={btn}
         type="button"
-        onClick={() => react("/-strong")}
+        onClick={() => react(mine?.code ?? "/-strong")}
         onFocus={open}
-        title="Thích"
-        aria-label="Thả cảm xúc Thích"
+        title={mine ? `Thả thêm ${mine.label}` : "Thích"}
+        aria-label={`Thả cảm xúc ${mine?.label ?? "Thích"}`}
         className={`flex h-6 w-6 items-center justify-center rounded-full border border-black/10 bg-bubble text-chat-time shadow-sm transition-opacity hover:text-zalo-500 dark:border-white/10 ${
-          barAt ? "opacity-100" : "opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+          barAt || mine ? "opacity-100" : "opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
         }`}
       >
-        <IconThumbUp size={14} />
+        {mine ? <span className="text-[14px] leading-none">{mine.emoji}</span> : <IconThumbUp size={14} />}
       </button>
       {barAt && (
         <span

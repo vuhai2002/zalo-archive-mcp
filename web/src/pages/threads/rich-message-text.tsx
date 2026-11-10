@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import type { TextStyleSpan } from "../../archive-api-types";
-import { buildRichSegments, type SegmentStyle } from "./rich-text-segments";
+import { buildRichSegments, shortenLongUrl, type SegmentStyle } from "./rich-text-segments";
 
 function segmentClass(s: SegmentStyle): string {
   return [
@@ -17,7 +17,7 @@ function segmentClass(s: SegmentStyle): string {
 
 /**
  * Chữ của một tin như Zalo: giữ xuống dòng, hiện đậm / nghiêng / màu / cỡ chữ người
- * gửi đã đặt, link http(s) bấm được (mở tab mới, không gửi Referer). Không dùng HTML
+ * gửi đã đặt, link http(s) bấm được (mở tab mới, không gửi Referer; link rất dài hiện rút gọn ở giữa). Không dùng HTML
  * của tin: mọi thứ dựng từ chữ thuần + danh sách định dạng đã lọc.
  */
 export function RichMessageText({ text, styles }: { text: string; styles: TextStyleSpan[] }) {
@@ -36,7 +36,7 @@ export function RichMessageText({ text, styles }: { text: string; styles: TextSt
             title={seg.href}
             className={`text-[#0068ff] hover:underline dark:text-zalo-600 ${cls}`}
           >
-            {seg.text}
+            {shortenLongUrl(seg.text)}
           </a>
         ) : cls || style ? (
           <span key={i} className={cls} style={style}>

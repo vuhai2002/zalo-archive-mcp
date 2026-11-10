@@ -66,3 +66,15 @@ export function buildRichSegments(text: string, spans: TextStyleSpan[]): RichSeg
   }
   return segments;
 }
+
+/** Link dài hơn chừng này ký tự thì hiện rút gọn ở giữa như Zalo PC (link 96 ký tự Zalo vẫn hiện đủ) */
+const LONG_URL = 123;
+const URL_KEEP = 60;
+
+/**
+ * Link rất dài (vd kèm `fbclid=...` vài trăm ký tự) hiện như Zalo PC: 60 ký tự đầu + "..." + 60 ký tự cuối, để không chiếm
+ * mấy dòng bong bóng. Chỉ đổi chữ HIỂN THỊ; href, rê chuột (title) và Copy tin nhắn vẫn là link đầy đủ.
+ */
+export function shortenLongUrl(text: string): string {
+  return text.length > LONG_URL ? `${text.slice(0, URL_KEEP)}...${text.slice(-URL_KEEP)}` : text;
+}

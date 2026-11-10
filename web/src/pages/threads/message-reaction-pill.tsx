@@ -2,7 +2,7 @@ import type { ArchivedMessage } from "../../archive-api-types";
 
 /**
  * Cảm xúc trên một tin, như Zalo: viên nhỏ (dải `MessageReactionRow` đặt đè mép dưới bên phải bong bóng), hiện tối
- * đa 3 loại cảm xúc nhiều nhất + tổng số lần bấm (bấm tim 3 lần = ❤️ 3). Rê chuột xem ai thả cái gì.
+ * đa 3 loại cảm xúc nhiều nhất + tổng số lần bấm, kể cả 1 như Zalo PC (bấm tim 3 lần = ❤️ 3). Rê chuột xem ai thả cái gì.
  */
 export function MessageReactionPill({ reactions }: { reactions: ArchivedMessage["reactions"] }) {
   if (reactions.length === 0) return null;
@@ -19,7 +19,7 @@ export function MessageReactionPill({ reactions }: { reactions: ArchivedMessage[
           {r.emoji ?? r.icon}
         </span>
       ))}
-      {total > 1 && <span className="ml-0.5 text-[11px] text-chat-time">{total}</span>}
+      <span className="ml-0.5 text-[11px] text-chat-time">{total}</span>
     </div>
   );
 }

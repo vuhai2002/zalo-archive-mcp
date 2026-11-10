@@ -64,8 +64,10 @@ function StickerCell({
   const att = msg.attachments[0]!;
   const url = sameOriginUrl(att.url);
   const react = actions?.react;
-  // Nút Thích chỉ ở sticker đang rê chuột (cả hàng chung một vùng rê chuột của cụm)
-  const onReact = hovered && react && canReact(msg) ? (code: string) => react(msg, code) : undefined;
+  // Nút Thích chỉ ở sticker đang rê chuột (cả hàng chung một vùng rê chuột của cụm); sticker mình đã thả cảm xúc thì nút
+  // mang cảm xúc đó luôn hiện như Zalo PC
+  const showButton = hovered || msg.reactions.some((r) => r.mine);
+  const onReact = showButton && react && canReact(msg) ? (code: string) => react(msg, code) : undefined;
   return (
     <div onMouseEnter={onHover} className="flex flex-col">
       {url ? (
