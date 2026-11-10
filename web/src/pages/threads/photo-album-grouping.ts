@@ -1,7 +1,13 @@
 import type { ArchivedMessage } from "../../archive-api-types";
 
-/** Một mục trong khung chat: một tin, hoặc một album ảnh (nhiều tin ảnh gửi cùng lúc) */
-export type ChatItem = { msg: ArchivedMessage; album: ArchivedMessage[] | null };
+/**
+ * Một mục trong khung chat: một tin, một album ảnh (nhiều tin ảnh gửi cùng lúc), hoặc một cụm sticker gửi liền nhau
+ * (`stickers`, xem sticker-run-grouping.ts). `msg` luôn là tin đầu của mục.
+ */
+export type ChatItem = { msg: ArchivedMessage; album: ArchivedMessage[] | null; stickers?: ArchivedMessage[] | null };
+
+/** Mọi tin của một mục (album: mọi ảnh, cụm sticker: mọi sticker) - để nhảy tới tin, tô sáng, chọn nhiều tin */
+export const itemMessages = (item: ChatItem): ArchivedMessage[] => item.album ?? item.stickers ?? [item.msg];
 
 const albumKey = (m: ArchivedMessage) => (m.album ? `${m.senderId}:${m.album.id}` : null);
 

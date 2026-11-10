@@ -3,10 +3,9 @@ import type { ArchivedMessage, AttachmentInfo, TextStyleSpan } from "../../archi
 import { sourceLabel } from "../../shared/archive-status-labels";
 import { ContactAvatar } from "../../shared/contact-avatar";
 import { formatClock, formatDateTime } from "../../shared/format-archive-time";
-import { MessageAlbumGrid } from "./message-album-grid";
 import { MessageAttachmentView } from "./message-attachment-view";
+import { MessageBareContent } from "./message-bare-content";
 import { MessageCallCard } from "./message-call-card";
-import { MessageContactCard } from "./message-contact-card";
 import { MessageQuoteBlock } from "./message-quote-block";
 import { RecalledNote, RecalledShownLabel } from "./message-recalled-note";
 import { useMediaViewer } from "./media-viewer-context";
@@ -19,7 +18,6 @@ import { MessageSystemNotice } from "./message-system-notice";
 import { isCaptionedPhoto, MessagePhotoCaptionBubble } from "./message-photo-caption-bubble";
 import { MessagePollNotice } from "./message-poll-notice";
 import { isSystemMessage } from "./message-grouping";
-import { mergeAlbumReactions } from "./photo-album-grouping";
 import { RichMessageText } from "./rich-message-text";
 
 // Video cũng hiện trần (không khung bong bóng) như Zalo PC
@@ -52,10 +50,13 @@ export function MessageBubble({
   onJumpToMessage,
   actions,
   album = null,
+  stickers = null,
 }: {
   msg: ArchivedMessage;
   /** Album ảnh (đã gộp, xếp theo vị trí): hiện khung lưới thay cho ảnh lẻ của `msg` */
   album?: ArchivedMessage[] | null;
+  /** Cụm sticker gửi liền nhau (từ 2 cái, `msg` là cái đầu): hiện hàng ngang 3 cái như Zalo PC */
+  stickers?: ArchivedMessage[] | null;
   isGroup: boolean;
   timeZone: string;
   first: boolean;
@@ -80,7 +81,9 @@ export function MessageBubble({
   // Tin đã thu hồi: mặc định giấu nội dung như Zalo
   const hidden = recalled && !revealed;
   const name = msg.senderName?.trim() || msg.senderId;
-  const timeTitle = `${formatDateTime(msg.sentAt, timeZone)}${msg.source !== "live" ? ` · ${sourceLabel(msg.source)}` : ""}`;
+  // Giờ của mục là giờ tin CUỐI (cụm sticker kéo dài vài phút: giờ dưới cụm là của sticker cuối)
+  const timeMsg = stickers?.at(-1) ?? msg;
+  const timeTitle = `${formatDateTime(timeMsg.sentAt, timeZone)}${timeMsg.source !== "live" ? ` · ${sourceLabel(timeMsg.source)}` : ""}`;
 
   // Tin bình chọn có mã thì có nút Xem (+ thẻ bình chọn ở tin tạo); không đọc được mã thì hiện như thông báo thường
   if (isSystemMessage(msg)) return msg.poll ? <MessagePollNotice msg={msg} title={timeTitle} /> : <MessageSystemNotice msg={msg} title={timeTitle} />;
@@ -93,14 +96,15 @@ export function MessageBubble({
   const bare =
     !hidden &&
     (!!album ||
+      !!stickers ||
       !!msg.contactCard ||
       (!hasText && !msg.quoteMsgId && msg.attachments.length > 0 && msg.attachments.every((a) => VISUAL_KINDS.has(a.kind))));
-  const albumCaption = album ? album.map((m) => m.text.trim()).filter(Boolean).join("\n") : "";
   const showName = isGroup && !self && first;
   // Ảnh kèm chú thích: một bong bóng, ảnh tràn sát mép trên như Zalo PC
   const captioned = !hidden && !bare && isCaptionedPhoto(msg, hasText);
   const showMeta = last || (recalled && revealed);
-  const hoverActions = actions ? <MessageHoverActions msg={msg} album={album} actions={actions} self={self} /> : null;
+  // Cụm sticker tự vẽ nút cạnh hàng đang rê chuột, cho đúng sticker đó
+  const hoverActions = actions && !stickers ? <MessageHoverActions msg={msg} album={album} actions={actions} self={self} /> : null;
   const react = actions?.react;
   const onReact = react && canReact(msg) ? (code: string) => react(msg, code) : undefined;
 
@@ -108,7 +112,7 @@ export function MessageBubble({
     <div className="mt-1 flex items-center gap-2 text-[11px] text-chat-time">
       {last && (
         <span title={timeTitle} className="tabular-nums">
-          {formatClock(msg.sentAt, timeZone)}
+          {formatClock(timeMsg.sentAt, timeZone)}
         </span>
       )}
       {recalled && revealed && (
@@ -128,33 +132,22 @@ export function MessageBubble({
 
       <div className={`flex min-w-0 max-w-[85%] flex-col lg:max-w-[78%] ${self ? "items-end" : "items-start"}`}>
         {bare ? (
-          <>
-            {/* Ảnh trong nhóm: tên người gửi trong một viên nhỏ phía trên ảnh, như Zalo PC */}
-            {showName && <div className="mb-1 rounded-full bg-bubble px-2.5 py-0.5 text-[12px] text-chat-time shadow-sm">{name}</div>}
-            <div className={`space-y-1 ${recalled ? "opacity-70" : ""}`}>
-              {msg.contactCard ? (
-                <MessageContactCard card={msg.contactCard} />
-              ) : album ? (
-                <MessageAlbumGrid album={album} onMediaLoad={onMediaLoad} onMediaRetried={onMediaRetried} />
-              ) : (
-                msg.attachments.map((att) => (
-                  <MessageAttachmentView key={att.id} att={att} onMediaLoad={onMediaLoad} onRetried={onMediaRetried} onOpen={openOf(att)} video={msg.video} />
-                ))
-              )}
-            </div>
-            {albumCaption && (
-              <div className="mt-1 max-w-[450px] whitespace-pre-wrap rounded-lg border border-black/5 bg-bubble px-3 py-2 text-[14.5px] leading-[1.45] text-chat-ink dark:border-white/5">
-                {albumCaption}
-              </div>
-            )}
-            <MessageReactionRow reactions={album ? mergeAlbumReactions(album) : msg.reactions} onReact={onReact} />
-            {last && (
-              <span title={timeTitle} className="mt-1 rounded-full bg-black/25 px-2 py-0.5 text-[11px] tabular-nums text-white dark:bg-white/15">
-                {formatClock(msg.sentAt, timeZone)}
-              </span>
-            )}
-            {recalled && <div className="px-1">{meta}</div>}
-          </>
+          <MessageBareContent
+            msg={msg}
+            album={album}
+            stickers={stickers}
+            self={self}
+            name={showName ? name : null}
+            clock={last ? formatClock(timeMsg.sentAt, timeZone) : null}
+            timeTitle={timeTitle}
+            recalled={recalled}
+            meta={meta}
+            actions={actions}
+            onReact={onReact}
+            onMediaLoad={onMediaLoad}
+            onMediaRetried={onMediaRetried}
+            openOf={openOf}
+          />
         ) : captioned ? (
           <MessagePhotoCaptionBubble
             msg={msg}

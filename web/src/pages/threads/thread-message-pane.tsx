@@ -11,9 +11,10 @@ import { MessageSelectionBar } from "./message-selection-bar";
 import { PendingOutgoingBubbles } from "./pending-outgoing-bubbles";
 import { usePendingOutgoing } from "./use-pending-outgoing";
 import { useMessageActions } from "./use-message-actions";
-import { layoutMessages } from "./message-grouping";
+import { layoutSpans } from "./message-grouping";
 import { MediaViewerProvider } from "./media-viewer-context";
 import { collapseAlbums } from "./photo-album-grouping";
+import { collapseStickerRuns } from "./sticker-run-grouping";
 import { ThreadChatHeader } from "./thread-chat-header";
 import { ThreadInfoPanel } from "./thread-info-panel";
 import { ThreadSearchPanel } from "./thread-search-panel";
@@ -120,9 +121,10 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
   const { jumpToMessage } = jump;
   const jumpToQuoted = useCallback((id: number) => void jumpToMessage(id), [jumpToMessage]);
   const isGroup = t.thread?.threadType === "group";
-  // Ảnh cùng album gộp thành một mục trước khi xếp cụm / vạch giờ
-  const items = useMemo(() => collapseAlbums(t.messages), [t.messages]);
-  const layouts = useMemo(() => layoutMessages(items.map((x) => x.msg), tz), [items, tz]);
+  // Ảnh cùng album, sticker gửi liền nhau gộp thành một mục trước khi xếp cụm / vạch giờ; cụm sticker tính khoảng cách với tin
+  // sau từ sticker cuối
+  const items = useMemo(() => collapseStickerRuns(collapseAlbums(t.messages), tz), [t.messages, tz]);
+  const layouts = useMemo(() => layoutSpans(items.map((x) => ({ head: x.msg, tail: x.stickers?.at(-1) ?? x.msg })), tz), [items, tz]);
 
   return (
     <MediaViewerProvider threadId={threadId} threadName={threadDisplayName(t.thread?.name)} timeZone={tz} onOpenMessage={(id) => void jump.jumpToMessage(id)}>

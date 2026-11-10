@@ -3,7 +3,7 @@ import { IconCheck } from "../../shared/dashboard-icons";
 import type { MessageActions } from "./message-action-rules";
 import { MessageBubble } from "./message-bubble";
 import type { MessageLayout } from "./message-grouping";
-import type { ChatItem } from "./photo-album-grouping";
+import { itemMessages, type ChatItem } from "./photo-album-grouping";
 
 /** Đang ở chế độ Chọn nhiều tin nhắn: mục này đã chọn chưa + bấm để chọn / bỏ */
 export type RowSelection = { selected: boolean; onToggle: () => void };
@@ -14,7 +14,7 @@ export type RowSelection = { selected: boolean; onToggle: () => void };
  * tô nền một lúc khi đó là tin vừa nhảy tới. Đang chọn nhiều tin: ô tròn bên trái, bấm cả dòng để chọn như Zalo.
  */
 export function ChatItemRow({
-  item: { msg: m, album },
+  item,
   layout,
   highlighted,
   isGroup,
@@ -38,10 +38,12 @@ export function ChatItemRow({
   actions?: MessageActions;
   selection?: RowSelection;
 }) {
+  const { msg: m, album } = item;
   const bubble = (
     <MessageBubble
       msg={m}
       album={album}
+      stickers={item.stickers ?? null}
       isGroup={isGroup}
       timeZone={timeZone}
       first={layout.firstInGroup}
@@ -65,7 +67,9 @@ export function ChatItemRow({
         </div>
       )}
       <div
-        data-msg-ids={[m.id, ...(album?.map((p) => p.id) ?? [])].join(" ")}
+        data-msg-ids={itemMessages(item)
+          .map((p) => p.id)
+          .join(" ")}
         className={`rounded-xl transition-colors duration-700 ${highlighted ? "bg-amber-300/40 dark:bg-amber-400/20" : ""}`}
       >
         {selection ? (
@@ -97,12 +101,11 @@ export function ChatItemRow({
   );
 }
 
-/** Mục có chứa tin này không (chính nó, hoặc một ảnh trong album) */
-export const itemHasMessage = (item: ChatItem, id: number | null) =>
-  id !== null && (item.msg.id === id || (item.album?.some((p) => p.id === id) ?? false));
+/** Mục có chứa tin này không (chính nó, một ảnh trong album, một sticker trong cụm) */
+export const itemHasMessage = (item: ChatItem, id: number | null) => id !== null && itemMessages(item).some((p) => p.id === id);
 
-/** Đang chọn nhiều tin: mục đã chọn khi mọi tin của nó (album: mọi ảnh) đã chọn; bấm thì chọn / bỏ cả mục */
+/** Đang chọn nhiều tin: mục đã chọn khi mọi tin của nó (album: mọi ảnh, cụm sticker: mọi sticker) đã chọn; bấm thì chọn / bỏ cả mục */
 export function rowSelection(selected: ReadonlySet<number>, item: ChatItem, toggle: (ids: number[]) => void): RowSelection {
-  const ids = item.album ? item.album.map((p) => p.id) : [item.msg.id];
+  const ids = itemMessages(item).map((p) => p.id);
   return { selected: ids.every((id) => selected.has(id)), onToggle: () => toggle(ids) };
 }

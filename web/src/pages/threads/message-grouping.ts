@@ -24,7 +24,8 @@ export type MessageLayout = {
 
 const senderKey = (m: ArchivedMessage) => `${m.isSelf ? "me" : "them"}:${m.senderId}`;
 
-function sameGroup(a: ArchivedMessage | undefined, b: ArchivedMessage | undefined, tz: string): boolean {
+/** Hai tin liền nhau (a trước b) cùng một cụm: cùng người, cùng ngày, cách nhau không quá GROUP_GAP_MS */
+export function sameGroup(a: ArchivedMessage | undefined, b: ArchivedMessage | undefined, tz: string): boolean {
   if (!a || !b || isSystemMessage(a) || isSystemMessage(b)) return false;
   if (senderKey(a) !== senderKey(b) || dayKey(a.sentAt, tz) !== dayKey(b.sentAt, tz)) return false;
   return Math.abs(Date.parse(b.sentAt) - Date.parse(a.sentAt)) <= GROUP_GAP_MS;
@@ -39,17 +40,29 @@ export function chatDayLabel(iso: string, tz: string, now: Date = new Date()): s
 }
 
 export function layoutMessages(messages: ArchivedMessage[], tz: string, now: Date = new Date()): MessageLayout[] {
-  return messages.map((m, i) => {
-    const prev = messages[i - 1];
-    const next = messages[i + 1];
+  return layoutSpans(
+    messages.map((m) => ({ head: m, tail: m })),
+    tz,
+    now,
+  );
+}
+
+/**
+ * Như `layoutMessages` cho các mục gộp nhiều tin (cụm sticker): khoảng cách với mục TRƯỚC tính từ tin đầu (`head`), với mục
+ * SAU tính từ tin cuối (`tail`) - cụm 9 sticker kéo dài vài phút thì tin kế tiếp vẫn cùng cụm, không mọc avatar / vạch giờ sai.
+ */
+export function layoutSpans(spans: Array<{ head: ArchivedMessage; tail: ArchivedMessage }>, tz: string, now: Date = new Date()): MessageLayout[] {
+  return spans.map(({ head, tail }, i) => {
+    const prev = spans[i - 1]?.tail;
+    const next = spans[i + 1]?.head;
     const separator =
       !prev ||
-      dayKey(prev.sentAt, tz) !== dayKey(m.sentAt, tz) ||
-      Date.parse(m.sentAt) - Date.parse(prev.sentAt) >= SEPARATOR_GAP_MS;
+      dayKey(prev.sentAt, tz) !== dayKey(head.sentAt, tz) ||
+      Date.parse(head.sentAt) - Date.parse(prev.sentAt) >= SEPARATOR_GAP_MS;
     return {
-      separatorLabel: separator ? `${formatClock(m.sentAt, tz)} ${chatDayLabel(m.sentAt, tz, now)}` : null,
-      firstInGroup: !sameGroup(prev, m, tz),
-      lastInGroup: !sameGroup(m, next, tz),
+      separatorLabel: separator ? `${formatClock(head.sentAt, tz)} ${chatDayLabel(head.sentAt, tz, now)}` : null,
+      firstInGroup: !sameGroup(prev, head, tz),
+      lastInGroup: !sameGroup(tail, next, tz),
     };
   });
 }
