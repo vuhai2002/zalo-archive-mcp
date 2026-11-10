@@ -119,17 +119,16 @@ export function ThreadListPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface">
+      {/* Tiêu đề kèm tổng số hội thoại (người dùng muốn luôn thấy), ô tìm kiếm nền xám liền như Zalo PC */}
       <div className="border-b border-line px-4 pt-3">
         {!searching && (
-          <div className="mb-2.5 flex items-center justify-between gap-2">
-            <h1 className="text-[16px] font-semibold text-ink">
-              Hội thoại <span className="text-[13px] font-medium text-ink-soft">({formatNumber(total)})</span>
-            </h1>
-          </div>
+          <h1 className="mb-2.5 text-[16px] font-semibold text-ink">
+            Hội thoại <span className="text-[13px] font-medium text-ink-soft">({formatNumber(total)})</span>
+          </h1>
         )}
         <div className={`flex items-center gap-2 ${searching && query.trim() !== "" ? "" : "pb-3"}`}>
           <div className="relative min-w-0 flex-1">
-            <IconSearch size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft/60" />
+            <IconSearch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -137,7 +136,7 @@ export function ThreadListPanel({
               onKeyDown={(e) => e.key === "Escape" && closeSearch()}
               placeholder="Tìm kiếm"
               aria-label="Tìm kiếm"
-              className="gc-input w-full py-1.5 pl-9"
+              className="h-[34px] w-full rounded-md border border-transparent bg-tile pl-9 pr-3 text-[15px] text-ink outline-none placeholder:text-ink-soft focus:border-zalo-500 focus:bg-surface"
             />
           </div>
           {searching && (

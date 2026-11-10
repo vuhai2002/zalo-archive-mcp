@@ -139,10 +139,10 @@ export function MessageComposer({
 
       <div className="flex items-center gap-1 border-b border-line px-2 py-1">
         <ToolButton title="Hẹn giờ gửi tin này" active={scheduleOpen} disabled={busy !== null} onClick={openSchedule}>
-          <IconClock size={18} /> Hẹn giờ
+          <IconClock size={22} />
         </ToolButton>
-        <ToolButton title="Lưu vào hàng đợi dạng nháp, chưa gửi" disabled={!canSubmit} onClick={() => void submit("draft")}>
-          <IconFileText size={18} /> {busy === "draft" ? "Đang lưu..." : "Lưu nháp"}
+        <ToolButton title={busy === "draft" ? "Đang lưu nháp..." : "Lưu nháp: vào hàng đợi, chưa gửi"} disabled={!canSubmit} onClick={() => void submit("draft")}>
+          <IconFileText size={22} />
         </ToolButton>
         {/* Bộ đếm chỉ có ích khi gần chạm trần */}
         {text.length > MAX_TEXT * 0.8 && (
@@ -202,16 +202,18 @@ export function MessageComposer({
   );
 }
 
+/** Nút trên hàng công cụ như Zalo PC: chỉ biểu tượng (22px, màu chữ chính), tên hiện khi rê chuột */
 function ToolButton({ title, active = false, disabled, onClick, children }: { title: string; active?: boolean; disabled?: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button
       type="button"
       title={title}
+      aria-label={title}
       disabled={disabled}
       onClick={onClick}
       aria-pressed={active}
-      className={`flex h-9 items-center gap-1.5 rounded-md px-2.5 text-[13px] hover:bg-tile disabled:opacity-40 disabled:hover:bg-transparent ${
-        active ? "bg-zalo-50 text-zalo-600 dark:bg-zalo-500/15 dark:text-zalo-500" : "text-ink-soft"
+      className={`flex h-9 w-9 items-center justify-center rounded-md hover:bg-tile disabled:opacity-40 disabled:hover:bg-transparent ${
+        active ? "bg-zalo-50 text-zalo-600 dark:bg-zalo-500/15 dark:text-zalo-500" : "text-ink"
       }`}
     >
       {children}

@@ -108,13 +108,15 @@ export function InfoTile({ label, value, hint }: { label: string; value: ReactNo
   );
 }
 
-export type AvatarSize = "2xs" | "xs" | "sm" | "md" | "lg" | "xl";
+export type AvatarSize = "2xs" | "xs" | "sm" | "md" | "chat" | "lg" | "xl";
 export const AVATAR_SIZE_CLASS: Record<AvatarSize, string> = {
   // Avatar nhỏ trong thông báo giữa khung chat ("X được Y thêm vào nhóm")
   "2xs": "h-[18px] w-[18px] text-[8px]",
   xs: "h-7 w-7 text-[10px]",
   sm: "h-7 w-7 text-[11px]",
   md: "h-9 w-9 text-[13px]",
+  // Avatar người gửi cạnh tin trong khung chat - 40px như Zalo PC
+  chat: "h-10 w-10 text-[14px]",
   lg: "h-12 w-12 text-[16px]",
   xl: "h-20 w-20 text-[26px]",
 };

@@ -5,6 +5,7 @@ import { IconChat, IconGear, IconGrid, IconInbox, IconWarning, type IconFn } fro
 import { sessionShortText, sessionTone, TONE_DOT_CLASS } from "../shared/session-state-labels";
 import { useDashboardShell, type KillSwitchState } from "./dashboard-shell-context";
 import { SidebarSettingsMenu } from "./sidebar-settings-menu";
+import { IconZaloChat } from "../shared/zalo-style-icons";
 
 /**
  * Thanh icon kiểu Zalo PC: cột xanh hẹp sát mép trái (từ lg). Trên cùng avatar nick đang dùng (bấm mở Cài đặt > Tài khoản
@@ -22,7 +23,8 @@ const OVERVIEW: NavItem = { to: "/overview", label: "Tổng quan", short: "Tổn
 /** Bấm icon Hội thoại (kể cả khi đang ở đó): đóng hội thoại đang mở, về danh sách đầu trang, thoát chế độ tìm - như Zalo */
 const navState = (to: string) => (to === "/threads" ? { resetThreadList: true } : undefined);
 
-const RAIL_BTN = "relative flex h-12 w-12 items-center justify-center rounded-lg text-white/85 transition-colors hover:bg-white/15 hover:text-white";
+// Như Zalo PC: ô 48px bo góc, biểu tượng trắng; rê chuột tối nhẹ, đang chọn tối hẳn (đen 25% chồng lên nền xanh)
+const RAIL_BTN = "relative flex h-12 w-12 items-center justify-center rounded-lg text-white transition-colors hover:bg-black/10";
 
 function RailLink({ item }: { item: NavItem }) {
   return (
@@ -31,9 +33,11 @@ function RailLink({ item }: { item: NavItem }) {
       state={navState(item.to)}
       title={item.label}
       aria-label={item.label}
-      className={({ isActive }) => `${RAIL_BTN} ${isActive ? "bg-white/20 text-white" : ""}`}
+      className={({ isActive }) => `${RAIL_BTN} ${isActive ? "bg-black/25 hover:bg-black/25" : ""}`}
     >
-      <item.icon size={22} />
+      {({ isActive }) =>
+        item.to === "/threads" ? <IconZaloChat size={28} strokeWidth={1.9} active={isActive} /> : <item.icon size={26} strokeWidth={1.9} />
+      }
     </NavLink>
   );
 }
@@ -68,12 +72,12 @@ export function SidebarNav({
   return (
     <>
       {/* Từ lg: cột icon xanh như Zalo PC */}
-      <aside className="hidden h-screen w-16 shrink-0 flex-col items-center bg-zalo-500 py-3 dark:bg-[#0b2a5c] lg:flex">
+      <aside className="hidden h-screen w-16 shrink-0 flex-col items-center bg-[#005ae0] py-3 dark:bg-[#0b2a5c] lg:flex">
         <button type="button" onClick={() => openSettings("account")} title={statusText} aria-label={`Tài khoản Zalo: ${statusText}`} className="relative mb-3 rounded-full ring-2 ring-white/60">
           <ContactAvatar name={nickName} seed={session?.account?.id ?? "nick"} url={session?.account?.avatarUrl} size="md" />
           <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-zalo-500 ${TONE_DOT_CLASS[tone]}`} />
         </button>
-        <nav className="flex flex-1 flex-col items-center gap-1">
+        <nav className="flex flex-1 flex-col items-center gap-2">
           {TOP_ITEMS.map((item) => (
             <RailLink key={item.to} item={item} />
           ))}
@@ -88,7 +92,7 @@ export function SidebarNav({
           <RailLink item={OVERVIEW} />
         </div>
         <SidebarSettingsMenu variant="rail" onLogout={onLogout}>
-          <IconGear size={22} />
+          <IconGear size={26} strokeWidth={1.9} />
         </SidebarSettingsMenu>
       </aside>
 

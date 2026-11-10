@@ -1,6 +1,7 @@
 import type { ThreadListItem } from "../../archive-api-types";
-import { IconImage, IconLink, IconPaperclip, IconPlay } from "../../shared/action-and-media-icons";
-import { IconPin, IconUsers } from "../../shared/dashboard-icons";
+import { IconLink, IconPaperclip } from "../../shared/action-and-media-icons";
+import { IconPin } from "../../shared/dashboard-icons";
+import { IconZaloGroup, IconZaloImage, IconZaloSticker, IconZaloVideo, IconZaloVoice } from "../../shared/zalo-style-icons";
 import { ThreadAvatar } from "../../shared/thread-avatar";
 import { threadDisplayName } from "../../shared/thread-kind-badge";
 import { previewParts, zaloListTime, type PreviewIcon } from "../../shared/zalo-list-time-and-preview";
@@ -32,15 +33,15 @@ export function ThreadListRow({
         type="button"
         onClick={() => onSelect(t.threadId)}
         aria-current={active ? "true" : undefined}
-        className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left"
+        className="flex w-full cursor-pointer items-center gap-3 px-4 py-[15px] text-left"
       >
         <ThreadAvatar t={t} />
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
             <span className="flex min-w-0 flex-1 items-center gap-1.5">
               {/* Nhóm có biểu tượng người trước tên, như Zalo PC */}
-              {t.threadType === "group" && <IconUsers size={15} className="shrink-0 text-ink-soft" />}
-              <span className="min-w-0 truncate text-[15px] text-ink">{name}</span>
+              {t.threadType === "group" && <IconZaloGroup size={18} className="shrink-0 text-ink-soft" />}
+              <span className="min-w-0 truncate text-[16px] text-ink">{name}</span>
             </span>
             <span className="shrink-0 text-[12px] text-ink-soft">{zaloListTime(t.lastMessageAt, timeZone)}</span>
           </span>
@@ -68,8 +69,8 @@ export function ThreadListRow({
   );
 }
 
-/** Biểu tượng nhỏ trước chữ xem trước, như Zalo PC: file, ảnh, video, link */
+/** Biểu tượng nhỏ trước chữ xem trước, vẽ theo Zalo PC: file, ảnh, video, link, sticker, tin thoại */
 function PreviewIconGlyph({ icon }: { icon: PreviewIcon }) {
-  const Glyph = { file: IconPaperclip, image: IconImage, video: IconPlay, link: IconLink }[icon];
-  return <Glyph size={14} className="shrink-0" />;
+  const Glyph = { file: IconPaperclip, image: IconZaloImage, video: IconZaloVideo, link: IconLink, sticker: IconZaloSticker, voice: IconZaloVoice }[icon];
+  return <Glyph size={17} strokeWidth={1.6} className="shrink-0" />;
 }

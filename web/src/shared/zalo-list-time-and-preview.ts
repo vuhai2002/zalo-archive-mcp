@@ -30,22 +30,22 @@ export function zaloListTime(iso: string | null | undefined, timeZone: string, n
   return a.yy === day(now).yy ? a.dm : `${a.dm}/${a.yy}`;
 }
 
-export type PreviewIcon = "file" | "image" | "video" | "link";
+export type PreviewIcon = "file" | "image" | "video" | "link" | "sticker" | "voice";
 export type PreviewParts = { prefix: string; icon: PreviewIcon | null; text: string };
 
-/** Như Zalo PC: ảnh / video hiện biểu tượng + chữ ("🖼 Hình ảnh"); sticker, GIF, tin thoại giữ ngoặc vuông */
+/** Như Zalo PC: biểu tượng + chữ ("🖼 Hình ảnh", "▶ Video", "☺ Sticker"), không ngoặc vuông */
 const KIND_PREVIEW: Record<string, { icon: PreviewIcon | null; text: string }> = {
   photo: { icon: "image", text: "Hình ảnh" },
   video: { icon: "video", text: "Video" },
-  gif: { icon: null, text: "[GIF]" },
-  sticker: { icon: null, text: "[Sticker]" },
-  voice: { icon: null, text: "[Tin nhắn thoại]" },
+  gif: { icon: "image", text: "GIF" },
+  sticker: { icon: "sticker", text: "Sticker" },
+  voice: { icon: "voice", text: "Tin nhắn thoại" },
 };
 
 /**
  * Dòng xem trước tin cuối kiểu Zalo PC: "Bạn: " cho tin mình gửi, "Tên đầy đủ: " (tên gợi nhớ nếu có)
  * cho tin người khác trong nhóm; file hiện tên file (kèm biểu tượng ghim), ảnh / video hiện biểu tượng
- * + chữ, thẻ link hiện biểu tượng link + tiêu đề, sticker hiện nhãn trong ngoặc vuông.
+ * + chữ, thẻ link hiện biểu tượng link + tiêu đề, sticker / tin thoại cũng biểu tượng + chữ như Zalo PC.
  */
 export function previewParts(last: LastMessagePreview | null, threadType: ThreadKind): PreviewParts {
   if (!last) return { prefix: "", icon: null, text: "" };
@@ -61,7 +61,7 @@ export function previewParts(last: LastMessagePreview | null, threadType: Thread
     // Ảnh có chú thích thì hiện chú thích, như Zalo
     return { prefix, icon: kind.icon, text: firstLine && firstLine !== "[sticker]" ? firstLine : kind.text };
   }
-  if (last.msgType === "chat.sticker") return { prefix, icon: null, text: "[Sticker]" };
+  if (last.msgType === "chat.sticker") return { prefix, icon: "sticker", text: "Sticker" };
   // Thẻ link (chat.recommended có địa chỉ web; tin cuộc gọi cùng loại nhưng không có link)
   if (last.msgType === "chat.recommended" && /https?:\/\//.test(last.text)) return { prefix, icon: "link", text: firstLine };
   return { prefix, icon: null, text: firstLine || `[${last.msgType}]` };

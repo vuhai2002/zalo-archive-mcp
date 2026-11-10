@@ -50,6 +50,14 @@ export const IconUsers = (p: IconProps) => (
   </svg>
 );
 
+/** Một người (nét): dòng "25 thành viên" ở đầu khung chat, như Zalo PC */
+export const IconUser = (p: IconProps) => (
+  <svg {...iconBase(p)}>
+    <circle cx="12" cy="8" r="3.8" />
+    <path d="M4.8 20c.8-3.7 3.6-5.6 7.2-5.6s6.4 1.9 7.2 5.6" />
+  </svg>
+);
+
 export const IconSearch = (p: IconProps) => (
   <svg {...iconBase(p)}>
     <circle cx="11" cy="11" r="6.5" />

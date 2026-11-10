@@ -1,6 +1,6 @@
 import type { ThreadMessagesResponse } from "../../archive-api-types";
 import { ContactAvatar } from "../../shared/contact-avatar";
-import { IconArrowLeft, IconPanelRight, IconSearch } from "../../shared/dashboard-icons";
+import { IconArrowLeft, IconPanelRight, IconSearch, IconUser } from "../../shared/dashboard-icons";
 import { MemberAvatarStack } from "../../shared/member-avatar-stack";
 import type { ChatSidePanel } from "./use-chat-side-panel";
 import { threadDisplayName } from "../../shared/thread-kind-badge";
@@ -51,6 +51,8 @@ export function ThreadChatHeader({
   onToggleSearch: () => void;
 }) {
   const on = "bg-zalo-50 text-zalo-500 dark:bg-zalo-500/15";
+  // Nút bên phải như Zalo PC: biểu tượng 22px, màu chữ chính (không xám nhạt)
+  const btn = "inline-flex items-center justify-center rounded-md p-1.5 text-ink hover:bg-tile";
   return (
     <div className="flex h-[68px] shrink-0 items-center gap-3 border-b border-line bg-surface px-3 sm:px-4">
       <button type="button" onClick={onBack} aria-label="Quay lại danh sách" className={`${BTN_ICON} lg:hidden`}>
@@ -58,8 +60,8 @@ export function ThreadChatHeader({
       </button>
       {thread && <ThreadAvatar thread={thread} />}
       <div className="min-w-0 flex-1" title={threadId}>
-        <h2 className="truncate text-[17px] font-semibold leading-tight text-ink">{threadDisplayName(thread?.name)}</h2>
-        {thread && <div className="mt-0.5 truncate text-[13px] text-ink-soft">{chatSubtitle(thread)}</div>}
+        <h2 className="truncate text-[18px] font-semibold leading-tight text-ink">{threadDisplayName(thread?.name)}</h2>
+        {thread && <ChatSubtitleLine thread={thread} />}
       </div>
       <button
         type="button"
@@ -67,9 +69,9 @@ export function ThreadChatHeader({
         aria-pressed={panel === "search"}
         title="Tìm kiếm trong trò chuyện"
         aria-label="Tìm kiếm trong trò chuyện"
-        className={`${BTN_ICON} ${panel === "search" ? on : ""}`}
+        className={`${btn} ${panel === "search" ? on : ""}`}
       >
-        <IconSearch size={20} />
+        <IconSearch size={22} />
       </button>
       <button
         type="button"
@@ -77,10 +79,25 @@ export function ThreadChatHeader({
         aria-pressed={panel === "info"}
         title={panel === "info" ? "Ẩn thông tin hội thoại" : "Thông tin hội thoại: ảnh, file"}
         aria-label="Thông tin hội thoại"
-        className={`${BTN_ICON} ${panel === "info" ? on : ""}`}
+        className={`${btn} ${panel === "info" ? on : ""}`}
       >
-        <IconPanelRight size={20} />
+        <IconPanelRight size={22} />
       </button>
+    </div>
+  );
+}
+
+/** Dòng phụ dưới tên: nhóm thì "[người] 25 thành viên" màu chữ chính như Zalo PC, số tin trong kho màu phụ đứng sau */
+function ChatSubtitleLine({ thread }: { thread: ChatThread }) {
+  const stored = `${formatNumber(thread.messageCount)} tin trong kho`;
+  if (thread.threadType !== "group" || !thread.memberCount) {
+    return <div className="mt-0.5 truncate text-[14px] text-ink-soft">{chatSubtitle(thread)}</div>;
+  }
+  return (
+    <div className="mt-0.5 flex min-w-0 items-center gap-1 text-[14px]">
+      <IconUser size={16} className="shrink-0 text-ink" />
+      <span className="shrink-0 text-ink">{formatNumber(thread.memberCount)} thành viên</span>
+      <span className="truncate text-ink-soft">· {stored}</span>
     </div>
   );
 }

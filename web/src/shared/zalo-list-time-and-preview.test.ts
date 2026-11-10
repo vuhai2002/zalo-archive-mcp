@@ -58,7 +58,7 @@ describe("previewParts", () => {
   });
 
   it("sticker, thu hồi hiện nhãn như Zalo", () => {
-    assert.equal(previewParts(last({ msgType: "chat.sticker", text: "[sticker]", attachmentKind: "sticker" }), "user").text, "[Sticker]");
+    assert.equal(previewParts(last({ msgType: "chat.sticker", text: "[sticker]", attachmentKind: "sticker" }), "user").text, "Sticker");
     assert.equal(previewParts(last({ text: "x", recalled: true }), "user").text, "Tin nhắn đã được thu hồi");
   });
 });

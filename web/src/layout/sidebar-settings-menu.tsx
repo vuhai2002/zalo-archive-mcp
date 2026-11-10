@@ -52,7 +52,7 @@ export function SidebarSettingsMenu({ variant, onLogout, children }: { variant: 
         aria-label="Cài đặt"
         className={
           variant === "rail"
-            ? `relative flex h-12 w-12 items-center justify-center rounded-lg text-white/85 transition-colors hover:bg-white/15 hover:text-white ${open ? "bg-white/20 text-white" : ""}`
+            ? `relative flex h-12 w-12 items-center justify-center rounded-lg text-white transition-colors hover:bg-black/10 ${open ? "bg-black/25 hover:bg-black/25" : ""}`
             : `relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10.5px] ${open ? "text-zalo-500" : "text-ink-soft"}`
         }
       >

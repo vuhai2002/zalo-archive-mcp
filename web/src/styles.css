@@ -25,8 +25,8 @@
 
   --color-canvas: #f6f8fb;      /* nền trang */
   --color-surface: #ffffff;     /* nền card/panel - KHÔNG dùng bg-white trực tiếp */
-  --color-ink: #1c2433;         /* chữ chính */
-  --color-ink-soft: #67748b;    /* chữ phụ */
+  --color-ink: #081c36;         /* chữ chính - đúng màu chữ của Zalo PC */
+  --color-ink-soft: #5a6478;    /* chữ phụ - đo từ ảnh Zalo PC (dòng xem trước, giờ): đậm hơn xám xanh cũ */
   --color-line: #e4e8ef;        /* border card */
   --color-tile: #eef1f6;        /* nền tile/hover */
 

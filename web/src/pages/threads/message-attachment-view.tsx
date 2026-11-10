@@ -34,6 +34,7 @@ export function MessageAttachmentView({
   onOpen,
   video = null,
   compact = false,
+  flush = false,
 }: {
   att: AttachmentInfo;
   onMediaLoad?: () => void;
@@ -45,6 +46,8 @@ export function MessageAttachmentView({
   video?: ArchivedMessage["video"];
   /** Ô vuông nhỏ trong album: file chưa xem được hiện gọn (biểu tượng + chữ ngắn) */
   compact?: boolean;
+  /** Ảnh kèm chú thích như Zalo: ảnh tràn sát mép trên bong bóng (không viền, không bo góc riêng, rộng hết khung) */
+  flush?: boolean;
 }) {
   const url = att.status === "done" ? sameOriginUrl(att.url) : null;
   const name = att.fileName ?? KIND_LABEL[att.kind];
@@ -63,12 +66,16 @@ export function MessageAttachmentView({
         alt={name}
         loading="lazy"
         onLoad={onMediaLoad}
-        className="max-h-[360px] max-w-full rounded-lg border border-black/10 bg-bubble object-contain dark:border-white/10"
+        className={
+          flush
+            ? "block max-h-[420px] w-full bg-black/5 object-cover dark:bg-white/5"
+            : "max-h-[360px] max-w-full rounded-lg border border-black/10 bg-bubble object-contain dark:border-white/10"
+        }
       />
     );
     if (onOpen) {
       return (
-        <button type="button" onClick={onOpen} title="Xem ảnh" className="block cursor-zoom-in">
+        <button type="button" onClick={onOpen} title="Xem ảnh" className={`block cursor-zoom-in ${flush ? "w-full" : ""}`}>
           {img}
         </button>
       );

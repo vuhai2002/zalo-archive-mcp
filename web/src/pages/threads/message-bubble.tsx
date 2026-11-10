@@ -16,6 +16,7 @@ import { MessageReactionRow } from "./message-reaction-row";
 import { canReact, type MessageActions } from "./message-action-rules";
 import { MessageHoverActions } from "./message-hover-actions";
 import { MessageSystemNotice } from "./message-system-notice";
+import { isCaptionedPhoto, MessagePhotoCaptionBubble } from "./message-photo-caption-bubble";
 import { MessagePollNotice } from "./message-poll-notice";
 import { isSystemMessage } from "./message-grouping";
 import { mergeAlbumReactions } from "./photo-album-grouping";
@@ -96,6 +97,8 @@ export function MessageBubble({
       (!hasText && !msg.quoteMsgId && msg.attachments.length > 0 && msg.attachments.every((a) => VISUAL_KINDS.has(a.kind))));
   const albumCaption = album ? album.map((m) => m.text.trim()).filter(Boolean).join("\n") : "";
   const showName = isGroup && !self && first;
+  // Ảnh kèm chú thích: một bong bóng, ảnh tràn sát mép trên như Zalo PC
+  const captioned = !hidden && !bare && isCaptionedPhoto(msg, hasText);
   const showMeta = last || (recalled && revealed);
   const hoverActions = actions ? <MessageHoverActions msg={msg} album={album} actions={actions} self={self} /> : null;
   const react = actions?.react;
@@ -118,8 +121,8 @@ export function MessageBubble({
     <div className={`group flex gap-2 ${self ? "justify-end" : "justify-start"} ${first ? "mt-3" : "mt-1"}`}>
       {self && hoverActions}
       {!self && (
-        <div className="w-8 shrink-0">
-          {first && <ContactAvatar name={name} seed={msg.senderId} url={msg.senderAvatarUrl} size="sm" />}
+        <div className="w-10 shrink-0">
+          {first && <ContactAvatar name={name} seed={msg.senderId} url={msg.senderAvatarUrl} size="chat" />}
         </div>
       )}
 
@@ -152,6 +155,18 @@ export function MessageBubble({
             )}
             {recalled && <div className="px-1">{meta}</div>}
           </>
+        ) : captioned ? (
+          <MessagePhotoCaptionBubble
+            msg={msg}
+            self={self}
+            name={showName ? name : null}
+            meta={showMeta ? meta : null}
+            textStyles={textStylesOf(msg)}
+            dimmed={recalled && revealed}
+            onMediaLoad={onMediaLoad}
+            onMediaRetried={onMediaRetried}
+            openOf={openOf}
+          />
         ) : (
           <div
             className={`min-w-0 max-w-full rounded-lg px-3.5 py-2.5 text-[15px] leading-[1.5] text-chat-ink ${
