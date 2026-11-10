@@ -50,7 +50,7 @@ const KIND_PREVIEW: Record<string, { icon: PreviewIcon | null; text: string }> =
 export function previewParts(last: LastMessagePreview | null, threadType: ThreadKind): PreviewParts {
   if (!last) return { prefix: "", icon: null, text: "" };
   // Tin hệ thống ("X đã thêm Y vào nhóm") đã là câu đầy đủ: không thêm "Bạn: " / tên người gửi
-  if (last.msgType === "group_event" || last.msgType === "chat.ecard") return { prefix: "", icon: null, text: last.text.trim() };
+  if (last.msgType === "group_event" || last.msgType === "group.poll" || last.msgType === "chat.ecard") return { prefix: "", icon: null, text: last.text.trim() };
   const sender = last.senderName?.trim() ?? "";
   const prefix = last.isSelf ? "Bạn: " : threadType === "group" && sender ? `${sender}: ` : "";
   if (last.recalled) return { prefix, icon: null, text: "Tin nhắn đã được thu hồi" };

@@ -21,6 +21,18 @@ describe("normalizeMessage", () => {
     assert.deepEqual(m.attachments, []);
   });
 
+  it("tin bình chọn: lưu câu như Zalo thay cho [group.poll]; chính mình bình chọn thì là Bạn", () => {
+    const content = {
+      title: "",
+      action: "vote",
+      params: '{"msg":{"vi":"%1$s tham gia cuộc bình chọn: %2$s"},"question":"Ăn trưa ở đâu đây?","pollId":1100000001,"groupId":2150000000000000110}',
+    };
+    const group = { threadType: "group" as const, threadId: "g-1" };
+    assert.equal(normalizeMessage(raw({ msgType: "group.poll", content }, group), receivedAt)!.text, "Lan tham gia cuộc bình chọn: Ăn trưa ở đâu đây?");
+    const mine = normalizeMessage(raw({ msgType: "group.poll", content }, { ...group, isSelf: true }), receivedAt)!;
+    assert.equal(mine.text, "Bạn tham gia cuộc bình chọn: Ăn trưa ở đâu đây?");
+  });
+
   it("ảnh: lấy params.hd trước, caption làm chữ", () => {
     const content = {
       title: "ảnh hóa đơn",

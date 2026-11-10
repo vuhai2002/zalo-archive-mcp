@@ -446,4 +446,20 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   CREATE INDEX attachments_renew_ok ON attachments (kind, renewed_at) WHERE original_url IS NOT NULL;
   CREATE INDEX attachments_local_path ON attachments (local_path) WHERE local_path IS NOT NULL;
   `,
+  // 32: bình chọn nhóm - poll_activity ghi mỗi cuộc bình chọn có hoạt động (tin group.poll) để daemon biết cần hỏi Zalo lại;
+  // poll_snapshots giữ chi tiết lấy bằng getPollDetail (câu hỏi, phương án, số phiếu, người chọn) cho cửa sổ Xem - chỉ xem
+  `
+  CREATE TABLE poll_activity (
+    poll_id       TEXT PRIMARY KEY,
+    group_id      TEXT NOT NULL,
+    question      TEXT,
+    last_event_at TEXT NOT NULL
+  );
+  CREATE TABLE poll_snapshots (
+    poll_id     TEXT PRIMARY KEY,
+    detail_json TEXT,
+    fetched_at  TEXT NOT NULL,
+    error       TEXT
+  );
+  `,
 ];

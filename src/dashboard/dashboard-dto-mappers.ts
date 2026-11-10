@@ -32,6 +32,7 @@ export function toArchivedMessage(m: MessageRow): ArchivedMessage {
     quote: m.quote,
     video: m.video,
     noticeAvatar: m.noticeAvatar,
+    poll: m.poll,
     reactions: m.reactions,
     attachments: m.attachments.map(toAttachmentInfo),
   };

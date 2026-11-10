@@ -12,7 +12,8 @@ export const GROUP_GAP_MS = 5 * 60_000;
 export const SEPARATOR_GAP_MS = 60 * 60_000;
 
 /** Tin hệ thống ("X đã đồng ý kết bạn", "X đã thêm Y vào nhóm"): hiện giữa khung, không thuộc cụm nào */
-export const isSystemMessage = (m: Pick<ArchivedMessage, "msgType">) => m.msgType === "chat.ecard" || m.msgType === "group_event";
+export const isSystemMessage = (m: Pick<ArchivedMessage, "msgType">) =>
+  m.msgType === "chat.ecard" || m.msgType === "group_event" || m.msgType === "group.poll";
 
 export type MessageLayout = {
   /** Vạch giờ đặt TRƯỚC tin này ("21:03 Hôm nay"); null nếu cùng ngày và gần tin trước */

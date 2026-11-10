@@ -91,3 +91,12 @@ export const IconLink = (p: IconProps) => (
     <path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1" />
   </svg>
 );
+
+/** Bình chọn nhóm: ba cột như biểu tượng bình chọn của Zalo */
+export const IconPoll = (p: IconProps) => (
+  <svg {...iconBase(p)}>
+    <rect x="4" y="9" width="4" height="11" rx="2" />
+    <rect x="10" y="4" width="4" height="16" rx="2" />
+    <rect x="16" y="12" width="4" height="8" rx="2" />
+  </svg>
+);

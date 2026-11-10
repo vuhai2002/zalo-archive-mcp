@@ -5,6 +5,8 @@ import { noteContactSeen } from "./contact-store.js";
 import { isDeletedMessage } from "./deleted-message-store.js";
 import { findCliMsgIdTwin, isProvisionalMsgId, promoteProvisionalTwin } from "./provisional-message-id-twin.js";
 import { foldVietnameseForSearch } from "../shared/fold-vietnamese-for-search.js";
+import { POLL_MSG_TYPE, pollEventFromRawJson } from "../archive/zalo-poll-notice.js";
+import { notePollActivity } from "./poll-store.js";
 
 /** `id` = 0 khi tin đã bị xóa hẳn (My Documents) - không ghi lại */
 export type UpsertResult = { id: number; inserted: boolean };
@@ -98,6 +100,9 @@ export function upsertMessage(
     ).run({ msgId: msg.msgId });
 
     touchThread(db, msg);
+    // Tin bình chọn: đánh dấu cuộc bình chọn có hoạt động mới để daemon hỏi lại chi tiết (phương án, số phiếu)
+    const poll = msg.msgType === POLL_MSG_TYPE ? pollEventFromRawJson(msg.rawJson) : null;
+    if (poll) notePollActivity(db, { pollId: poll.pollId, groupId: msg.threadId, question: poll.question, at: msg.sentAt });
     // Người gửi + người kia của hội thoại 1-1 vào danh bạ, để sau đó hỏi avatar
     noteContactSeen(db, msg.senderId, msg.isSelf ? null : msg.senderName);
     if (msg.threadType === "user" && msg.threadId !== msg.senderId) noteContactSeen(db, msg.threadId, null);

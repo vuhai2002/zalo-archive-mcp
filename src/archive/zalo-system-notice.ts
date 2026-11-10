@@ -23,8 +23,8 @@ export type NoticeNames = {
 };
 
 /** Ghép câu từ các mảnh chữ thường + mảnh in đậm */
-type Piece = string | { bold: string };
-function compose(pieces: Piece[]): Pick<SystemNotice, "text" | "bold"> {
+export type Piece = string | { bold: string };
+export function compose(pieces: Piece[]): Pick<SystemNotice, "text" | "bold"> {
   let text = "";
   const bold: NoticeSpan[] = [];
   for (const p of pieces) {
@@ -96,7 +96,7 @@ export function groupEventNoticeOf(raw: unknown, names: NoticeNames): SystemNoti
   return null;
 }
 
-function parseObject(v: unknown): Record<string, unknown> | null {
+export function parseObject(v: unknown): Record<string, unknown> | null {
   if (v && typeof v === "object" && !Array.isArray(v)) return v as Record<string, unknown>;
   if (typeof v !== "string") return null;
   try {

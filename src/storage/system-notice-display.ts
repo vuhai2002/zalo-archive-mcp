@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { POLL_MSG_TYPE, pollEventFromRawJson, pollNoticeOf } from "../archive/zalo-poll-notice.js";
 import { systemNoticeOf } from "../archive/zalo-system-notice.js";
 import type { TextStyleSpan } from "./message-text-styles.js";
 import { getMeta } from "./thread-directory-store.js";
@@ -10,7 +11,9 @@ import { getMeta } from "./thread-directory-store.js";
  * lạ) thì giữ chữ đã lưu.
  */
 export type NoticeAvatar = { userId: string | null; name: string | null; url: string | null };
-export type DisplayedNotice = { text: string; textStyles: TextStyleSpan[]; avatar: NoticeAvatar | null };
+/** Tin bình chọn: mã cuộc bình chọn (mở cửa sổ Xem) + hành động (create / vote / update / close / share) */
+export type NoticePoll = { pollId: string; action: string };
+export type DisplayedNotice = { text: string; textStyles: TextStyleSpan[]; avatar: NoticeAvatar | null; poll: NoticePoll | null };
 
 const boldSpan = (s: { start: number; end: number }): TextStyleSpan => ({
   ...s,
@@ -31,14 +34,22 @@ export function createNoticeRenderer(db: DatabaseSync): (msgType: string, rawJso
     return contact.get(uid) as { name: string | null; avatar_url: string | null } | undefined;
   };
   return (msgType, rawJson) => {
-    if (msgType !== "group_event") return null;
+    if (msgType !== "group_event" && msgType !== POLL_MSG_TYPE) return null;
     if (selfUid === undefined) selfUid = getMeta(db, "self_uid");
-    const notice = systemNoticeOf(rawJson, { selfUid, nameOf: (uid) => lookup(uid)?.name ?? null });
+    const names = { selfUid, nameOf: (uid: string) => lookup(uid)?.name ?? null };
+    // Tin bình chọn: "X tham gia cuộc bình chọn: <câu hỏi>" (tên, câu hỏi in đậm) + mã để mở cửa sổ Xem
+    if (msgType === POLL_MSG_TYPE) {
+      const ev = pollEventFromRawJson(rawJson);
+      if (!ev) return null;
+      const n = pollNoticeOf(ev, names);
+      return { text: n.text, textStyles: n.bold.map(boldSpan), avatar: null, poll: { pollId: ev.pollId, action: ev.action } };
+    }
+    const notice = systemNoticeOf(rawJson, names);
     if (!notice) return null;
     const who = notice.avatar?.userId ? lookup(notice.avatar.userId) : undefined;
     const avatar = notice.avatar
       ? { userId: notice.avatar.userId, name: who?.name ?? null, url: who?.avatar_url ?? notice.avatar.url }
       : null;
-    return { text: notice.text, textStyles: notice.bold.map(boldSpan), avatar };
+    return { text: notice.text, textStyles: notice.bold.map(boldSpan), avatar, poll: null };
   };
 }

@@ -25,7 +25,7 @@ const msg = (sentAt: string, who: "me" | "lan", msgType = "webchat"): ArchivedMe
   textStyles: [],
   call: null,
   album: null,
-  link: null, contactCard: null, quote: null, video: null, noticeAvatar: null,
+  link: null, contactCard: null, quote: null, video: null, noticeAvatar: null, poll: null,
   reactions: [],
   attachments: [],
 });

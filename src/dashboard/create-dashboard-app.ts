@@ -19,6 +19,7 @@ import { storageManagementRoutes } from "./routes/storage-management-routes.js";
 import { outboxAndSettingsRoutes } from "./routes/outbox-and-settings-routes.js";
 import type { Logger } from "pino";
 import { zaloPcMediaRoutes } from "./routes/zalo-pc-media-routes.js";
+import { pollDetailRoute } from "./routes/poll-detail-route.js";
 
 const CONTENT_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -47,6 +48,7 @@ function accountScopedApi(ctx: DashboardContext): Hono {
   api.route("/", archiveLiveEventsRoute(ctx));
   api.route("/", attachmentRetryRoute(ctx));
   api.route("/", zaloPcMediaRoutes(ctx));
+  api.route("/", pollDetailRoute(ctx));
   // Route /api lạ phải 404 JSON, không rơi xuống trang SPA bên dưới
   api.all("*", (c) => c.json({ error: "Không có route này" }, 404));
   return api;

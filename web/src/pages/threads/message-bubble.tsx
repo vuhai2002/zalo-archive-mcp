@@ -16,6 +16,7 @@ import { MessageReactionRow } from "./message-reaction-row";
 import { canReact, type MessageActions } from "./message-action-rules";
 import { MessageHoverActions } from "./message-hover-actions";
 import { MessageSystemNotice } from "./message-system-notice";
+import { MessagePollNotice } from "./message-poll-notice";
 import { isSystemMessage } from "./message-grouping";
 import { mergeAlbumReactions } from "./photo-album-grouping";
 import { RichMessageText } from "./rich-message-text";
@@ -80,7 +81,8 @@ export function MessageBubble({
   const name = msg.senderName?.trim() || msg.senderId;
   const timeTitle = `${formatDateTime(msg.sentAt, timeZone)}${msg.source !== "live" ? ` · ${sourceLabel(msg.source)}` : ""}`;
 
-  if (isSystemMessage(msg)) return <MessageSystemNotice msg={msg} title={timeTitle} />;
+  // Tin bình chọn có mã thì có nút Xem (+ thẻ bình chọn ở tin tạo); không đọc được mã thì hiện như thông báo thường
+  if (isSystemMessage(msg)) return msg.poll ? <MessagePollNotice msg={msg} title={timeTitle} /> : <MessageSystemNotice msg={msg} title={timeTitle} />;
 
   const hasSticker = msg.msgType === "chat.sticker" && msg.attachments.some((a) => a.kind === "sticker" && a.status === "done");
   const hasText = !hasSticker && msg.text.trim().length > 0;

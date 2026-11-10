@@ -4,6 +4,7 @@ import { callNoticeOf } from "../archive/zalo-call-message-text.js";
 import { webContentText } from "./zalo-web-content-text.js";
 import { zaloTimestampToIso } from "./zalo-message-timestamp.js";
 import { msgInfoNoticeOf } from "../archive/zalo-system-notice.js";
+import { POLL_MSG_TYPE, pollEventOf, pollNoticeOf } from "../archive/zalo-poll-notice.js";
 
 /**
  * Hình dạng tin THÔ mà kho ghi vào nhật ký và chuẩn hóa từ đó. Cố tình là object
@@ -108,7 +109,10 @@ export function normalizeMessage(raw: RawListenerMessage, receivedAt: Date): Nor
   const msgType = notice ? "group_event" : (str(d.msgType) ?? "unknown");
   const quote = d.quote && typeof d.quote === "object" ? (d.quote as Record<string, unknown>) : null;
   const attachments = notice ? [] : extractMessageAttachments(msgType, d.content);
-  const text = notice?.text ?? messageText(msgType, d.content);
+  // Tin bình chọn: lưu câu như Zalo ("X tham gia cuộc bình chọn: <câu hỏi>") thay cho "[group.poll]" - tìm được theo câu hỏi
+  const poll = msgType === POLL_MSG_TYPE ? pollEventOf(d) : null;
+  const pollText = poll ? pollNoticeOf(poll, { selfUid: raw.isSelf ? poll.actorId : null, nameOf: () => null }).text : null;
+  const text = notice?.text ?? pollText ?? messageText(msgType, d.content);
 
   return {
     msgId,

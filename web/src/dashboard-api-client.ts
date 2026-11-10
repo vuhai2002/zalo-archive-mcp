@@ -32,6 +32,7 @@ import type {
   StorageRemoveResult,
   StorageTab,
   StorageThreadsResponse,
+  PollView,
   ThreadListResponse,
   ThreadMessagesResponse,
   ThreadSendersResponse,
@@ -174,6 +175,8 @@ export const api = {
   storageRemovePreview: (body: StorageRemoveRequest) => post<StorageRemovePreview>("/api/storage/remove-preview", body),
   storageRemove: (body: StorageRemoveRequest) => post<StorageRemoveResult>("/api/storage/remove", body),
   storageDeleteBackups: (names: string[]) => post<StorageOverviewResponse>("/api/storage/backups/delete", { names }),
+  /** Chi tiết một cuộc bình chọn (chỉ xem) - daemon lấy từ Zalo sau mỗi đợt hoạt động */
+  poll: (pollId: string) => request<PollView>(`/api/polls/${encodeURIComponent(pollId)}`),
 
   settings: () => request<SettingsResponse>("/api/settings"),
   updateSettings: (patch: Partial<SendSettings>) =>

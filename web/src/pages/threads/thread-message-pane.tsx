@@ -4,7 +4,7 @@ import { threadDisplayName } from "../../shared/thread-kind-badge";
 import { EmptyState, ErrorNote, LoadingText } from "../../shared/ui-bits";
 import { useArchiveLiveChanges } from "../../shared/use-archive-live-changes";
 import { useLoadMoreWhenVisible } from "../../shared/use-load-more-when-visible";
-import { ChatItemRow, itemHasMessage, rowSelection } from "./chat-item-row";
+import { ChatItemList } from "./chat-item-list";
 import { JumpToLatestButton } from "./jump-to-latest-button";
 import { MessageComposer } from "./message-composer";
 import { MessageSelectionBar } from "./message-selection-bar";
@@ -172,21 +172,19 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
           </p>
         )}
 
-        {items.map((item, i) => (
-          <ChatItemRow
-            key={item.msg.id}
-            item={item}
-            layout={layouts[i]!}
-            highlighted={itemHasMessage(item, jump.highlightId)}
-            isGroup={isGroup}
-            timeZone={tz}
-            onMediaLoad={onMediaLoad}
-            onMediaRetried={afterMediaRetried}
-            onJumpToMessage={jumpToQuoted}
-            actions={acts.actions}
-            selection={acts.selected ? rowSelection(acts.selected, item, acts.toggle) : undefined}
-          />
-        ))}
+        <ChatItemList
+          items={items}
+          layouts={layouts}
+          highlightId={jump.highlightId}
+          isGroup={isGroup}
+          timeZone={tz}
+          onMediaLoad={onMediaLoad}
+          onMediaRetried={afterMediaRetried}
+          onJumpToMessage={jumpToQuoted}
+          actions={acts.actions}
+          selected={acts.selected}
+          toggle={acts.toggle}
+        />
         <PendingOutgoingBubbles items={pending.visible} onDismiss={pending.dismiss} />
         {/* Đang xem đoạn cũ (nhảy từ kết quả tìm): cuộn xuống là tải tiếp tin mới hơn */}
         <div ref={newerRef} aria-hidden="true" className="h-px" />

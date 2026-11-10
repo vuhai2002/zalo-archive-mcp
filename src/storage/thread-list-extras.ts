@@ -25,7 +25,7 @@ export function lastMessagePreview(db: DatabaseSync, threadId: string, threadTyp
   const row = db
     .prepare(
       `SELECT m.msg_id, m.is_self, m.msg_type, m.text, m.recalled_at,
-         CASE WHEN m.msg_type = 'group_event' THEN m.raw_json END AS notice_raw,
+         CASE WHEN m.msg_type IN ('group_event', 'group.poll') THEN m.raw_json END AS notice_raw,
          COALESCE((SELECT alias FROM contacts c WHERE c.user_id = m.sender_id), m.sender_name,
            (SELECT display_name FROM contacts c WHERE c.user_id = m.sender_id)) AS sender_name,
          (SELECT kind FROM attachments a WHERE a.msg_id = m.msg_id ORDER BY a.id LIMIT 1) AS att_kind,

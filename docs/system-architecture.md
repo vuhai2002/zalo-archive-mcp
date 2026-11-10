@@ -108,6 +108,12 @@ tin gốc đúng dạng zca-js cần (nội dung, loại tin, propertyExt, uidFr
 `{ title }` thì đổi thành chuỗi vì zca-js từ chối tin chữ có nội dung đối tượng) vào `outbox.reply_quote_json` (migration 27).
 Daemon gửi `{ msg, mentions?, quote }` (`outbox/outbox-zalo-message-content.ts`); zca-js gọi API `/quote` của Zalo.
 
+Bình chọn nhóm (chỉ xem): tin `group.poll` mang sẵn mẫu câu + câu hỏi + mã trong `content.params` (`archive/zalo-poll-notice.ts`);
+lúc ghi tin, chữ thành câu như Zalo và `poll_activity` ghi mốc hoạt động; lúc đọc, câu dựng lại theo danh bạ (như thông báo
+nhóm) kèm `poll: { pollId, action }`. Phương án + số phiếu không có trong tin: `daemon/poll-detail-refresher.ts` gọi
+getPollDetail (chỉ đọc, mỗi 5 giây tối đa một cuộc, luật chọn ở `storage/poll-store.ts`) và lưu `poll_snapshots`;
+`GET /api/polls/:pollId` đổi mã người chọn ra tên + avatar theo danh bạ. Không có lệnh bình chọn nào.
+
 Quản lý dữ liệu (Cài đặt, người dùng chốt 2026-11-09, xóa file giữ tin): đính kèm có trạng thái `removed` (+ `removed_at`,
 migration 31 dựng lại bảng `attachments` để thêm vào CHECK, thêm chỉ mục `local_path`). `storage/attachment-file-removal-store.ts`
 chỉ xóa đính kèm đã tải (bỏ sticker), ghi DB trước rồi mới xóa file; file trên ổ khử trùng theo nội dung nên chỉ xóa khi không

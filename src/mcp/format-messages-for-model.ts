@@ -39,6 +39,8 @@ function formatReactions(m: MessageRow): string[] {
 export function formatMessage(m: MessageRow, timeZone: string): string {
   // Sự kiện nhóm ("X đã thêm Y vào nhóm") đã là câu đầy đủ, không gắn người gửi
   if (m.msgType === "group_event") return `[#${m.id} ${formatLocalTime(m.sentAt, timeZone)}] (thông báo nhóm) ${m.text}`;
+  // Tin bình chọn ("X tham gia cuộc bình chọn: <câu hỏi>") cũng là câu đầy đủ; kết quả xem trên dashboard (nút Xem)
+  if (m.msgType === "group.poll") return `[#${m.id} ${formatLocalTime(m.sentAt, timeZone)}] (bình chọn) ${m.text}`;
   const who = m.isSelf ? "Tôi" : `${m.senderName ?? "?"} (${m.senderId})`;
   const flags = [
     m.recalledAt ? "ĐÃ THU HỒI" : null,

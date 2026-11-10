@@ -19,6 +19,7 @@ import { startKeepAliveLoop } from "../zalo/keep-alive-loop.js";
 import { startDirectoryLookupLoop } from "./directory-lookup-loop.js";
 import { startOutboxSender } from "./start-outbox-sender.js";
 import { startRecallAndReactionLoops } from "./start-recall-and-reaction-loops.js";
+import { startPollDetailRefresher } from "./poll-detail-refresher.js";
 import { applyPastMyDocumentsDeletes } from "./my-documents-past-deletes-backfill.js";
 
 export type DaemonDeps = {
@@ -161,6 +162,8 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
 
   // Thu hồi tin kho đã gửi + thả cảm xúc khi người dùng yêu cầu (MCP / dashboard chỉ ghi yêu cầu)
   stops.push(startRecallAndReactionLoops({ api, db, log, isReadOnly: d.isReadOnly, isListenerConnected: listener.isConnected }));
+  // Bình chọn nhóm: lấy chi tiết (chỉ đọc) cho cửa sổ Xem trên dashboard
+  stops.push(startPollDetailRefresher({ db, log, api }));
 
   // Đồng bộ từ điện thoại: chỉ gắn listener sự kiện, không tự gửi yêu cầu nào
   const mobileSync = new MobileSyncSession({

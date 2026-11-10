@@ -19,6 +19,8 @@ export type ThreadKind = "user" | "group";
 export type * from "./dashboard-auth-and-account-contract.js";
 // Quản lý dữ liệu (dung lượng kho, xóa file giữ tin): storage-management-contract.ts
 export type * from "./storage-management-contract.js";
+// Cửa sổ Xem bình chọn nhóm (chỉ xem): poll-view-contract.ts
+export type * from "./poll-view-contract.js";
 import type { StorageOverviewResponse } from "./storage-management-contract.js";
 
 // ---------- Tổng quan / thống kê ----------
@@ -180,6 +182,8 @@ export type ArchivedMessage = {
   video: { durationMs: number | null; width: number | null; height: number | null } | null;
   /** Thông báo nhóm (`group_event`): avatar nhỏ đứng trước câu - người được nhắc tới, hoặc ảnh Zalo gửi kèm */
   noticeAvatar: { userId: string | null; name: string | null; url: string | null } | null;
+  /** Tin bình chọn (`group.poll`): mã cuộc bình chọn để mở cửa sổ Xem (GET /api/polls/:pollId) + hành động (create, vote...) */
+  poll: { pollId: string; action: string } | null;
   /** Cảm xúc trên tin như Zalo, gộp theo loại; `emoji` null = mã Zalo chưa biết (hiện `icon`) */
   reactions: Array<{ icon: string; emoji: string | null; count: number; mine: boolean; names: string[] }>;
   attachments: AttachmentInfo[];

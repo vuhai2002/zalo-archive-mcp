@@ -11,7 +11,7 @@ import { applyMentionNames, type MentionSource } from "./message-mention-display
 import { quotePreviewFromRaw, resolveQuotePreviews, type QuotePreview } from "./message-quote-preview.js";
 import { reactionSummaries, type ReactionSummary } from "./message-reaction-store.js";
 import { parseTextStyles, type TextStyleSpan } from "./message-text-styles.js";
-import { createNoticeRenderer, type NoticeAvatar } from "./system-notice-display.js";
+import { createNoticeRenderer, type NoticeAvatar, type NoticePoll } from "./system-notice-display.js";
 import { getMeta } from "./thread-directory-store.js";
 import { isZaloDeletedFailure } from "./zalo-deleted-media-store.js";
 
@@ -68,6 +68,8 @@ export type MessageRow = {
   video: VideoInfo | null;
   /** Thông báo nhóm: avatar nhỏ đứng trước câu (người được nhắc tới); null với tin khác */
   noticeAvatar: NoticeAvatar | null;
+  /** Tin bình chọn: mã cuộc bình chọn + hành động (dựng ở withAttachments) */
+  poll: NoticePoll | null;
   /** Cảm xúc trên tin, gộp theo loại */
   reactions: ReactionSummary[];
   attachments: AttachmentRow[];
@@ -86,7 +88,7 @@ export const MESSAGE_COLUMNS = `m.id, m.msg_id, m.thread_id, m.thread_type, m.se
     THEN json_extract(m.raw_json, '$.content.params') END AS photo_params,
   CASE WHEN m.msg_type = 'chat.video.msg' AND json_valid(m.raw_json)
     THEN json_extract(m.raw_json, '$.content.params') END AS video_params,
-  CASE WHEN m.msg_type = 'group_event' THEN m.raw_json END AS notice_raw,
+  CASE WHEN m.msg_type IN ('group_event', 'group.poll') THEN m.raw_json END AS notice_raw,
   CASE WHEN m.quote_msg_id IS NOT NULL AND json_valid(m.raw_json) THEN json_extract(m.raw_json, '$.quote') END AS quote_raw,
   CASE WHEN instr(m.raw_json, '"mentions"') > 0 AND json_valid(m.raw_json) THEN json_extract(m.raw_json, '$.mentions') END AS mentions_raw`;
 /** Avatar người gửi lấy từ danh bạ người */
@@ -130,6 +132,7 @@ export function toMessageRow(r: Record<string, unknown>): MessageRow {
     quote: null,
     video: videoInfoOf(r.video_params),
     noticeAvatar: null,
+    poll: null,
     reactions: [],
     attachments: [],
   };
@@ -151,7 +154,7 @@ export function withAttachments(db: DatabaseSync, messages: MessageRow[]): Messa
     m.reactions = reactions.get(m.msgId) ?? [];
     // Thông báo nhóm: câu như Zalo theo danh bạ hiện tại (tên gợi nhớ, tên mới biết), tên in đậm
     const notice = noticeOf(m.msgType, noticeRawOf.get(m) ?? null);
-    if (notice) Object.assign(m, { text: notice.text, textStyles: notice.textStyles, noticeAvatar: notice.avatar });
+    if (notice) Object.assign(m, { text: notice.text, textStyles: notice.textStyles, noticeAvatar: notice.avatar, poll: notice.poll });
     m.quote = quotePreviewFromRaw(quoteRawOf.get(m), selfUid);
     if (m.contactCard && userThread.get(m.contactCard.userId)) m.contactCard.threadId = m.contactCard.userId;
   }
