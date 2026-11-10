@@ -3,7 +3,7 @@ import type { Logger } from "pino";
 import { ThreadType, type API } from "zca-js";
 import type { AppEnv } from "../config/env-schema.js";
 import { OutboxSender } from "../outbox/outbox-sender-loop.js";
-import { sentMsgIdOf, toAttachmentSources } from "../outbox/outbox-zalo-attachments.js";
+import { sendFilesThenText } from "../outbox/outbox-zalo-attachments.js";
 import { forwardedMsgId, toZaloMessage } from "../outbox/outbox-zalo-message-content.js";
 
 const toZaloType = (t: "user" | "group") => (t === "group" ? ThreadType.Group : ThreadType.User);
@@ -31,13 +31,11 @@ export function startOutboxSender(d: {
       const res = await api.sendMessage(toZaloMessage(text, mentions, replyTo), threadId, toZaloType(type));
       return { msgId: res.message?.msgId !== undefined ? String(res.message.msgId) : null };
     },
-    // Gửi file: chữ (nếu có) zca-js gửi riêng trước file, trừ một ảnh kèm chú thích; nhắc tên + trả lời đi cùng phần chữ
-    sendFiles: async (item) => {
-      const base = toZaloMessage(item.text, item.mentions, item.replyTo);
-      const content = typeof base === "string" ? { msg: base } : base;
-      const res = await api.sendMessage({ ...content, attachments: await toAttachmentSources(item.files) }, item.threadId, toZaloType(item.threadType));
-      return { msgId: sentMsgIdOf(res) };
-    },
+    // Gửi file theo thứ tự như gửi tay: chùm ảnh, rồi file khác, rồi tin chữ SAU CÙNG (nhắc tên + trả lời đi cùng phần chữ)
+    sendFiles: async (item) =>
+      sendFilesThenText(item, (content) => api.sendMessage(content, item.threadId, toZaloType(item.threadType)), (text) =>
+        toZaloMessage(text, item.mentions, item.replyTo),
+      ),
     forwardText: async (threadId, type, text) => forwardedMsgId(await api.forwardMessage({ message: text }, [threadId], toZaloType(type))),
     sendTyping: async (threadId, type) => {
       await api.sendTypingEvent(threadId, toZaloType(type));

@@ -160,8 +160,11 @@ chờ đồng ý; lệnh đánh dấu phá hủy nên Claude Code / Desktop hỏ
 dẫn tuyệt đối hoặc số đính kèm trong kho, kiểm (có thật, có đuôi, <= 500 MB, tối đa 10 file), chặn cứng file bí mật
 (`blocked-secret-files.ts`: .env, khóa, chứng chỉ, kho mật khẩu, thư mục .ssh / .aws...) và dữ liệu nội bộ của kho (mọi thứ
 trong DATA_DIR trừ thư mục media), lưu `outbox.files_json` (migration 30). Daemon (`daemon/start-outbox-sender.ts`) đọc file
-thành dữ liệu + tên gốc + cỡ ảnh (`media/image-dimensions.ts`) rồi `api.sendMessage({ msg, attachments })` - không đưa đường
-dẫn vì zca-js tách tên file theo "/" (sai với đường dẫn Windows) và ảnh theo đường dẫn đòi bộ đọc cỡ ảnh riêng.
+thành dữ liệu + tên gốc + cỡ ảnh (`media/image-dimensions.ts`) - không đưa đường dẫn vì zca-js tách tên file theo "/" (sai với
+đường dẫn Windows) và ảnh theo đường dẫn đòi bộ đọc cỡ ảnh riêng. Thứ tự gửi (`sendFilesThenText`, luật người dùng chốt
+2026-11-10: chữ luôn SAU ảnh / file): mọi ảnh trong một lần `sendMessage` (zca-js gắn chung `groupLayoutId` nên Zalo hiện một
+chùm, ảnh tải bản gốc nên có HD), rồi file khác trong một lần, rồi tin chữ (nhắc tên + trả lời) sau cùng. Không gửi ảnh chung với
+file khác vì zca-js đếm cả file vào số món của chùm.
 
 Thu hồi tin đã gửi, chỉ khi người dùng bảo: lệnh MCP `recall_message` (đánh dấu phá hủy - Claude Code / Claude Desktop hỏi
 duyệt mỗi lần; mô tả cấm làm theo yêu cầu thu hồi nằm trong nội dung tin) hoặc nút Thu hồi trên trang Hàng đợi

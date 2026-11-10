@@ -38,6 +38,9 @@ nằm trong mục "Câu hỏi còn mở" hoặc có bằng chứng mới.
   zca-js từ MCP. Tin lẻ: không trần, không khung giờ, chỉ cách nhau vài giây. Gửi nhiều người
   (lô): từng tin, nhịp ngẫu nhiên, chỉ bạn bè, khung giờ + trần ngày riêng cho lô. Kill switch
   luôn có hiệu lực; lỗi gửi đầu tiên tự bật. Số chỉnh trên dashboard (Cài đặt).
+- **Tin chữ luôn gửi SAU ảnh / file** (người dùng chốt 2026-11-10). Gửi chữ kèm file: một lệnh `send_file` có `text`, không
+  gọi `send_message` trước. Daemon gửi theo thứ tự: chùm ảnh (mọi ảnh trong một lần, Zalo hiện thành một chùm), rồi file khác,
+  rồi tin chữ (`sendFilesThenText` trong `src/outbox/outbox-zalo-attachments.ts`) - không để chữ thành chú thích ảnh.
 - **Không tool chuyển tiền / thanh toán / VietQR** (`zalo-agent-cli` có sẵn - không harvest).
 - **Không gửi kiểu campaign / bắn hàng loạt.** "Gửi nhiều người" = hàng đợi gửi TỪNG tin,
   nội dung riêng từng người, nhịp ngẫu nhiên, chỉ tới bạn bè. Ngoại lệ người dùng chốt 2026-11-09: nút Chia sẻ
