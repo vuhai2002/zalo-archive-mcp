@@ -94,40 +94,8 @@ export function StatCard({ icon: Icon, label, value, sub }: { icon: IconFn; labe
   );
 }
 
-/** Panel lớn có header icon + title (+ subtitle) + slot phải */
-export function SectionCard({
-  icon: Icon,
-  title,
-  subtitle,
-  aside,
-  children,
-}: {
-  icon?: IconFn;
-  title: string;
-  subtitle?: string;
-  aside?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <section className="gc-card min-w-0 p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          {Icon && (
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zalo-50 text-zalo-500">
-              <Icon size={19} />
-            </span>
-          )}
-          <div className="min-w-0">
-            <h2 className="text-[16px] font-semibold text-ink">{title}</h2>
-            {subtitle && <p className="mt-0.5 text-[13px] text-ink-soft">{subtitle}</p>}
-          </div>
-        </div>
-        {aside}
-      </div>
-      {children}
-    </section>
-  );
-}
+// Panel lớn có header (icon, tiêu đề, slot phải): tách ra section-card.tsx, giữ tên xuất ở đây cho các trang cũ
+export { SectionCard } from "./section-card";
 
 /** Tile nhỏ: label + value (+ gợi ý). Giá trị đứng trên mô tả - mắt bắt số trước. */
 export function InfoTile({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {

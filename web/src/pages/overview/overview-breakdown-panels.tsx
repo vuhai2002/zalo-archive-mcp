@@ -10,7 +10,7 @@ import { EmptyState, formatNumber, SectionCard } from "../../shared/ui-bits";
 export function TopThreadsPanel({ threads, days }: { threads: TopThread[]; days: number }) {
   const navigate = useNavigate();
   return (
-    <SectionCard icon={IconChat} title="Hội thoại sôi nổi nhất" subtitle={`Nhiều tin nhất trong ${days} ngày`}>
+    <SectionCard icon={IconChat} title="Hội thoại sôi nổi nhất" subtitle={`Nhiều tin nhất trong ${days} ngày`} fill>
       {threads.length === 0 ? (
         <EmptyState text="Chưa có tin nào trong khoảng này." />
       ) : (

@@ -6,6 +6,7 @@ import { PageHeader } from "../../layout/page-header";
 import { IconChat, IconGrid, IconMessage, IconUsers } from "../../shared/dashboard-icons";
 import { formatDateTime } from "../../shared/format-archive-time";
 import { SelectMenu } from "../../shared/select-menu";
+import { useElementHeight } from "../../shared/use-element-height";
 import { listenerRetryText, SESSION_STATE_LABEL } from "../../shared/session-state-labels";
 import { ErrorNote, formatNumber, LoadingText, SectionCard, StatCard } from "../../shared/ui-bits";
 import { DailyMessageBarChart } from "./daily-message-bar-chart";
@@ -21,6 +22,10 @@ export function OverviewPage() {
   const [days, setDays] = useState(30);
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Chiều cao khung Kho lưu trữ + Hàng đợi: ba khung cùng lưới cao bằng nó (chưa đo được thì để cao tự nhiên)
+  const [firstPanelEl, firstPanel] = useState<HTMLDivElement | null>(null);
+  const firstPanelHeight = useElementHeight(firstPanelEl);
+  const panelHeight = firstPanelHeight ? { height: firstPanelHeight } : undefined;
 
   // Đổi khoảng ngày liên tiếp: chỉ nhận kết quả của lần hỏi MỚI NHẤT
   const requestSeq = useRef(0);
@@ -103,13 +108,22 @@ export function OverviewPage() {
             <DailyMessageBarChart data={data.daily} />
           </SectionCard>
 
+          {/* Bốn khung cao bằng nhau, lấy theo khung Kho lưu trữ + Hàng đợi (nội dung tự nhiên, ngắn nhất); ba khung còn lại
+              cuộn bên trong thay vì dài ra */}
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-            <TopThreadsPanel threads={data.topThreads} days={days} />
-            <ListenerGapsPanel gaps={data.gaps} />
-            <ConnectionEventsPanel events={data.recentEvents} />
-            <div className="space-y-5">
+            {/* self-start: không để lưới kéo giãn theo khung bên cạnh, đo đúng chiều cao tự nhiên */}
+            <div ref={firstPanel} className="flex flex-col gap-5 self-start">
               <StorageBreakdownPanel data={data} />
               <OutboxCountsPanel counts={data.outbox} />
+            </div>
+            <div style={panelHeight}>
+              <TopThreadsPanel threads={data.topThreads} days={days} />
+            </div>
+            <div style={panelHeight}>
+              <ConnectionEventsPanel events={data.recentEvents} />
+            </div>
+            <div style={panelHeight}>
+              <ListenerGapsPanel gaps={data.gaps} />
             </div>
           </div>
         </div>
