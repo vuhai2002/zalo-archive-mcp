@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { effectiveMime } from "../shared/safe-mime-from-file-name.js";
 import type { AttachmentRow, MessageRow } from "../storage/message-read-queries.js";
 import { sentMessageRecord } from "../storage/outbox-recall-store.js";
 import type { OutboxItem as StoredOutboxItem } from "../storage/outbox-store.js";
@@ -55,7 +56,8 @@ export function toAttachmentInfo(a: AttachmentRow): AttachmentInfo {
     fileName: a.fileName,
     sizeBytes: a.sizeBytes,
     url: a.status === "done" ? mediaUrl(a) : null,
-    mime: a.mime,
+    // Cùng kiểu file mà /api/media trả: khung chat biết file nào phát / mở trong tab được
+    mime: effectiveMime(a.mime, a.fileName),
     renewState: a.renewPending ? "waiting" : a.zaloDeleted ? "deleted" : a.renewed && a.status === "failed" ? "gave_up" : null,
   };
 }

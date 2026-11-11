@@ -1,7 +1,6 @@
 import type { ArchivedMessage, AttachmentInfo } from "../../archive-api-types";
-import { IconDownload, IconFileText } from "../../shared/action-and-media-icons";
-import { formatFileSize } from "../../shared/format-file-size";
 import { canOpenInNewTab, sameOriginUrl } from "../../shared/same-origin-media-url";
+import { MessageFileCard } from "./message-file-card";
 import { MessageVideoTile } from "./message-video-tile";
 import { UnavailableAttachment } from "./unavailable-attachment";
 
@@ -102,27 +101,14 @@ export function MessageAttachmentView({
   // Video/voice của Zalo: chỉ trình phát. File video/âm thanh: trình phát + link tải file gốc
   if (player && att.kind !== "file") return player;
 
-  const download = (
-    <a
-      href={url}
-      download={att.fileName ?? true}
-      className="flex items-center gap-2.5 rounded-md border border-black/10 bg-surface/80 px-3 py-2 text-chat-ink hover:bg-surface dark:border-white/10"
-      title="Tải file về máy"
-    >
-      <IconFileText size={20} className="shrink-0 text-zalo-500" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-medium">{name}</span>
-        <span className="block text-[11px] text-ink-soft">{formatFileSize(att.sizeBytes)}</span>
-      </span>
-      <IconDownload size={16} className="shrink-0 text-ink-soft" />
-    </a>
-  );
+  // File nhạc / video có trình phát ngay phía trên; PDF, ảnh, văn bản bấm thẻ là mở tab mới; loại khác tải về
+  const card = <MessageFileCard att={att} url={url} name={name} hasPlayer={!!player} />;
   return player ? (
     <div className="space-y-1.5">
       {player}
-      {download}
+      {card}
     </div>
   ) : (
-    download
+    card
   );
 }

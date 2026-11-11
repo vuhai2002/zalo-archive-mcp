@@ -150,6 +150,11 @@ describe("dashboard API", () => {
     };
     assert.equal(thread.messages[0]!.attachments[0]!.url, "/api/media/1?v=abc");
     assert.equal((await s.call("/api/media/1?v=abc", { cookie })).status, 200);
+    // File không mang kiểu (lấy từ Zalo PC / điện thoại): PDF đoán theo đuôi để mở trong tab; HTML vẫn tải về
+    s.db.prepare("UPDATE attachments SET mime = NULL, file_name = 'TAI LIEU MAU.pdf' WHERE id = 1").run();
+    assert.equal((await s.call("/api/media/1", { cookie })).headers.get("content-type"), "application/pdf");
+    s.db.prepare("UPDATE attachments SET file_name = 'trang.html' WHERE id = 1").run();
+    assert.equal((await s.call("/api/media/1", { cookie })).headers.get("content-type"), "application/octet-stream");
     s.db.prepare("UPDATE attachments SET local_path = '../../credentials.enc' WHERE id = 1").run();
     assert.equal((await s.call("/api/media/1", { cookie })).status, 404, "không thoát khỏi thư mục media");
   });

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { SearchResult, ThreadListItem } from "../../archive-api-types";
+import { unavailableFileLabel } from "../../shared/archive-status-labels";
 import { ContactAvatar } from "../../shared/contact-avatar";
 import { FileTypeBadge } from "../../shared/file-type-badge";
 import { formatFileSize } from "../../shared/format-file-size";
@@ -71,15 +72,21 @@ export function FileHitRow({ m, query, timeZone, onClick }: { m: SearchResult; q
   const file = m.attachments.find((a) => a.kind === "file");
   const name = file?.fileName ?? m.text;
   const sender = m.isSelf ? m.senderName?.trim() || "Bạn" : senderLabel(m);
+  // File không xem được (Zalo đã xóa, tải hỏng...): báo ngay ở đây cho khỏi bấm vào mới biết
+  const unavailable = file ? unavailableFileLabel(file) : null;
   return (
     <li>
       <button type="button" onClick={onClick} className={`${ROW} items-center`}>
-        <FileTypeBadge name={name} />
+        <span className={unavailable ? "opacity-40" : ""}>
+          <FileTypeBadge name={name} />
+        </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14.5px] font-medium text-ink">{highlightMatches(snippetAround(name, query, 14), query)}</span>
+          <span className={`block truncate text-[14.5px] font-medium ${unavailable ? "text-ink-soft" : "text-ink"}`}>
+            {highlightMatches(snippetAround(name, query, 14), query)}
+          </span>
           <span className="mt-0.5 flex justify-between gap-2 text-[12.5px] text-ink-soft">
             <span className="min-w-0 truncate">
-              {file?.sizeBytes ? `${formatFileSize(file.sizeBytes)} - ` : ""}
+              {unavailable ? <span className="font-medium text-red-500 dark:text-red-400">{unavailable} - </span> : file?.sizeBytes ? `${formatFileSize(file.sizeBytes)} - ` : ""}
               {sender}
             </span>
             <span className="shrink-0">{formatDayMonthYear(m.sentAt, timeZone)}</span>

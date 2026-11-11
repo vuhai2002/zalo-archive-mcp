@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { Hono } from "hono";
+import { effectiveMime } from "../../shared/safe-mime-from-file-name.js";
 import { getAttachment } from "../../storage/attachment-queue-store.js";
 import type { DashboardContext } from "../dashboard-context.js";
 
@@ -39,7 +40,9 @@ export function mediaFileRoute(ctx: DashboardContext): Hono {
     const size = fs.statSync(file).size;
     const fileName = typeof a.file_name === "string" ? a.file_name : path.basename(file);
     const headers: Record<string, string> = {
-      "content-type": typeof a.mime === "string" && a.mime ? a.mime : "application/octet-stream",
+      // Không có kiểu file (phần lớn file lấy từ Zalo PC / điện thoại): đoán theo đuôi trong danh sách an toàn để PDF mở
+      // trong tab, nhạc / video phát được; loại khác vẫn octet-stream (tải về)
+      "content-type": effectiveMime(typeof a.mime === "string" ? a.mime : null, fileName) ?? "application/octet-stream",
       // ?download=1: nút Lưu về máy - trình duyệt tải file về với tên gốc thay vì mở
       "content-disposition": `${c.req.query("download") === "1" ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(fileName)}`,
       "x-content-type-options": "nosniff",

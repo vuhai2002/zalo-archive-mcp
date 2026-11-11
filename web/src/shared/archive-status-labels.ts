@@ -20,6 +20,18 @@ const MEDIA_STATUS: Record<AttachmentInfo["status"], string> = {
 };
 export const mediaStatusLabel = (status: string) => lookup(MEDIA_STATUS, status);
 
+/**
+ * File chưa xem được, chữ ngắn cho danh sách (kết quả tìm, mục File của hội thoại) để biết trước khi bấm: Zalo đã xóa
+ * khỏi máy chủ thì "Đã hết hạn" như Zalo PC; file đã tải thì null.
+ */
+export function unavailableFileLabel(a: Pick<AttachmentInfo, "status" | "renewState">): string | null {
+  if (a.status === "done") return null;
+  if (a.renewState === "deleted") return "Đã hết hạn";
+  if (a.renewState === "waiting") return "Đang xin lại link";
+  if (a.renewState === "gave_up") return "Link hết hạn";
+  return mediaStatusLabel(a.status);
+}
+
 const SOURCE: Record<string, string> = {
   live: "Trực tiếp",
   old_messages: "Lịch sử cũ",

@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { videoInfoOf } from "../archive/zalo-video-info.js";
 import { mediaFamilyRange } from "../media/remove-orphan-media-files.js";
 import { foldVietnameseForSearch } from "../shared/fold-vietnamese-for-search.js";
+import { effectiveMime } from "../shared/safe-mime-from-file-name.js";
 import { CLEANABLE_KINDS } from "./attachment-file-removal-store.js";
 import { findThread, type ThreadSummary } from "./message-read-queries.js";
 
@@ -129,7 +130,7 @@ export function storedMediaFiles(
         kind: String(r.kind),
         fileName: (r.file_name as string | null) ?? null,
         sizeBytes: Number(r.size_bytes ?? 0),
-        mime: (r.mime as string | null) ?? null,
+        mime: effectiveMime(r.mime as string | null, r.file_name as string | null),
         sha256: (r.sha256 as string | null) ?? null,
         sentAt: String(r.sent_at),
         messageId: Number(r.message_id),

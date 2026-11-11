@@ -22,8 +22,8 @@ export function driveLabel(location: string): string {
   return m ? `Ổ ${m[1]!.toUpperCase()}` : location;
 }
 
-/** Link "Lưu về máy": thêm download=1 để trình duyệt tải về với tên gốc */
-export const downloadUrlOf = (url: string) => `${url}${url.includes("?") ? "&" : "?"}download=1`;
+// Link "Lưu về máy" dùng chung với khung chat
+export { downloadUrlOf } from "../../../shared/same-origin-media-url";
 
 export const TAB_LABELS: Array<[StorageTab, string]> = [
   ["all", "Tất cả"],
