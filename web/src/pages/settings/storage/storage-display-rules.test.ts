@@ -41,6 +41,8 @@ describe("hiển thị dung lượng kho", () => {
     assert.equal(previewKind({ kind: "file", fileName: "Nhạc nền buổi họp_03.mp3" }), "audio");
     assert.equal(previewKind({ kind: "file", fileName: "anh.jpeg" }), "image");
     assert.equal(previewKind({ kind: "file", fileName: "zz-bao-cao-09.pdf" }), "file");
+    assert.equal(previewKind({ kind: "file", fileName: "Biên bản mẫu.DOCX" }), "docx");
+    assert.equal(previewKind({ kind: "file", fileName: "ban-cu.doc" }), "file");
     assert.equal(previewKind({ kind: "file", fileName: "IMG_1.HEIC" }), "file");
     assert.equal(previewKind({ kind: "file", fileName: null }), "file");
   });

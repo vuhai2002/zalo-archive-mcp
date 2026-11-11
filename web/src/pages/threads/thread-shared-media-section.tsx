@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SharedAttachment } from "../../archive-api-types";
 import { api, errorText } from "../../dashboard-api-client";
-import { IconDownload, IconPlay } from "../../shared/action-and-media-icons";
+import { IconPlay } from "../../shared/action-and-media-icons";
 import { unavailableFileLabel } from "../../shared/archive-status-labels";
 import { IconChevronDown } from "../../shared/dashboard-icons";
-import { formatDateTime } from "../../shared/format-archive-time";
-import { FileTypeBadge } from "../../shared/file-type-badge";
-import { formatFileSize } from "../../shared/format-file-size";
 import { formatNumber } from "../../shared/ui-bits";
 import { useLoadMoreWhenVisible } from "../../shared/use-load-more-when-visible";
 import { useMediaViewer } from "./media-viewer-context";
 import { viewerItemFromShared } from "./media-viewer-items";
-import { downloadUrlOf, opensInBrowser } from "../../shared/same-origin-media-url";
+import { SharedFileRow } from "./thread-shared-file-row";
 import { canOpenInNewTab, sameOriginUrl } from "./message-attachment-view";
 
 /** Xem gọn: 8 ảnh (2 hàng lưới) / 4 file; "Xem tất cả" thì tải từng trang 48 mục */
@@ -89,7 +86,7 @@ export function ThreadSharedMediaSection({ threadId, kind, timeZone }: { threadI
           ) : (
             <ul className="space-y-1">
               {items.map((a) => (
-                <FileRow key={a.id} a={a} timeZone={timeZone} />
+                <SharedFileRow key={a.id} a={a} timeZone={timeZone} />
               ))}
             </ul>
           )}
@@ -138,45 +135,5 @@ function VisualTile({ a }: { a: SharedAttachment }) {
     </a>
   ) : (
     body
-  );
-}
-
-/**
- * Một file của hội thoại: PDF / ảnh / nhạc / video bấm là mở tab mới bằng trình xem của trình duyệt, loại khác tải về;
- * file không xem được (Zalo đã xóa: "Đã hết hạn") báo ngay và làm mờ.
- */
-function FileRow({ a, timeZone }: { a: SharedAttachment; timeZone: string }) {
-  const url = a.status === "done" ? sameOriginUrl(a.url) : null;
-  const open = !!url && opensInBrowser(a.mime);
-  const inner = (
-    <>
-      <span className={url ? "" : "opacity-40"}>
-        <FileTypeBadge name={a.fileName} size={40} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className={`block truncate text-[14px] font-medium ${url ? "text-ink" : "text-ink-soft"}`}>{a.fileName ?? "File"}</span>
-        <span className="flex justify-between gap-2 text-[12px] text-ink-soft">
-          {url ? <span>{formatFileSize(a.sizeBytes)}</span> : <span className="font-medium text-red-500 dark:text-red-400">{unavailableFileLabel(a)}</span>}
-          <span>{formatDateTime(a.sentAt, timeZone)}</span>
-        </span>
-      </span>
-      {url && !open && <IconDownload size={16} className="shrink-0 text-ink-soft" />}
-    </>
-  );
-  const linkClass = "flex items-center gap-3 rounded-md px-1 py-1.5 hover:bg-tile";
-  return (
-    <li>
-      {url && open ? (
-        <a href={url} target="_blank" rel="noopener noreferrer" title="Mở trong tab mới" className={linkClass}>
-          {inner}
-        </a>
-      ) : url ? (
-        <a href={downloadUrlOf(url)} download={a.fileName ?? true} title="Tải file về máy" className={linkClass}>
-          {inner}
-        </a>
-      ) : (
-        <div className="flex items-center gap-3 px-1 py-1.5">{inner}</div>
-      )}
-    </li>
   );
 }

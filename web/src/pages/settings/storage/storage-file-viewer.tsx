@@ -75,7 +75,7 @@ export function StorageFileViewer(props: {
       </header>
 
       <div className="relative flex min-h-0 flex-1 items-center justify-center px-16 pb-2" {...nen}>
-        <StorageFilePreviewStage key={file.id} file={file} />
+        <StorageFilePreviewStage key={file.id} file={file} onEscape={onClose} />
         <button type="button" onClick={() => onIndex(index - 1)} disabled={!canPrev} aria-label="File trước" className={`${NAV_BTN} left-3`}>
           <IconChevronDown size={24} className="rotate-90" />
         </button>

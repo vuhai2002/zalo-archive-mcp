@@ -33,13 +33,15 @@ export const TAB_LABELS: Array<[StorageTab, string]> = [
   ["voice", "Tin nhắn thoại"],
 ];
 
-export type PreviewKind = "image" | "video" | "audio" | "file";
+export type PreviewKind = "image" | "video" | "audio" | "docx" | "file";
 
-// Chỉ những đuôi trình duyệt tự xem / phát được; còn lại (heic, avi, mkv, amr, pdf...) hiện thẻ file + Mở trong tab mới
+// Những đuôi trình duyệt tự xem / phát được, cộng file Word .docx (kho tự đọc: docx-document-frame.tsx); còn lại (heic,
+// avi, mkv, amr, pdf, .doc cũ...) hiện thẻ file + Mở trong tab mới
 const PREVIEW_EXTS: Array<[PreviewKind, string[]]> = [
   ["image", ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"]],
   ["video", ["mp4", "m4v", "webm", "mov"]],
   ["audio", ["mp3", "m4a", "wav", "aac", "ogg", "flac"]],
+  ["docx", ["docx"]],
 ];
 
 /** Cửa sổ xem nhanh hiện file theo kiểu nào: ảnh / video / tin thoại theo loại Zalo; file gửi dạng "file" thì theo đuôi tên */

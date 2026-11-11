@@ -1,16 +1,21 @@
+import { useState } from "react";
 import type { AttachmentInfo } from "../../archive-api-types";
 import { IconDownload, IconFileText } from "../../shared/action-and-media-icons";
+import { isDocxFile } from "../../shared/docx-file-rules";
+import { DocxViewerDialog } from "../../shared/docx-viewer-dialog";
 import { formatFileSize } from "../../shared/format-file-size";
 import { downloadUrlOf, opensInBrowser } from "../../shared/same-origin-media-url";
 
 const CARD = "flex items-center gap-2.5 rounded-md border border-black/10 bg-surface/80 text-chat-ink hover:bg-surface dark:border-white/10";
+const OPEN = "flex min-w-0 flex-1 items-center gap-2.5 py-2 pl-3 text-left";
 
 /**
  * Thẻ file đã tải trong khung chat. File trình duyệt xem được (PDF, ảnh, văn bản; nhạc / video khi không có trình phát
- * phía trên): bấm thẻ là mở tab mới bằng trình xem của trình duyệt, nút tải nhỏ bên phải để lưu về máy. Loại trình duyệt
- * không xem được (Word, Excel, nén...): bấm là tải về như trước.
+ * phía trên): bấm thẻ là mở tab mới bằng trình xem của trình duyệt. File Word (.docx): bấm là mở cửa sổ đọc ngay trong kho.
+ * Hai loại này có nút tải nhỏ bên phải để lưu về máy. Loại còn lại (Excel, nén, .doc cũ...): bấm là tải về như trước.
  */
 export function MessageFileCard({ att, url, name, hasPlayer }: { att: AttachmentInfo; url: string; name: string; hasPlayer: boolean }) {
+  const [docxOpen, setDocxOpen] = useState(false);
   const label = (
     <>
       <IconFileText size={20} className="shrink-0 text-zalo-500" />
@@ -20,13 +25,20 @@ export function MessageFileCard({ att, url, name, hasPlayer }: { att: Attachment
       </span>
     </>
   );
+  const docx = isDocxFile(att.fileName, att.mime);
 
-  if (!hasPlayer && opensInBrowser(att.mime)) {
+  if (docx || (!hasPlayer && opensInBrowser(att.mime))) {
     return (
       <div className={`${CARD} pr-1.5`}>
-        <a href={url} target="_blank" rel="noopener noreferrer" title="Mở trong tab mới" className="flex min-w-0 flex-1 items-center gap-2.5 py-2 pl-3">
-          {label}
-        </a>
+        {docx ? (
+          <button type="button" onClick={() => setDocxOpen(true)} title="Xem file ngay trong kho" className={OPEN}>
+            {label}
+          </button>
+        ) : (
+          <a href={url} target="_blank" rel="noopener noreferrer" title="Mở trong tab mới" className={OPEN}>
+            {label}
+          </a>
+        )}
         <a
           href={downloadUrlOf(url)}
           download={att.fileName ?? true}
@@ -36,6 +48,7 @@ export function MessageFileCard({ att, url, name, hasPlayer }: { att: Attachment
         >
           <IconDownload size={16} />
         </a>
+        {docxOpen && <DocxViewerDialog url={url} fileName={att.fileName} sizeBytes={att.sizeBytes} onClose={() => setDocxOpen(false)} />}
       </div>
     );
   }
