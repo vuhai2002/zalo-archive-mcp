@@ -1,8 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { SearchFilter, SearchResult } from "../../archive-api-types";
+import { api } from "../../dashboard-api-client";
 import { IconArrowLeft, IconClose } from "../../shared/dashboard-icons";
 import { ErrorNote, LoadingText } from "../../shared/ui-bits";
-import { forgetRecentThread, loadRecentThreads, type RecentThread } from "./recent-search-threads";
+import {
+  forgetRecentThread,
+  loadRecentThreads,
+  needsMemberAvatars,
+  recentThreadOf,
+  updateRecentThread,
+  type RecentThread,
+} from "./recent-search-threads";
 import { ContactHitRow, MessageHitRow, WideButton } from "./search-hit-rows";
 import { usePagedMessageSearch } from "./use-paged-message-search";
 
@@ -26,6 +34,24 @@ export function SearchStartPanel({
 }) {
   const [recent, setRecent] = useState(loadRecentThreads);
   const [filter, setFilter] = useState<SearchFilter | null>(null);
+
+  // Mục nhóm không có ảnh riêng lưu từ bản cũ: lấy lại thành viên để ghép avatar như danh sách hội thoại (lỗi thì để lần sau)
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      for (const r of loadRecentThreads().filter(needsMemberAvatars)) {
+        try {
+          const t = (await api.threads({ query: r.threadId, limit: 1, offset: 0 })).threads.find((x) => x.threadId === r.threadId);
+          if (t && !cancelled) setRecent(updateRecentThread(recentThreadOf(t)));
+        } catch {
+          // Mạng / kho lỗi: giữ chữ viết tắt, lần mở bảng sau thử lại
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const list = usePagedMessageSearch(filter ? { filter } : null, 30);
   const active = FILTERS.find((f) => f.id === filter);
 

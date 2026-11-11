@@ -7,7 +7,7 @@ import { EmptyState, ErrorNote, formatNumber, LoadingText } from "../../shared/u
 import { useDebouncedValue } from "../../shared/use-debounced-value";
 import { useLoadMoreWhenVisible } from "../../shared/use-load-more-when-visible";
 import { ThreadListRow } from "./thread-list-row";
-import { rememberRecentThread, type RecentThread } from "./recent-search-threads";
+import { recentThreadOf, recentThreadOfHit, rememberRecentThread, type RecentThread } from "./recent-search-threads";
 import { SEARCH_TABS, ThreadSearchResults, type SearchTab } from "./thread-search-results";
 import { setThreadPinned, useOnThreadsChanged } from "./thread-pin-actions";
 import { useThreadListLiveRefresh } from "./use-thread-list-live-refresh";
@@ -90,11 +90,11 @@ export function ThreadListPanel({
   };
   // Mở từ kết quả tìm: nhớ vào "Tìm gần đây"
   const openFromSearch = (r: RecentThread) => {
-    rememberRecentThread({ threadId: r.threadId, threadType: r.threadType, name: r.name, avatarUrl: r.avatarUrl });
+    rememberRecentThread(recentThreadOf(r));
     onSelect(r.threadId);
   };
   const openMessage = (m: SearchResult) => {
-    rememberRecentThread({ threadId: m.threadId, threadType: m.threadType, name: m.threadName, avatarUrl: m.threadAvatarUrl });
+    rememberRecentThread(recentThreadOfHit(m));
     onOpenMessage(m.threadId, m.id);
   };
   const scrollRef = useRef<HTMLDivElement>(null);

@@ -7,6 +7,7 @@ import { formatDayMonthYear } from "../../shared/format-archive-time";
 import { highlightMatches } from "../../shared/highlight-search-match";
 import { MemberAvatarStack } from "../../shared/member-avatar-stack";
 import { snippetAround } from "../../shared/search-snippet";
+import { ThreadAvatar } from "../../shared/thread-avatar";
 import { threadDisplayName } from "../../shared/thread-kind-badge";
 import { zaloListTime } from "../../shared/zalo-list-time-and-preview";
 
@@ -37,13 +38,19 @@ export function MessageHitRow({
   onClick: () => void;
 }) {
   const title = inThread ? (m.isSelf ? m.senderName?.trim() || "Bạn" : senderLabel(m)) : threadDisplayName(m.threadName);
-  const avatar = inThread
-    ? { name: title, seed: m.senderId, url: m.senderAvatarUrl }
-    : { name: title, seed: m.threadId, url: m.threadAvatarUrl };
+  // Tìm chung: avatar của HỘI THOẠI, nhóm không có ảnh riêng thì ghép avatar thành viên như danh sách hội thoại
+  const thread = {
+    threadId: m.threadId,
+    threadType: m.threadType,
+    name: m.threadName,
+    avatarUrl: m.threadAvatarUrl,
+    memberAvatars: m.threadMemberAvatars ?? [],
+    memberCount: m.threadMemberCount ?? null,
+  };
   return (
     <li>
       <button type="button" onClick={onClick} className={`${ROW} items-start`}>
-        <ContactAvatar {...avatar} size="lg" />
+        {inThread ? <ContactAvatar name={title} seed={m.senderId} url={m.senderAvatarUrl} size="lg" /> : <ThreadAvatar t={thread} />}
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
             <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink-soft">{title}</span>

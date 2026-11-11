@@ -32,4 +32,17 @@ describe("Tìm gần đây", () => {
     assert.deepEqual(parseRecent(JSON.stringify([r("a"), { threadId: 5 }, { ...r("b"), threadType: "kênh" }])), [r("a")]);
     assert.deepEqual(parseRecent(null), []);
   });
+
+  it("nhóm không có ảnh: lưu kèm thành viên để ghép avatar; mục bản cũ không có vẫn đọc được; thành viên sai kiểu thì bỏ mục", () => {
+    const group: RecentThread = {
+      threadId: "g1",
+      threadType: "group",
+      name: "[ABC] Lớp mẫu",
+      avatarUrl: null,
+      memberAvatars: [{ userId: "u1", name: "Mộc Miên", avatarUrl: "https://s120.avatar.talk.zdn.vn/a.jpg" }],
+      memberCount: 14,
+    };
+    const bad = { ...group, threadId: "g2", memberAvatars: [{ name: "thiếu userId" }] };
+    assert.deepEqual(parseRecent(JSON.stringify([group, r("a"), bad])), [group, r("a")]);
+  });
 });

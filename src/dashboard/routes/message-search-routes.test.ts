@@ -38,4 +38,19 @@ describe("API tìm tin + nhảy tới tin", () => {
     assert.deepEqual(senders.senders.map((x) => [x.senderId, x.count]), [["u-lan", 5]]);
     assert.equal((await s.call("/api/threads/khong-co/senders", { cookie: s.cookie })).status, 404);
   });
+
+  it("kết quả tìm của nhóm không có ảnh riêng kèm thành viên để ghép avatar như Zalo PC; hội thoại 1-1 thì không", async () => {
+    const s = await setup();
+    for (const [msgId, sender] of [["g1", "u-minh"], ["g2", "u-an"]] as const) {
+      const msg = sampleMessage({ msgId, cliMsgId: `c${msgId}`, threadId: "g-lms", threadType: "group", senderId: sender, senderName: sender, text: "nhóm lms tin" });
+      upsertMessage(s.db, msg, live);
+    }
+    type Hit = { msgId: string; threadMemberAvatars: Array<{ userId: string }>; threadMemberCount: number | null };
+    const r = (await (await s.call("/api/search?q=tin&limit=20", { cookie: s.cookie })).json()) as { messages: Hit[] };
+    const group = r.messages.filter((m) => m.msgId.startsWith("g"));
+    assert.equal(group.length, 2);
+    for (const m of group) assert.ok(m.threadMemberAvatars.some((a) => a.userId === "u-minh"), "ghép từ người đã nhắn khi chưa có danh sách thành viên");
+    const dm = r.messages.find((m) => m.msgId === "5");
+    assert.deepEqual(dm?.threadMemberAvatars, []);
+  });
 });

@@ -217,7 +217,14 @@ export type ThreadMessagesResponse = {
 //   filter=mentions: tin người khác nhắc mình (@mình, @Tất cả); filter=reactions: tin của mình được thả
 //   cảm xúc (tin vừa được thả gần nhất trước) - hai bộ lọc này bỏ qua các tham số khác trừ offset/limit
 export type SearchFilter = "mentions" | "reactions";
-export type SearchResult = ArchivedMessage & { threadName: string | null; threadIsFriend: boolean; threadAvatarUrl: string | null };
+export type SearchResult = ArchivedMessage & {
+  threadName: string | null;
+  threadIsFriend: boolean;
+  threadAvatarUrl: string | null;
+  /** Nhóm không có ảnh riêng: vài thành viên để ghép avatar như danh sách hội thoại (Zalo PC cũng ghép ở kết quả tìm) */
+  threadMemberAvatars: MemberAvatar[];
+  threadMemberCount: number | null;
+};
 export type SearchResponse = { messages: SearchResult[] };
 
 // GET /api/threads/:threadId/senders  -> người đã gửi tin trong hội thoại (bộ lọc "Người gửi"), nhiều tin nhất trước

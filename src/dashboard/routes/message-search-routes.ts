@@ -9,7 +9,8 @@ import {
   threadSenders,
 } from "../../storage/message-search-queries.js";
 import { getMeta, threadLabel } from "../../storage/thread-directory-store.js";
-import type { SearchResponse, ThreadSendersResponse } from "../dashboard-api-contract.js";
+import { groupMosaicIfNoAvatar } from "../../storage/thread-list-extras.js";
+import type { SearchResponse, SearchResult, ThreadSendersResponse } from "../dashboard-api-contract.js";
 import type { DashboardContext } from "../dashboard-context.js";
 import { toArchivedMessage } from "../dashboard-dto-mappers.js";
 
@@ -27,19 +28,32 @@ export function messageSearchRoutes(ctx: DashboardContext): Hono {
   const { db, env } = ctx;
   const tz = env.ARCHIVE_TIMEZONE;
 
-  /** Kèm tên + avatar hội thoại cho mỗi tin (kết quả tìm chung lẫn nhiều hội thoại) */
-  const withThreadInfo = (messages: MessageRow[]): SearchResponse => ({
-    messages: messages.map((m) => {
-      const label = threadLabel(db, m.threadId);
-      const thread = findThread(db, m.threadId);
-      return {
-        ...toArchivedMessage(m),
-        threadName: label?.name ?? thread?.name ?? null,
-        threadIsFriend: label?.isFriend ?? false,
-        threadAvatarUrl: thread?.avatarUrl ?? null,
-      };
-    }),
-  });
+  /**
+   * Kèm tên + avatar hội thoại cho mỗi tin (kết quả tìm chung lẫn nhiều hội thoại); nhóm không có ảnh riêng thì kèm vài
+   * thành viên để ghép avatar như danh sách hội thoại. Tra mỗi hội thoại một lần dù nhiều tin cùng hội thoại.
+   */
+  const withThreadInfo = (messages: MessageRow[]): SearchResponse => {
+    const cache = new Map<string, Omit<SearchResult, keyof ReturnType<typeof toArchivedMessage>>>();
+    const infoOf = (m: MessageRow) => {
+      let info = cache.get(m.threadId);
+      if (!info) {
+        const label = threadLabel(db, m.threadId);
+        const thread = findThread(db, m.threadId);
+        const avatarUrl = thread?.avatarUrl ?? null;
+        const mosaic = groupMosaicIfNoAvatar(db, m.threadType, m.threadId, avatarUrl);
+        info = {
+          threadName: label?.name ?? thread?.name ?? null,
+          threadIsFriend: label?.isFriend ?? false,
+          threadAvatarUrl: avatarUrl,
+          threadMemberAvatars: mosaic.memberAvatars,
+          threadMemberCount: mosaic.memberCount,
+        };
+        cache.set(m.threadId, info);
+      }
+      return info;
+    };
+    return { messages: messages.map((m) => ({ ...toArchivedMessage(m), ...infoOf(m) })) };
+  };
 
   app.get("/search", (c) => {
     const limit = clampInt(c.req.query("limit"), 50, 1, 200);
