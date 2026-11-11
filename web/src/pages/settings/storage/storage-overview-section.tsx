@@ -2,14 +2,14 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { StorageOverviewResponse } from "../../../archive-api-types";
 import { api, errorText } from "../../../dashboard-api-client";
 import { useArchiveTimeZone } from "../../../layout/dashboard-shell-context";
-import { IconDatabase, IconFileText, IconImage } from "../../../shared/action-and-media-icons";
+import { IconClock, IconDatabase, IconFileText, IconImage } from "../../../shared/action-and-media-icons";
 import { useConfirmDialog } from "../../../shared/confirm-dialog";
 import { IconChevronDown } from "../../../shared/dashboard-icons";
 import { formatDateTime } from "../../../shared/format-archive-time";
 import { formatFileSize } from "../../../shared/format-file-size";
 import { ErrorNote, LoadingText } from "../../../shared/ui-bits";
 import { useSettingsView } from "../settings-view-context";
-import { archiveTotalBytes, driveBarParts, driveLabel } from "./storage-display-rules";
+import { archiveTotalBytes, driveBarParts, driveLabel, journalRangeText } from "./storage-display-rules";
 import { StorageFileTile } from "./storage-file-tile";
 
 const POLL_MS = 2_000;
@@ -98,10 +98,19 @@ export function StorageOverviewSection() {
       </Card>
       <Card icon={<IconDatabase size={22} />} title="Tin nhắn" hint="Chữ, cảm xúc và thông tin file của mọi tin. Cần để kho chạy, không xóa ở đây." size={disk ? formatFileSize(disk.databaseBytes) : "..."} />
 
-      {disk && (disk.backups.length > 0 || disk.journalBytes > 0) && (
+      {/* Nhật ký tin thô chỉ báo dung lượng (kho cần giữ, không xóa ở đây); danh sách chỉ có khi còn bản sao DB cũ */}
+      {disk && disk.journalBytes > 0 && (
+        <Card
+          icon={<IconClock size={22} />}
+          title="Nhật ký tin thô"
+          hint={`${journalRangeText(disk.journalDays)}. Mọi tin nhận được chép nguyên văn vào đây để dựng lại khi sửa lỗi; kho cần giữ, không xóa ở đây.`}
+          size={formatFileSize(disk.journalBytes)}
+        />
+      )}
+      {disk && disk.backups.length > 0 && (
         <div className="rounded-xl bg-surface p-4 shadow-sm">
-          <div className="text-[15px] font-medium text-ink">Bản sao cũ và nhật ký</div>
-          <div className="mt-1 text-[13px] text-ink-soft">Nhật ký tin thô (để phát lại khi cần): {formatFileSize(disk.journalBytes)}</div>
+          <div className="text-[15px] font-medium text-ink">Bản sao cũ của kho</div>
+          <div className="mt-1 text-[13px] text-ink-soft">Bản sao tạo trước các lần sửa lớn; kho chạy ổn rồi thì xóa được.</div>
           <ul className="mt-2 divide-y divide-line">
             {disk.backups.map((b) => (
               <li key={b.name} className="flex items-center gap-3 py-2 text-[14px]">

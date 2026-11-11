@@ -186,6 +186,8 @@ export type ArchivedMessage = {
   noticePeople: number;
   /** Tin bình chọn (`group.poll`): mã cuộc bình chọn để mở cửa sổ Xem (GET /api/polls/:pollId) + hành động (create, vote...) */
   poll: { pollId: string; action: string } | null;
+  /** Tin nhắc hẹn của nhóm: tên hẹn, biểu tượng, giờ hẹn (ISO), kiểu lặp (null = không lặp); null với tin khác */
+  reminder: { title: string; emoji: string | null; startAt: string; repeat: "daily" | "weekly" | "monthly" | "yearly" | null } | null;
   /** Cảm xúc trên tin như Zalo, gộp theo loại; `emoji` null = mã Zalo chưa biết (hiện `icon`) */
   reactions: Array<{ icon: string; emoji: string | null; count: number; mine: boolean; names: string[] }>;
   attachments: AttachmentInfo[];

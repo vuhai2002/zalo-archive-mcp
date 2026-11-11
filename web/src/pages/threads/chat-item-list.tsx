@@ -2,11 +2,13 @@ import { Fragment, useMemo, useState } from "react";
 import { ChatItemRow, itemHasMessage, rowSelection } from "./chat-item-row";
 import type { MessageLayout } from "./message-grouping";
 import type { ChatItem } from "./photo-album-grouping";
-import { foldablePollRuns } from "./poll-notice-runs";
+import { PollCard } from "./poll-card";
+import { foldablePollRuns, pollCardAnchors, type PollRunRole } from "./poll-notice-runs";
 import type { MessageActions } from "./message-action-rules";
 
 /**
- * Danh sách tin của khung chat. Nhiều dòng bình chọn liền nhau (người này người kia lần lượt bình chọn) gộp như Zalo PC: chỉ
+ * Danh sách tin của khung chat. Thẻ bình chọn nằm dưới dòng mới nhất của mỗi cuộc bình chọn, như Zalo PC (người bình chọn
+ * sau thì thẻ dời xuống). Nhiều dòng bình chọn liền nhau (người này người kia lần lượt bình chọn) gộp như Zalo PC: chỉ
  * hiện dòng mới nhất, phía trên là "Xem thêm" để mở các dòng còn lại. Chuỗi đang chứa tin được nhảy tới (bấm kết quả tìm) thì
  * tự mở.
  */
@@ -24,12 +26,24 @@ export function ChatItemList(p: {
   toggle: (ids: number[]) => void;
 }) {
   const runs = useMemo(() => foldablePollRuns(p.items.map((x) => x.msg)), [p.items]);
+  const anchors = useMemo(() => pollCardAnchors(p.items.map((x) => x.msg)), [p.items]);
   const [openRuns, setOpenRuns] = useState<ReadonlySet<number>>(new Set());
   const highlightRun = p.highlightId === null ? null : (runs.get(p.highlightId)?.runStart ?? null);
+  const isFolded = (run: PollRunRole | undefined): run is PollRunRole => !!run && !openRuns.has(run.runStart) && run.runStart !== highlightRun;
+
+  // Thẻ bình chọn đặt dưới dòng mới nhất của mỗi cuộc; dòng đó đang bị gộp ("Xem thêm") thì đặt dưới dòng cuối của chuỗi
+  const cardsAfter = new Map<number, string[]>();
+  const runLast = new Map([...runs].filter(([, r]) => r.role === "last").map(([id, r]) => [r.runStart, id]));
+  for (const { msg } of p.items) {
+    if (!anchors.has(msg.id) || !msg.poll) continue;
+    const run = runs.get(msg.id);
+    const at = isFolded(run) && run.role === "hidden" ? (runLast.get(run.runStart) ?? msg.id) : msg.id;
+    cardsAfter.set(at, [...(cardsAfter.get(at) ?? []), msg.poll.pollId]);
+  }
 
   return p.items.map((item, i) => {
     const run = runs.get(item.msg.id);
-    const folded = run && !openRuns.has(run.runStart) && run.runStart !== highlightRun;
+    const folded = isFolded(run);
     if (folded && run.role === "hidden") return null;
     return (
       <Fragment key={item.msg.id}>
@@ -56,6 +70,7 @@ export function ChatItemList(p: {
           actions={p.actions}
           selection={p.selected ? rowSelection(p.selected, item, p.toggle) : undefined}
         />
+        {cardsAfter.get(item.msg.id)?.map((pollId) => <PollCard key={pollId} pollId={pollId} />)}
       </Fragment>
     );
   });

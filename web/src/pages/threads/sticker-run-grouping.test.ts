@@ -31,7 +31,7 @@ function msg(minute: number, over: Partial<ArchivedMessage> = {}): ArchivedMessa
     textStyles: [],
     call: null,
     album: null,
-    link: null, contactCard: null, quote: null, video: null, noticeAvatars: [], noticePeople: 0, poll: null,
+    link: null, contactCard: null, quote: null, video: null, noticeAvatars: [], noticePeople: 0, poll: null, reminder: null,
     reactions: [],
     attachments: [stickerAtt()],
     ...over,

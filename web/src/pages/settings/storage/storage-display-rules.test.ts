@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { archiveTotalBytes, downloadUrlOf, driveBarParts, driveLabel, formatDuration, previewKind } from "./storage-display-rules";
+import { archiveTotalBytes, downloadUrlOf, driveBarParts, driveLabel, formatDuration, journalRangeText, previewKind } from "./storage-display-rules";
 
 const GB = 1024 ** 3;
 const disk = {
@@ -43,5 +43,14 @@ describe("hiển thị dung lượng kho", () => {
     assert.equal(previewKind({ kind: "file", fileName: "zz-bao-cao-09.pdf" }), "file");
     assert.equal(previewKind({ kind: "file", fileName: "IMG_1.HEIC" }), "file");
     assert.equal(previewKind({ kind: "file", fileName: null }), "file");
+  });
+});
+
+describe("nhật ký tin thô", () => {
+  it("ghi số ngày + khoảng ngày; khác năm thì kèm năm; số đo cũ chưa có thì câu chung", () => {
+    assert.equal(journalRangeText({ count: 5, first: "2026-03-01", last: "2026-03-05" }), "5 ngày (01/03 - 05/03)");
+    assert.equal(journalRangeText({ count: 1, first: "2026-11-11", last: "2026-11-11" }), "1 ngày (11/11)");
+    assert.equal(journalRangeText({ count: 40, first: "2026-12-20", last: "2027-01-28" }), "40 ngày (20/12/2026 - 28/01/2027)");
+    assert.equal(journalRangeText(undefined), "Mỗi ngày một file");
   });
 });

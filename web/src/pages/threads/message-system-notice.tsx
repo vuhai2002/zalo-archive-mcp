@@ -1,6 +1,15 @@
 import type { ArchivedMessage } from "../../archive-api-types";
 import { MemberAvatarStack } from "../../shared/member-avatar-stack";
+import { MessagePollNotice } from "./message-poll-notice";
+import { MessageReminderCard } from "./message-reminder-card";
 import { RichMessageText } from "./rich-message-text";
+
+/** Tin hệ thống giữa khung chat: dòng bình chọn (có nút Xem), thẻ nhắc hẹn, hoặc thông báo thường */
+export function SystemMessageView({ msg, title }: { msg: ArchivedMessage; title: string }) {
+  if (msg.poll) return <MessagePollNotice msg={msg} title={title} />;
+  if (msg.reminder) return <MessageReminderCard reminder={msg.reminder} title={title} />;
+  return <MessageSystemNotice msg={msg} title={title} />;
+}
 
 /**
  * Thông báo giữa khung chat như Zalo: viên bo tròn, avatar của người được nhắc tới đứng trước, tên in đậm màu chữ chính

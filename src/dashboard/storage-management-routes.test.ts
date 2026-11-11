@@ -49,6 +49,9 @@ async function setup() {
 describe("Quản lý dữ liệu (dashboard)", () => {
   it("tổng quan: theo loại + file lớn hơn 5 MB ngay; dung lượng ổ đo ở nền rồi có số, kèm bản sao DB cũ", async () => {
     const s = await setup();
+    // Nhật ký tin thô mỗi ngày một file: trang ghi rõ số ngày + từ ngày nào tới ngày nào
+    fs.mkdirSync(s.paths.journalDir, { recursive: true });
+    for (const day of ["2026-03-01", "2026-03-02", "2026-03-05"]) fs.writeFileSync(path.join(s.paths.journalDir, `${day}.jsonl`), "{}\n");
     const first = (await (await s.call("/api/storage", { cookie: s.cookie })).json()) as StorageOverviewResponse;
     assert.equal(first.computing, true);
     assert.deepEqual(first.byKind.map((k) => [k.kind, k.files]), [["photo", 1], ["video", 1], ["file", 2], ["voice", 0]]);
@@ -59,6 +62,7 @@ describe("Quản lý dữ liệu (dashboard)", () => {
     assert.equal(done.disk?.mediaFiles, 3);
     assert.deepEqual(done.disk?.backups.map((b) => [b.name, b.bytes]), [["archive-truoc-dong-bo-mau.db", 1000]]);
     assert.ok((done.disk?.drive.totalBytes ?? 0) > 0);
+    assert.deepEqual(done.disk?.journalDays, { count: 3, first: "2026-03-01", last: "2026-03-05" });
   });
 
   it("hội thoại xếp theo dung lượng; lưới file theo tab, file lớn, số tin dùng chung + link Lưu về máy tải đúng tên gốc", async () => {

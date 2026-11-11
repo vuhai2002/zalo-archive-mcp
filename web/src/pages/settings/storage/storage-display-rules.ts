@@ -60,3 +60,20 @@ export function formatDuration(ms: number | null): string | null {
   const ss = String(s % 60).padStart(2, "0");
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
+
+/** "29/10" từ "2026-10-29"; khác năm với ngày kia thì kèm năm */
+const dayMonth = (day: string, withYear: boolean) => {
+  const [y, m, d] = day.split("-");
+  return withYear ? `${d}/${m}/${y}` : `${d}/${m}`;
+};
+
+/**
+ * Dòng mô tả nhật ký tin thô: "5 ngày (01/03 - 05/03)" (một ngày thì "1 ngày (11/11)"); số đo lưu từ bản cũ chưa có số
+ * ngày thì "Mỗi ngày một file".
+ */
+export function journalRangeText(days: Disk["journalDays"]): string {
+  if (!days?.count || !days.first || !days.last) return "Mỗi ngày một file";
+  const withYear = days.first.slice(0, 4) !== days.last.slice(0, 4);
+  const range = days.first === days.last ? dayMonth(days.last, false) : `${dayMonth(days.first, withYear)} - ${dayMonth(days.last, withYear)}`;
+  return `${days.count} ngày (${range})`;
+}

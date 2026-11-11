@@ -14,9 +14,8 @@ import { hasLinkCard, LINK_BUBBLE_WIDTH_CLASS, MessageLinkCard } from "./message
 import { MessageReactionRow } from "./message-reaction-row";
 import { canReact, type MessageActions } from "./message-action-rules";
 import { MessageHoverActions } from "./message-hover-actions";
-import { MessageSystemNotice } from "./message-system-notice";
+import { SystemMessageView } from "./message-system-notice";
 import { isCaptionedPhoto, MessagePhotoCaptionBubble } from "./message-photo-caption-bubble";
-import { MessagePollNotice } from "./message-poll-notice";
 import { isSystemMessage } from "./message-grouping";
 import { RichMessageText } from "./rich-message-text";
 
@@ -86,7 +85,7 @@ export function MessageBubble({
   const timeTitle = `${formatDateTime(timeMsg.sentAt, timeZone)}${timeMsg.source !== "live" ? ` · ${sourceLabel(timeMsg.source)}` : ""}`;
 
   // Tin bình chọn có mã thì có nút Xem (+ thẻ bình chọn ở tin tạo); không đọc được mã thì hiện như thông báo thường
-  if (isSystemMessage(msg)) return msg.poll ? <MessagePollNotice msg={msg} title={timeTitle} /> : <MessageSystemNotice msg={msg} title={timeTitle} />;
+  if (isSystemMessage(msg)) return <SystemMessageView msg={msg} title={timeTitle} />;
 
   const hasSticker = msg.msgType === "chat.sticker" && msg.attachments.some((a) => a.kind === "sticker" && a.status === "done");
   const hasText = !hasSticker && msg.text.trim().length > 0;

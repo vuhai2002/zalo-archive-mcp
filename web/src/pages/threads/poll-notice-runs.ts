@@ -29,3 +29,13 @@ export function foldablePollRuns(msgs: Array<Pick<ArchivedMessage, "id" | "msgTy
   flush();
   return out;
 }
+
+/**
+ * Chỗ đặt thẻ bình chọn như Zalo PC: mỗi cuộc bình chọn chỉ có MỘT thẻ, ngay dưới dòng mới nhất của cuộc đó (tạo, tham gia,
+ * đổi lựa chọn...) trong phần khung chat đang có; có người bình chọn thêm thì thẻ tự dời xuống. Trả mã các tin mang thẻ.
+ */
+export function pollCardAnchors(msgs: Array<Pick<ArchivedMessage, "id" | "msgType" | "poll">>): Set<number> {
+  const lastOf = new Map<string, number>();
+  for (const m of msgs) if (m.msgType === "group.poll" && m.poll) lastOf.set(m.poll.pollId, m.id);
+  return new Set(lastOf.values());
+}

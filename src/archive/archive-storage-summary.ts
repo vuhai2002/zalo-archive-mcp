@@ -16,9 +16,23 @@ export type StorageSummary = {
   mediaFiles: number;
   databaseBytes: number;
   journalBytes: number;
+  /**
+   * Nhật ký tin thô theo ngày (mỗi ngày một file `YYYY-MM-DD.jsonl`): số ngày + ngày đầu / cuối, để trang ghi rõ "5 ngày
+   * (01/03 - 05/03)". Số đo lưu từ bản cũ chưa có, tới lần Làm mới
+   */
+  journalDays?: { count: number; first: string | null; last: string | null };
   tempBytes: number;
   backups: Array<{ name: string; bytes: number; modifiedAt: string }>;
 };
+
+/** Các ngày có nhật ký tin thô (tên file `YYYY-MM-DD.jsonl`), cũ nhất trước */
+async function journalDaysOf(dir: string): Promise<NonNullable<StorageSummary["journalDays"]>> {
+  const days = (await fs.readdir(dir).catch(() => [] as string[]))
+    .map((n) => /^(\d{4}-\d{2}-\d{2})\.jsonl$/.exec(n)?.[1])
+    .filter((d): d is string => !!d)
+    .sort();
+  return { count: days.length, first: days[0] ?? null, last: days.at(-1) ?? null };
+}
 
 const META_KEY = "storage_summary";
 /** Bản sao DB người dùng / kho đã tạo cạnh archive.db (vd archive-truoc-dong-bo-...db) */
@@ -78,6 +92,7 @@ export async function computeStorageSummary(paths: AccountPaths, now: () => Date
     mediaFiles: media.files,
     databaseBytes,
     journalBytes: (await directorySize(paths.journalDir)).bytes,
+    journalDays: await journalDaysOf(paths.journalDir),
     tempBytes: (await directorySize(path.join(paths.root, "mobile-sync-tmp"))).bytes,
     backups: backups.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt)),
   };

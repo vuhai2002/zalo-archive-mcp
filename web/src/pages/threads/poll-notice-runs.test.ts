@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { foldablePollRuns } from "./poll-notice-runs";
+import { foldablePollRuns, pollCardAnchors } from "./poll-notice-runs";
 
 const vote = (id: number) => ({ id, msgType: "group.poll", poll: { pollId: "1", action: "vote" } });
 const create = (id: number) => ({ id, msgType: "group.poll", poll: { pollId: "1", action: "create" } });
@@ -25,5 +25,19 @@ describe("gộp dòng bình chọn liền nhau", () => {
     const runs = foldablePollRuns([vote(1), vote(2), create(3), vote(4), vote(5), vote(6)]);
     assert.equal(runs.has(3), false);
     assert.deepEqual([...runs.keys()], [4, 5, 6]);
+  });
+});
+
+describe("chỗ đặt thẻ bình chọn", () => {
+  const ev = (id: number, pollId: string, action: string) => ({ id, msgType: "group.poll", poll: { pollId, action } });
+
+  it("mỗi cuộc bình chọn một thẻ, ở dòng MỚI nhất của cuộc đó như Zalo PC (không ở tin tạo nếu đã có người bình chọn sau)", () => {
+    const msgs = [ev(1, "A", "create"), ev(2, "A", "vote"), text(3), ev(4, "B", "create"), ev(5, "A", "vote"), text(6)];
+    assert.deepEqual([...pollCardAnchors(msgs)].sort(), [4, 5]);
+  });
+
+  it("chưa ai bình chọn thì thẻ ở tin tạo; không có bình chọn thì không có thẻ", () => {
+    assert.deepEqual([...pollCardAnchors([create(1), text(2)])], [1]);
+    assert.deepEqual([...pollCardAnchors([text(1), text(2)])], []);
   });
 });

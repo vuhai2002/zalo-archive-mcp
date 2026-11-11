@@ -6,13 +6,23 @@ const nameOf = (p: PollPerson) => (p.isSelf ? "Bạn" : (p.name ?? "Thành viên
 
 /**
  * Các phương án của một cuộc bình chọn như Zalo: thanh nền theo tỉ lệ người chọn, dấu tích ở phương án nick đang dùng đã chọn,
- * số phiếu bên phải. `variant="dialog"`: thêm avatar người chọn (tối đa 3 + "+N"); `showNames`: liệt kê tên dưới mỗi phương án.
- * Chỉ để xem - không bấm chọn được.
+ * số phiếu bên phải. `variant="dialog"`: thêm avatar người chọn (tối đa 3 + "+N"); `showNames`: liệt kê tên dưới mỗi phương án;
+ * `limit`: chỉ hiện chừng này phương án đầu (thẻ trong khung chat). Chỉ để xem - không bấm chọn được.
  */
-export function PollOptionsList({ view, variant, showNames = false }: { view: PollView; variant: "card" | "dialog"; showNames?: boolean }) {
+export function PollOptionsList({
+  view,
+  variant,
+  showNames = false,
+  limit,
+}: {
+  view: PollView;
+  variant: "card" | "dialog";
+  showNames?: boolean;
+  limit?: number;
+}) {
   return (
     <ul className="space-y-2">
-      {view.options.map((o) => {
+      {view.options.slice(0, limit).map((o) => {
         const pct = view.voterCount > 0 ? Math.min(100, Math.round((o.votes / view.voterCount) * 100)) : 0;
         return (
           <li key={o.id}>

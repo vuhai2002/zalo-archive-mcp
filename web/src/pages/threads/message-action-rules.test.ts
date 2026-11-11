@@ -21,7 +21,7 @@ const msg = (o: Partial<ArchivedMessage>): ArchivedMessage => ({
   textStyles: [],
   call: null,
   album: null,
-  link: null, contactCard: null, quote: null, video: null, noticeAvatars: [], noticePeople: 0, poll: null,
+  link: null, contactCard: null, quote: null, video: null, noticeAvatars: [], noticePeople: 0, poll: null, reminder: null,
   reactions: [],
   attachments: [],
   ...o,

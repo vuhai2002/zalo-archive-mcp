@@ -5,6 +5,8 @@ import { contactCardOf, type ContactCard } from "../archive/zalo-contact-card.js
 import { withZaloEmoticons } from "../archive/zalo-emoticon-emoji.js";
 import { linkPreviewOf, type LinkPreview } from "../archive/zalo-link-preview.js";
 import { photoAlbumOf, type PhotoAlbum } from "../archive/zalo-photo-album.js";
+import { reminderCardOf, type ReminderCard } from "../archive/zalo-reminder-card.js";
+import { parseObject } from "../archive/zalo-system-notice.js";
 import { videoInfoOf, type VideoInfo } from "../archive/zalo-video-info.js";
 import { parseMentions } from "../archive/zalo-mention-names.js";
 import { applyMentionNames, type MentionSource } from "./message-mention-display.js";
@@ -72,6 +74,8 @@ export type MessageRow = {
   noticePeople: number;
   /** Tin bình chọn: mã cuộc bình chọn + hành động (dựng ở withAttachments) */
   poll: NoticePoll | null;
+  /** Tin nhắc hẹn của nhóm (thẻ `chat.ecard` Zalo gửi lúc tới giờ): tên hẹn, giờ, kiểu lặp; null với tin khác */
+  reminder: ReminderCard | null;
   /** Cảm xúc trên tin, gộp theo loại */
   reactions: ReactionSummary[];
   attachments: AttachmentRow[];
@@ -91,6 +95,7 @@ export const MESSAGE_COLUMNS = `m.id, m.msg_id, m.thread_id, m.thread_type, m.se
   CASE WHEN m.msg_type = 'chat.video.msg' AND json_valid(m.raw_json)
     THEN json_extract(m.raw_json, '$.content.params') END AS video_params,
   CASE WHEN m.msg_type IN ('group_event', 'group.poll') THEN m.raw_json END AS notice_raw,
+  CASE WHEN m.msg_type = 'chat.ecard' AND json_valid(m.raw_json) THEN json_extract(m.raw_json, '$.content') END AS ecard_content,
   CASE WHEN m.quote_msg_id IS NOT NULL AND json_valid(m.raw_json) THEN json_extract(m.raw_json, '$.quote') END AS quote_raw,
   CASE WHEN instr(m.raw_json, '"mentions"') > 0 AND json_valid(m.raw_json) THEN json_extract(m.raw_json, '$.mentions') END AS mentions_raw`;
 /** Avatar người gửi lấy từ danh bạ người */
@@ -108,7 +113,7 @@ export function toMessageRow(r: Record<string, unknown>): MessageRow {
   // Mã biểu cảm (":d") đổi sang emoji lúc đọc, định dạng chữ dời theo; DB giữ chữ gốc
   const shown = withZaloEmoticons(String(r.text), parseTextStyles(r.rtf_params as string | null, String(r.text).length));
   // Tin chat.recommended: cuộc gọi (câu đã dựng sẵn ở text) hoặc thẻ link
-  const rec = parseRecommendedContent(r.rec_content);
+  const rec = parseObject(r.rec_content);
   const call = callNoticeOf(rec?.action, rec?.params);
   const card = contactCardOf(rec);
   const row: MessageRow = {
@@ -136,6 +141,7 @@ export function toMessageRow(r: Record<string, unknown>): MessageRow {
     noticeAvatars: [],
     noticePeople: 0,
     poll: null,
+    reminder: r.ecard_content ? reminderCardOf(r.ecard_content) : null,
     reactions: [],
     attachments: [],
   };
@@ -185,12 +191,3 @@ export function withAttachments(db: DatabaseSync, messages: MessageRow[]): Messa
   return messages;
 }
 
-function parseRecommendedContent(raw: unknown): Record<string, unknown> | null {
-  if (typeof raw !== "string") return null;
-  try {
-    const v: unknown = JSON.parse(raw);
-    return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
-}

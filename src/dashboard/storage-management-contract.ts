@@ -21,6 +21,8 @@ export type StorageOverviewResponse = {
     mediaFiles: number;
     databaseBytes: number;
     journalBytes: number;
+    /** Nhật ký tin thô theo ngày: số ngày + ngày đầu / cuối (YYYY-MM-DD); số đo cũ chưa có tới lần Làm mới */
+    journalDays?: { count: number; first: string | null; last: string | null };
     tempBytes: number;
     backups: Array<{ name: string; bytes: number; modifiedAt: string }>;
   } | null;
