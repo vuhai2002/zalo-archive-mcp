@@ -13,7 +13,8 @@ import { getMeta } from "./thread-directory-store.js";
 export type NoticeAvatar = { userId: string | null; name: string | null; url: string | null };
 /** Tin bình chọn: mã cuộc bình chọn (mở cửa sổ Xem) + hành động (create / vote / update / close / share) */
 export type NoticePoll = { pollId: string; action: string };
-export type DisplayedNotice = { text: string; textStyles: TextStyleSpan[]; avatar: NoticeAvatar | null; poll: NoticePoll | null };
+/** `avatars`: 0-4 avatar ghép trước câu như Zalo PC; `people`: tổng số người câu nói tới (ô số trên avatar ghép) */
+export type DisplayedNotice = { text: string; textStyles: TextStyleSpan[]; avatars: NoticeAvatar[]; people: number; poll: NoticePoll | null };
 
 const boldSpan = (s: { start: number; end: number }): TextStyleSpan => ({
   ...s,
@@ -42,14 +43,14 @@ export function createNoticeRenderer(db: DatabaseSync): (msgType: string, rawJso
       const ev = pollEventFromRawJson(rawJson);
       if (!ev) return null;
       const n = pollNoticeOf(ev, names);
-      return { text: n.text, textStyles: n.bold.map(boldSpan), avatar: null, poll: { pollId: ev.pollId, action: ev.action } };
+      return { text: n.text, textStyles: n.bold.map(boldSpan), avatars: [], people: 0, poll: { pollId: ev.pollId, action: ev.action } };
     }
     const notice = systemNoticeOf(rawJson, names);
     if (!notice) return null;
-    const who = notice.avatar?.userId ? lookup(notice.avatar.userId) : undefined;
-    const avatar = notice.avatar
-      ? { userId: notice.avatar.userId, name: who?.name ?? null, url: who?.avatar_url ?? notice.avatar.url }
-      : null;
-    return { text: notice.text, textStyles: notice.bold.map(boldSpan), avatar, poll: null };
+    const avatars = notice.avatars.map((a) => {
+      const who = a.userId ? lookup(a.userId) : undefined;
+      return { userId: a.userId, name: who?.name ?? null, url: who?.avatar_url ?? a.url };
+    });
+    return { text: notice.text, textStyles: notice.bold.map(boldSpan), avatars, people: notice.people, poll: null };
   };
 }

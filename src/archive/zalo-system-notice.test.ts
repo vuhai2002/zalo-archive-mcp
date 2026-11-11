@@ -21,7 +21,7 @@ describe("câu thông báo nhóm như Zalo", () => {
       text: "Quế Khuê được bạn thêm vào nhóm",
       bold: ["Quế Khuê"],
     });
-    assert.equal(groupEventNoticeOf(ev("join", "1", [[ME], ["2"]]), names)?.text, "Bạn và Quế Khuê được Mẫn Khuê Trác thêm vào nhóm");
+    assert.equal(groupEventNoticeOf(ev("join", "1", [[ME], ["2"]]), names)?.text, "Bạn, Quế Khuê được Mẫn Khuê Trác thêm vào nhóm");
   });
 
   it("tự vào, rời, xóa, chặn, phó nhóm, đổi tên, đổi ảnh dùng đúng mẫu câu của Zalo", () => {
@@ -43,14 +43,24 @@ describe("câu thông báo nhóm như Zalo", () => {
 
   it("nhiều người: vài tên đầu rồi 'và N người nữa'; chưa biết tên thì lấy tên trong sự kiện, rồi mới tới mã số", () => {
     const many = ev("join", "1", [["2"], ["31", "An"], ["32", "Bảo"], ["33", "Chi"], ["34", "Dũng"]]);
-    assert.equal(groupEventNoticeOf(many, names)?.text, "Quế Khuê, An, Bảo và 2 người nữa được Mẫn Khuê Trác thêm vào nhóm");
+    assert.equal(groupEventNoticeOf(many, names)?.text, "Quế Khuê, An, Bảo, và 2 người nữa được Mẫn Khuê Trác thêm vào nhóm");
     assert.equal(groupEventNoticeOf(ev("leave", "777", []), names)?.text, "777 đã rời khỏi nhóm");
   });
 
   it("avatar đứng trước câu: người được nhắc tới (thêm / rời), người làm (đổi tên / ảnh)", () => {
     const withAvatar = { act: "join", data: { sourceId: "1", updateMembers: [{ id: "2", avatar: "https://s160-ava-talk.zadn.vn/a.jpg" }] } };
-    assert.deepEqual(groupEventNoticeOf(withAvatar, names)?.avatar, { userId: "2", url: "https://s160-ava-talk.zadn.vn/a.jpg" });
-    assert.deepEqual(groupEventNoticeOf(ev("update_avatar", "1", []), names)?.avatar, { userId: "1", url: null });
+    assert.deepEqual(groupEventNoticeOf(withAvatar, names)?.avatars, [{ userId: "2", url: "https://s160-ava-talk.zadn.vn/a.jpg" }]);
+    assert.deepEqual(groupEventNoticeOf(ev("update_avatar", "1", []), names)?.avatars, [{ userId: "1", url: null }]);
+    // Nhiều người: như Zalo PC, tên nối bằng dấu phẩy và chồng avatar 2 người đầu
+    const three = ev("join", "1", [[ME], ["31", "Huân Lục"], ["32", "Vỹ Khang"]]);
+    assert.equal(groupEventNoticeOf(three, names)?.text, "Bạn, Huân Lục, Vỹ Khang được Mẫn Khuê Trác thêm vào nhóm");
+    assert.deepEqual(groupEventNoticeOf(three, names)?.avatars.map((a) => a.userId), [ME, "31", "32"]);
+    assert.equal(groupEventNoticeOf(three, names)?.people, 3);
+    // Mình ở giữa danh sách Zalo gửi: vẫn đứng đầu là "Bạn" như Zalo PC; quá 3 người thì ", và N người nữa"
+    const six = ev("join", "1", [["31", "Khúc Thoa"], ["32", "Ngạn Khuê"], [ME], ["33", "Khánh Thy"], ["34"], ["35"]]);
+    assert.equal(groupEventNoticeOf(six, names)?.text, "Bạn, Khúc Thoa, Ngạn Khuê, và 3 người nữa được Mẫn Khuê Trác thêm vào nhóm");
+    assert.deepEqual(groupEventNoticeOf(six, names)?.avatars.map((a) => a.userId), [ME, "31", "32", "33"]);
+    assert.equal(groupEventNoticeOf(six, names)?.people, 6);
   });
 });
 
@@ -64,10 +74,10 @@ describe("thông báo msginfo.actionlist (xin vào nhóm, xác nhận lịch h�
   it("thay %N$s bằng tên in đậm theo mẫu câu Zalo gửi kèm; avatar là ảnh Zalo gửi kèm", () => {
     const n = msgInfoNoticeOf(content("%1$s vừa yêu cầu tham gia nhóm.", ["Quế Khuê"], { avatarUrl: "https://s160-ava-talk.zadn.vn/t.jpg" }));
     assert.deepEqual(shown(n), { text: "Quế Khuê vừa yêu cầu tham gia nhóm.", bold: ["Quế Khuê"] });
-    assert.deepEqual(n?.avatar, { userId: null, url: "https://s160-ava-talk.zadn.vn/t.jpg" });
+    assert.deepEqual(n?.avatars, [{ userId: null, url: "https://s160-ava-talk.zadn.vn/t.jpg" }]);
     const rsvp = msgInfoNoticeOf(content("%1$s xác nhận: tham gia %2$s.", ["Lư Ngạn", "Họp tuần"], { iconUrl: "https://res-zalo.zadn.vn/i.png" }));
     assert.deepEqual(shown(rsvp), { text: "Lư Ngạn xác nhận: tham gia Họp tuần.", bold: ["Lư Ngạn", "Họp tuần"] });
-    assert.equal(rsvp?.avatar?.url, "https://res-zalo.zadn.vn/i.png");
+    assert.equal(rsvp?.avatars[0]?.url, "https://res-zalo.zadn.vn/i.png");
   });
 
   it("không có mẫu câu thì dùng tiêu đề; tin webchat thường thì không phải thông báo", () => {

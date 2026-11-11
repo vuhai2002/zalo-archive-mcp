@@ -13,8 +13,13 @@ export type SystemNotice = {
   text: string;
   /** Đoạn in đậm (tên người, tên nhóm, tên lịch hẹn) */
   bold: NoticeSpan[];
-  /** Avatar đứng trước câu: người được nhắc tới (tra danh bạ theo `userId`) hoặc ảnh Zalo gửi kèm */
-  avatar: { userId: string | null; url: string | null } | null;
+  /**
+   * Avatar đứng trước câu (0-4 cái, ghép như Zalo PC: 2 người xếp chéo, 3 người hình tam giác, đông hơn thì 3 avatar + ô
+   * tổng số): những người được nhắc tới (tra danh bạ theo `userId`), người làm, hoặc ảnh Zalo gửi kèm
+   */
+  avatars: Array<{ userId: string | null; url: string | null }>;
+  /** Tổng số người câu nói tới (ô số trên avatar ghép, vd "9" khi thêm 9 người) */
+  people: number;
 };
 export type NoticeNames = {
   selfUid: string | null;
@@ -50,34 +55,42 @@ function personPieces(p: Person, names: NoticeNames, atStart: boolean): Piece[] 
   return [{ bold: names.nameOf(p.id) ?? p.dName ?? (p.id || "Ai đó") }];
 }
 
+/**
+ * Tên nối bằng dấu phẩy như Zalo PC ("Bạn, Huân Lục, Vỹ Khang được Trác Khuê thêm vào nhóm"); quá 3 người thì 3 tên đầu
+ * rồi ", và N người nữa" ("Lạc Nhi, Khuê Trác, Trác Khuê Thoại, và 2 người nữa được ...")
+ */
 function listPieces(people: Person[], names: NoticeNames): Piece[] {
   const shown = people.length > MAX_LISTED ? people.slice(0, MAX_LISTED) : people;
   const out: Piece[] = [];
   shown.forEach((p, i) => {
-    if (i > 0) out.push(i === shown.length - 1 && shown.length === people.length ? " và " : ", ");
+    if (i > 0) out.push(", ");
     out.push(...personPieces(p, names, i === 0));
   });
-  if (people.length > shown.length) out.push(` và ${people.length - shown.length} người nữa`);
+  if (people.length > shown.length) out.push(`, và ${people.length - shown.length} người nữa`);
   return out;
 }
 
-const avatarOf = (p: Person | undefined): SystemNotice["avatar"] => (p ? { userId: p.id || null, url: p.avatar } : null);
+/** Đủ để ghép như Zalo PC: 4 người lưới 2x2, đông hơn thì 3 avatar + ô tổng số */
+const MAX_AVATARS = 4;
+const avatarsOf = (people: Person[]): SystemNotice["avatars"] => people.slice(0, MAX_AVATARS).map((p) => ({ userId: p.id || null, url: p.avatar }));
 
 /** Sự kiện nhóm (dữ liệu gốc zca-js `{act, data: {sourceId, updateMembers, groupName}}`) */
 export function groupEventNoticeOf(raw: unknown, names: NoticeNames): SystemNotice | null {
   const e = raw as { act?: unknown; data?: Record<string, unknown> } | null;
   const d = e?.data;
   const act = str(e?.act);
-  const members: Person[] = (Array.isArray(d?.updateMembers) ? (d.updateMembers as Array<Record<string, unknown>>) : [])
+  const listed: Person[] = (Array.isArray(d?.updateMembers) ? (d.updateMembers as Array<Record<string, unknown>>) : [])
     .map((m) => ({ id: str(m?.id), dName: str(m?.dName).trim() || null, avatar: str(m?.avatar).trim() || null }))
     .filter((m) => DIGITS.test(m.id));
+  // Như Zalo PC: "Bạn" luôn đứng đầu danh sách dù Zalo gửi mình ở vị trí nào, rồi tới những người khác theo thứ tự cũ
+  const members = [...listed.filter((m) => m.id === names.selfUid), ...listed.filter((m) => m.id !== names.selfUid)];
   const actorId = str(d?.sourceId);
   const actor: Person = members.find((m) => m.id === actorId) ?? { id: actorId, dName: null, avatar: null };
   const bySelf = actorId !== "" && actorId === names.selfUid;
   const list = listPieces(members, names);
   const byActor = bySelf ? ["bạn"] : personPieces(actor, names, false);
-  const subjectNotice = (pieces: Piece[]) => ({ ...compose(pieces), avatar: avatarOf(members[0]) });
-  const actorNotice = (pieces: Piece[]) => ({ ...compose(pieces), avatar: avatarOf(actor) });
+  const subjectNotice = (pieces: Piece[]) => ({ ...compose(pieces), avatars: avatarsOf(members), people: members.length });
+  const actorNotice = (pieces: Piece[]) => ({ ...compose(pieces), avatars: avatarsOf([actor]), people: 1 });
 
   if (act === "join") {
     if (members.length === 0) return null;
@@ -121,10 +134,10 @@ export function msgInfoNoticeOf(content: unknown): SystemNotice | null {
   // Mã người trong params là SỐ 19 chữ số (JSON.parse làm tròn mất) nên không tra danh bạ theo mã:
   // dùng thẳng ảnh Zalo gửi kèm (avatar người xin vào nhóm, hoặc biểu tượng lịch hẹn)
   const url = str(p?.avatarUrl).trim() || str(firstInfo?.avt).trim() || str(p?.iconUrl).trim() || null;
-  const avatar = url ? { userId: null, url } : null;
+  const avatars = url ? [{ userId: null, url }] : [];
   if (!template) {
     const title = str(c?.title).trim();
-    return title ? { text: title, bold: [], avatar } : null;
+    return title ? { text: title, bold: [], avatars, people: avatars.length } : null;
   }
   const pieces: Piece[] = [];
   let last = 0;
@@ -134,7 +147,7 @@ export function msgInfoNoticeOf(content: unknown): SystemNotice | null {
     last = m.index + m[0].length;
   }
   pieces.push(template.slice(last));
-  return { ...compose(pieces), avatar };
+  return { ...compose(pieces), avatars, people: avatars.length };
 }
 
 /** Thông báo từ dữ liệu gốc đã lưu của một tin `group_event` (sự kiện nhóm hoặc tin msginfo) */

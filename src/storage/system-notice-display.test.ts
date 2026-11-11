@@ -55,7 +55,7 @@ describe("thông báo nhóm hiện như Zalo", () => {
     const [m] = readThread(db, { threadId: GROUP, threadType: "group", limit: 5 });
     assert.equal(m!.text, "Quế Khuê được Sếp Trác thêm vào nhóm");
     assert.deepEqual(bolded(m!), ["Quế Khuê", "Sếp Trác"]);
-    assert.deepEqual(m!.noticeAvatar, { userId: "2", name: "Quế Khuê", url: "https://s160-ava-talk.zadn.vn/2.jpg" });
+    assert.deepEqual(m!.noticeAvatars, [{ userId: "2", name: "Quế Khuê", url: "https://s160-ava-talk.zadn.vn/2.jpg" }]);
     assert.equal(lastMessagePreview(db, GROUP, "group")!.text, "Quế Khuê được Sếp Trác thêm vào nhóm");
   });
 
@@ -66,7 +66,7 @@ describe("thông báo nhóm hiện như Zalo", () => {
     upsertMessage(db, msg, live);
     const [m] = readThread(db, { threadId: GROUP, threadType: "group", limit: 5 });
     assert.deepEqual([m!.msgType, m!.text, bolded(m!)], ["group_event", "Quế Khuê vừa yêu cầu tham gia nhóm.", ["Quế Khuê"]]);
-    assert.deepEqual(m!.noticeAvatar, { userId: null, name: null, url: "https://s160-ava-talk.zadn.vn/t.jpg" });
+    assert.deepEqual(m!.noticeAvatars, [{ userId: null, name: null, url: "https://s160-ava-talk.zadn.vn/t.jpg" }]);
     // Tin chữ thường không bị đụng
     const chat = normalizeMessage({ threadType: "group", threadId: GROUP, isSelf: false, data: { ...joinRequestData(), msgId: "2", content: "chào" } }, new Date())!;
     assert.deepEqual([chat.msgType, chat.text], ["webchat", "chào"]);

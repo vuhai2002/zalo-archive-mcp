@@ -69,5 +69,5 @@ export function pollNoticeOf(ev: PollEvent, names: NoticeNames): SystemNotice {
     last = m.index + m[0].length;
   }
   pieces.push(ev.template.slice(last));
-  return { ...compose(pieces), avatar: null };
+  return { ...compose(pieces), avatars: [], people: 0 };
 }

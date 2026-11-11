@@ -180,8 +180,10 @@ export type ArchivedMessage = {
   quote: { id: number | null; senderName: string | null; isSelf: boolean; text: string } | null;
   /** Tin video: thời lượng (ms) + kích thước, để vẽ ô đúng tỉ lệ và hiện "00:33" như Zalo */
   video: { durationMs: number | null; width: number | null; height: number | null } | null;
-  /** Thông báo nhóm (`group_event`): avatar nhỏ đứng trước câu - người được nhắc tới, hoặc ảnh Zalo gửi kèm */
-  noticeAvatar: { userId: string | null; name: string | null; url: string | null } | null;
+  /** Thông báo nhóm (`group_event`): 0-4 avatar nhỏ ghép trước câu như Zalo PC - người được nhắc tới, hoặc ảnh Zalo gửi kèm */
+  noticeAvatars: Array<{ userId: string | null; name: string | null; url: string | null }>;
+  /** Thông báo nhóm: tổng số người câu nói tới (ô số trên avatar ghép, vd "9"); 0 với tin khác */
+  noticePeople: number;
   /** Tin bình chọn (`group.poll`): mã cuộc bình chọn để mở cửa sổ Xem (GET /api/polls/:pollId) + hành động (create, vote...) */
   poll: { pollId: string; action: string } | null;
   /** Cảm xúc trên tin như Zalo, gộp theo loại; `emoji` null = mã Zalo chưa biết (hiện `icon`) */

@@ -66,8 +66,10 @@ export type MessageRow = {
   quote: QuotePreview | null;
   /** Tin video: thời lượng + kích thước (vẽ ô đúng tỉ lệ, hiện "00:33"); null với tin khác */
   video: VideoInfo | null;
-  /** Thông báo nhóm: avatar nhỏ đứng trước câu (người được nhắc tới); null với tin khác */
-  noticeAvatar: NoticeAvatar | null;
+  /** Thông báo nhóm: 0-4 avatar nhỏ ghép trước câu (người được nhắc tới); rỗng với tin khác */
+  noticeAvatars: NoticeAvatar[];
+  /** Thông báo nhóm: tổng số người câu nói tới (ô số trên avatar ghép); 0 với tin khác */
+  noticePeople: number;
   /** Tin bình chọn: mã cuộc bình chọn + hành động (dựng ở withAttachments) */
   poll: NoticePoll | null;
   /** Cảm xúc trên tin, gộp theo loại */
@@ -131,7 +133,8 @@ export function toMessageRow(r: Record<string, unknown>): MessageRow {
     contactCard: card ? { ...card, threadId: null } : null,
     quote: null,
     video: videoInfoOf(r.video_params),
-    noticeAvatar: null,
+    noticeAvatars: [],
+    noticePeople: 0,
     poll: null,
     reactions: [],
     attachments: [],
@@ -154,7 +157,7 @@ export function withAttachments(db: DatabaseSync, messages: MessageRow[]): Messa
     m.reactions = reactions.get(m.msgId) ?? [];
     // Thông báo nhóm: câu như Zalo theo danh bạ hiện tại (tên gợi nhớ, tên mới biết), tên in đậm
     const notice = noticeOf(m.msgType, noticeRawOf.get(m) ?? null);
-    if (notice) Object.assign(m, { text: notice.text, textStyles: notice.textStyles, noticeAvatar: notice.avatar, poll: notice.poll });
+    if (notice) Object.assign(m, { text: notice.text, textStyles: notice.textStyles, noticeAvatars: notice.avatars, noticePeople: notice.people, poll: notice.poll });
     m.quote = quotePreviewFromRaw(quoteRawOf.get(m), selfUid);
     if (m.contactCard && userThread.get(m.contactCard.userId)) m.contactCard.threadId = m.contactCard.userId;
   }

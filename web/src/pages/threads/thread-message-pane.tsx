@@ -5,6 +5,7 @@ import { EmptyState, ErrorNote, LoadingText } from "../../shared/ui-bits";
 import { useArchiveLiveChanges } from "../../shared/use-archive-live-changes";
 import { useLoadMoreWhenVisible } from "../../shared/use-load-more-when-visible";
 import { ChatItemList } from "./chat-item-list";
+import { ThreadStartCard } from "./thread-start-card";
 import { JumpToLatestButton } from "./jump-to-latest-button";
 import { MessageComposer } from "./message-composer";
 import { MessageSelectionBar } from "./message-selection-bar";
@@ -174,6 +175,8 @@ export function ThreadMessagePane({ threadId, focus, onBack }: { threadId: strin
           </p>
         )}
 
+        {/* Đã cuộn tới tin đầu tiên trong kho: thẻ đầu nhóm như Zalo PC */}
+        {t.thread?.threadType === "group" && !t.hasOlder && !t.loading && t.messages.length > 0 && <ThreadStartCard thread={t.thread} />}
         <ChatItemList
           items={items}
           layouts={layouts}
