@@ -46,6 +46,21 @@ describe("tìm và lọc tin", () => {
     assert.deepEqual(searchMessages(db, { threadId: "g-1", limit: 10 }), [], "không từ khóa, không lọc: không liệt kê cả kho");
   });
 
+  it("từ có dấu nối (email, link, số, ngày): các mẩu phải liền nhau như Zalo PC; từ cách bằng dấu cách vẫn chỉ cần đều có", () => {
+    const db = seeded();
+    const add = (msgId: string, min: number, text: string) =>
+      upsertMessage(db, sampleMessage({ msgId, cliMsgId: `c${msgId}`, threadId: "g-1", threadType: "group", sentAt: at(min), text }), live);
+    add("20", 20, "Hỏi admin@example.com để xin quyền");
+    add("21", 21, "Vào thử https://admin.example.com/login");
+    add("22", 22, "gửi nguyen@example.com rồi admin duyệt sau");
+    add("23", 23, "Gọi 0900.000.111 nhé, hẹn 13/10");
+    add("24", 24, "10 người, ngày 13 gặp");
+    assert.deepEqual(ids(searchMessages(db, { query: "admin@example.com", limit: 10 })), ["21", "20"]);
+    assert.deepEqual(ids(searchMessages(db, { query: "0900.000.111", limit: 10 })), ["23"]);
+    assert.deepEqual(ids(searchMessages(db, { query: "13/10", limit: 10 })), ["23"], "13 và 10 ở hai chỗ khác nhau thì không khớp");
+    assert.deepEqual(ids(searchMessages(db, { query: "admin example", limit: 10 })), ["22", "21", "20"], "từ rời vẫn tìm kiểu mọi từ đều có");
+  });
+
   it("Nhắc bạn: tin @mình và @Tất cả của người khác; Biểu cảm: tin của mình được người khác thả", () => {
     const db = seeded();
     assert.deepEqual(ids(listMessagesMentioningMe(db, { selfUid: "me", limit: 10 })), ["4", "2"]);

@@ -59,7 +59,8 @@ export function createArchiveMcpServer(ctx: ReadToolContext & { readonly readOnl
     "search_messages",
     {
       description:
-        "Tìm trong kho (không phân biệt dấu, mọi từ phải có). Lọc theo hội thoại, người gửi (sender_id = số trong ngoặc sau tên ở " +
+        "Tìm trong kho (không phân biệt dấu, mọi từ phải có; từ có dấu nối như email, link, số điện thoại, ngày 13/10 thì các " +
+        "phần phải liền nhau). Lọc theo hội thoại, người gửi (sender_id = số trong ngoặc sau tên ở " +
         "read_thread), khoảng ngày, chỉ tin có file (files_only - tìm theo tên file). Cần ít nhất query, sender_id hoặc ngày.",
       inputSchema: {
         query: z.string().min(1).max(200).optional(),

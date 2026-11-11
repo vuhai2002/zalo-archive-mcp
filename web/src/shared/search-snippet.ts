@@ -20,15 +20,33 @@ export function searchWords(query: string): string[] {
   return foldForSearch(query).split(/\s+/).filter(Boolean);
 }
 
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Mẫu khớp của từng từ trong từ khóa, giống cách server tìm: từ có dấu nối ("admin@example.com") khớp các mẩu chữ / số
+ * LIỀN nhau đúng thứ tự, dấu ở giữa là gì cũng được ("admin.example.com" cũng khớp, như Zalo PC).
+ */
+function wordPatterns(query: string): RegExp[] {
+  return searchWords(query).flatMap((w) => {
+    const tokens = w.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+    return tokens.length > 0 ? [new RegExp(tokens.map(escapeRegExp).join("[^\\p{L}\\p{N}]+"), "gu")] : [];
+  });
+}
+
+/** Các đoạn [đầu, cuối) của `text` khớp từ khóa (không dấu, không hoa thường), theo thứ tự từng từ */
+export function matchRanges(text: string, query: string): Array<[number, number]> {
+  const hay = foldPerChar(text);
+  const out: Array<[number, number]> = [];
+  for (const re of wordPatterns(query)) {
+    for (const m of hay.matchAll(re)) if (m[0].length > 0) out.push([m.index, m.index + m[0].length]);
+  }
+  return out;
+}
+
 /** Vị trí đầu tiên trong `text` khớp một từ của từ khóa (không dấu, không hoa thường); -1 nếu không có */
 export function firstMatchIndex(text: string, query: string): number {
-  const hay = foldPerChar(text);
-  let best = -1;
-  for (const w of searchWords(query)) {
-    const at = hay.indexOf(w);
-    if (at !== -1 && (best === -1 || at < best)) best = at;
-  }
-  return best;
+  const starts = matchRanges(text, query).map(([at]) => at);
+  return starts.length > 0 ? Math.min(...starts) : -1;
 }
 
 /**

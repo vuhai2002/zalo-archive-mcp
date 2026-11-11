@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { fileTypeOfName } from "./file-type-of-name";
-import { firstMatchIndex, snippetAround } from "./search-snippet";
+import { firstMatchIndex, matchRanges, snippetAround } from "./search-snippet";
 
 describe("đoạn trích quanh chữ khớp", () => {
   it("chữ khớp gần đầu: giữ nguyên câu (gộp xuống dòng)", () => {
@@ -17,6 +17,16 @@ describe("đoạn trích quanh chữ khớp", () => {
     assert.equal(firstMatchIndex("Đi Bàu Lý", "bau ly"), 3);
     assert.equal(firstMatchIndex("abc", "xyz"), -1);
     assert.equal(snippetAround("không khớp gì cả", "xyz"), "không khớp gì cả");
+  });
+
+  it("từ có dấu nối: khớp các mẩu liền nhau với dấu nào ở giữa cũng được, như server và Zalo PC", () => {
+    const q = "admin@example.com";
+    assert.deepEqual(matchRanges("Hỏi admin@example.com để", q), [[4, 21]]);
+    assert.deepEqual(matchRanges("https://admin.example.com/login", q), [[8, 25]]);
+    assert.deepEqual(matchRanges("nguyen@example.com rồi admin", q), [], "các mẩu không liền nhau thì không tô");
+    const long = `${"chữ đệm ".repeat(8)}xem admin.example.com nhé`;
+    assert.ok(snippetAround(long, q).startsWith("... "), "chỗ khớp xa đầu: đoạn trích bắt đầu gần chỗ khớp");
+    assert.ok(snippetAround(long, q).includes("admin.example.com"));
   });
 });
 

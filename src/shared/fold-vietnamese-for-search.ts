@@ -16,18 +16,31 @@ export function foldVietnameseForSearch(text: string): string {
   return text.replace(/đ/g, "d").replace(/Đ/g, "D").normalize("NFD").replace(COMBINING_MARKS, "").toLowerCase();
 }
 
+/** Tối đa chừng này mẩu chữ / số trong một câu tìm */
+const MAX_TOKENS = 16;
+
 /**
- * Biến câu tìm của người dùng/model thành biểu thức FTS5 an toàn: mỗi từ là một
- * chuỗi trong ngoặc kép (AND ngầm), nên ký tự đặc biệt của cú pháp FTS5
- * (`*`, `:`, `NEAR`, `-`...) không bao giờ được hiểu là toán tử.
+ * Biến câu tìm của người dùng/model thành biểu thức FTS5 an toàn. Các từ cách nhau bằng dấu cách: mỗi từ phải có
+ * (AND ngầm), không cần liền nhau. Trong MỘT từ, các mẩu nối bằng dấu (`@ . / - :`...) phải đứng LIỀN nhau đúng thứ tự
+ * (cụm FTS5): "admin@example.com" chỉ ra tin có đúng địa chỉ đó (cả "admin.example.com" như Zalo PC), không
+ * ra tin chỉ có "admin" ở một chỗ và "example.com" ở chỗ khác; tương tự link, số điện thoại "0900.000.111", ngày
+ * "13/10". Mỗi cụm nằm trong ngoặc kép và chỉ gồm chữ / số, nên ký tự đặc biệt của cú pháp FTS5 (`*`, `:`, `NEAR`,
+ * `-`...) không bao giờ được hiểu là toán tử.
  *
  * Trả `null` khi không còn từ nào để tìm.
  */
 export function buildFtsMatchExpression(query: string): string | null {
-  const words = foldVietnameseForSearch(query)
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter((w) => w.length > 0)
-    .slice(0, 16);
-  if (words.length === 0) return null;
-  return words.map((w) => `"${w}"`).join(" ");
+  const phrases: string[] = [];
+  let budget = MAX_TOKENS;
+  for (const word of foldVietnameseForSearch(query).split(/\s+/)) {
+    const tokens = word
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((t) => t.length > 0)
+      .slice(0, budget);
+    if (tokens.length === 0) continue;
+    phrases.push(`"${tokens.join(" ")}"`);
+    budget -= tokens.length;
+    if (budget <= 0) break;
+  }
+  return phrases.length > 0 ? phrases.join(" ") : null;
 }
