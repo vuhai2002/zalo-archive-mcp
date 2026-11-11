@@ -188,8 +188,11 @@ export type ArchivedMessage = {
   poll: { pollId: string; action: string } | null;
   /** Tin nhắc hẹn của nhóm: tên hẹn, biểu tượng, giờ hẹn (ISO), kiểu lặp (null = không lặp); null với tin khác */
   reminder: { title: string; emoji: string | null; startAt: string; repeat: "daily" | "weekly" | "monthly" | "yearly" | null } | null;
-  /** Cảm xúc trên tin như Zalo, gộp theo loại; `emoji` null = mã Zalo chưa biết (hiện `icon`) */
-  reactions: Array<{ icon: string; emoji: string | null; count: number; mine: boolean; names: string[] }>;
+  /**
+   * Cảm xúc trên tin như Zalo, gộp theo loại; `emoji` null = mã Zalo chưa biết (hiện `icon`). `tapIds`: mã các lần bấm đã
+   * đếm - một lần bấm lên chùm ảnh gắn vào mọi món của khung, nên gộp cảm xúc của chùm phải đếm theo mã này, không cộng `count`.
+   */
+  reactions: Array<{ icon: string; emoji: string | null; count: number; mine: boolean; names: string[]; tapIds: string[] }>;
   attachments: AttachmentInfo[];
 };
 

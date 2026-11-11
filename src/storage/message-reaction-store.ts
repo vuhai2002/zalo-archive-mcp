@@ -17,8 +17,12 @@ export type ReactionInput = {
   threadType: ThreadKind;
 };
 
-/** Một loại cảm xúc trên tin: `count` = tổng số lần bấm (như Zalo), `names` = ai đã bấm */
-export type ReactionSummary = { icon: string; emoji: string | null; count: number; mine: boolean; names: string[] };
+/**
+ * Một loại cảm xúc trên tin: `count` = tổng số lần bấm (như Zalo), `names` = ai đã bấm, `tapIds` = mã các lần bấm đã đếm.
+ * Bấm cảm xúc lên chùm ảnh / video thì Zalo gắn MỘT lần bấm vào mọi món của khung; web gộp cảm xúc của chùm theo `tapIds`
+ * để mỗi lần bấm chỉ đếm một lần.
+ */
+export type ReactionSummary = { icon: string; emoji: string | null; count: number; mine: boolean; names: string[]; tapIds: string[] };
 
 /**
  * Ghi một lần bấm. Sự kiện lặp (lấy bù, phát lại nhật ký) bị bỏ nhờ khóa (tin, id lần bấm),
@@ -32,7 +36,7 @@ export function applyReaction(db: DatabaseSync, r: ReactionInput): void {
   for (const msgId of r.targetMsgIds) if (!isDeletedMessage(db, msgId)) stmt.run(msgId, r.actionId, r.reactorId, r.icon, r.reactedAt, r.threadId, r.threadType);
 }
 
-type TapRow = { msg_id: string; reactor_id: string; icon: string; reacted_at: string; display_name: string | null };
+type TapRow = { msg_id: string; action_id: string; reactor_id: string; icon: string; reacted_at: string; display_name: string | null };
 
 /**
  * Cảm xúc hiện tại của các tin, gộp theo loại (loại được bấm đầu tiên đứng trước). Với mỗi
@@ -43,7 +47,7 @@ export function reactionSummaries(db: DatabaseSync, msgIds: string[], selfUid: s
   if (msgIds.length === 0) return out;
   const rows = db
     .prepare(
-      `SELECT t.msg_id, t.reactor_id, t.icon, t.reacted_at, COALESCE(c.alias, c.display_name) AS display_name FROM message_reaction_taps t
+      `SELECT t.msg_id, t.action_id, t.reactor_id, t.icon, t.reacted_at, COALESCE(c.alias, c.display_name) AS display_name FROM message_reaction_taps t
        LEFT JOIN contacts c ON c.user_id = t.reactor_id
        WHERE t.msg_id IN (${msgIds.map(() => "?").join(",")}) ORDER BY t.reacted_at, t.action_id`,
     )
@@ -59,12 +63,13 @@ export function reactionSummaries(db: DatabaseSync, msgIds: string[], selfUid: s
     const list = out.get(row.msg_id) ?? [];
     let s = list.find((x) => x.icon === row.icon);
     if (!s) {
-      s = { icon: row.icon, emoji: emojiForZaloCode(row.icon), count: 0, mine: false, names: [] };
+      s = { icon: row.icon, emoji: emojiForZaloCode(row.icon), count: 0, mine: false, names: [], tapIds: [] };
       list.push(s);
     }
     const mine = selfUid !== null && row.reactor_id === selfUid;
     const name = mine ? "Bạn" : (row.display_name ?? row.reactor_id);
     s.count++;
+    s.tapIds.push(row.action_id);
     s.mine ||= mine;
     if (!s.names.includes(name)) s.names.push(name);
     out.set(row.msg_id, list);

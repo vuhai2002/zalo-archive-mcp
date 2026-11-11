@@ -42,7 +42,9 @@ describe("cảm xúc trên tin", () => {
       ingestArchiveEvent(db, { kind: "reaction", reaction: reaction({ from, icon, ts }) }, at, log);
     tap(LAN, "/-heart", 1_793_244_600_000);
     tap(ME, "/-heart", 1_793_244_601_000);
-    assert.deepEqual(reactionsOf(), [{ icon: "/-heart", emoji: "❤️", count: 2, mine: true, names: ["Lan", "Bạn"] }]);
+    assert.deepEqual(reactionsOf(), [
+      { icon: "/-heart", emoji: "❤️", count: 2, mine: true, names: ["Lan", "Bạn"], tapIds: ["1793244600000111", "1793244601000211"] },
+    ]);
 
     // Lan bấm thêm haha và tim hai lần nữa: Zalo cộng dồn, giữ cả hai loại
     tap(LAN, ":>", 1_793_244_602_000);
@@ -72,7 +74,7 @@ describe("cảm xúc trên tin", () => {
     assert.deepEqual(reactionsOf().map((r) => r.emoji), ["👍"]);
 
     ingestArchiveEvent(db, { kind: "reaction", reaction: reaction({ from: ME, icon: "/-moi-la", ts: 1_793_244_800_000 }) }, at, log);
-    assert.deepEqual(reactionsOf()[1], { icon: "/-moi-la", emoji: null, count: 1, mine: true, names: ["Bạn"] });
+    assert.deepEqual(reactionsOf()[1], { icon: "/-moi-la", emoji: null, count: 1, mine: true, names: ["Bạn"], tapIds: ["1793244800000211"] });
   });
 });
 

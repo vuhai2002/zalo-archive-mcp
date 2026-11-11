@@ -53,12 +53,14 @@ describe("gộp album ảnh thành khung lưới", () => {
     assert.deepEqual(items.map((i) => i.album), [null, null]);
   });
 
-  it("cảm xúc trên các ảnh gộp thành một dải", () => {
-    const heart = (count: number, mine: boolean, names: string[]) => ({ icon: "/-heart", emoji: "❤️", count, mine, names });
+  it("cảm xúc trên các món gộp thành một dải, đếm theo lần bấm: lần bấm gắn vào cả khung chỉ tính một lần", () => {
+    const heart = (mine: boolean, names: string[], tapIds: string[]) => ({ icon: "/-heart", emoji: "❤️", count: tapIds.length, mine, names, tapIds });
+    // Như Zalo: 2 lần bấm tim lên chùm (t1, t2) gắn vào mọi món; Minh bấm thêm một lần lên riêng món 1 (t3)
     const merged = mergeAlbumReactions([
-      photo("lan", { id: "C", index: 0 }, [heart(1, false, ["Minh"])]),
-      photo("lan", { id: "C", index: 1 }, [heart(2, true, ["Minh", "Bạn"])]),
+      photo("lan", { id: "C", index: 0 }, [heart(true, ["Bạn"], ["t1", "t2"])]),
+      photo("lan", { id: "C", index: 1 }, [heart(true, ["Bạn", "Minh"], ["t1", "t2", "t3"])]),
+      photo("lan", { id: "C", index: 2 }, [heart(true, ["Bạn"], ["t1", "t2"])]),
     ]);
-    assert.deepEqual(merged, [heart(3, true, ["Minh", "Bạn"])]);
+    assert.deepEqual(merged, [heart(true, ["Bạn", "Minh"], ["t1", "t2", "t3"])]);
   });
 });

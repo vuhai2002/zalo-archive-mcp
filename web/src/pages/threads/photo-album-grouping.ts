@@ -39,17 +39,22 @@ export function collapseAlbums(messages: ArchivedMessage[]): ChatItem[] {
   return items;
 }
 
-/** Cảm xúc thả trên từng ảnh của album gộp thành một dải, theo loại */
+/**
+ * Cảm xúc trên các món của chùm gộp thành một dải, theo loại. Bấm cảm xúc lên chùm thì Zalo gắn lần bấm đó vào MỌI món của
+ * khung, nên số đếm là số lần bấm khác nhau (theo `tapIds`), không cộng số của từng món: bấm tim 2 lần lên khung 10 món là
+ * ❤️ 2 như Zalo PC, không phải 20. Lần bấm chỉ gắn vào một món riêng vẫn được đếm.
+ */
 export function mergeAlbumReactions(album: ArchivedMessage[]): ArchivedMessage["reactions"] {
   const byIcon = new Map<string, ArchivedMessage["reactions"][number]>();
   for (const r of album.flatMap((m) => m.reactions)) {
     const cur = byIcon.get(r.icon);
-    if (!cur) byIcon.set(r.icon, { ...r, names: [...r.names] });
-    else {
-      cur.count += r.count;
-      cur.mine ||= r.mine;
-      for (const n of r.names) if (!cur.names.includes(n)) cur.names.push(n);
+    if (!cur) {
+      byIcon.set(r.icon, { ...r, names: [...r.names], tapIds: [...new Set(r.tapIds)] });
+      continue;
     }
+    cur.mine ||= r.mine;
+    for (const n of r.names) if (!cur.names.includes(n)) cur.names.push(n);
+    for (const t of r.tapIds) if (!cur.tapIds.includes(t)) cur.tapIds.push(t);
   }
-  return [...byIcon.values()];
+  return [...byIcon.values()].map((s) => ({ ...s, count: s.tapIds.length }));
 }
