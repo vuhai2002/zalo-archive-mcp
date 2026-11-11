@@ -1,9 +1,10 @@
 import { NavLink } from "react-router-dom";
 import type { SessionStatus } from "../archive-api-types";
 import { ContactAvatar } from "../shared/contact-avatar";
-import { IconChat, IconGear, IconGrid, IconInbox, IconWarning, type IconFn } from "../shared/dashboard-icons";
+import { IconChat, IconGear, IconGrid, IconInbox, IconPresentation, IconWarning, type IconFn } from "../shared/dashboard-icons";
 import { sessionShortText, sessionTone, TONE_DOT_CLASS } from "../shared/session-state-labels";
 import { useDashboardShell, type KillSwitchState } from "./dashboard-shell-context";
+import { usePresentationMode } from "./presentation-mode-context";
 import { SidebarSettingsMenu } from "./sidebar-settings-menu";
 import { IconZaloChat } from "../shared/zalo-style-icons";
 
@@ -11,6 +12,9 @@ import { IconZaloChat } from "../shared/zalo-style-icons";
  * Thanh icon kiểu Zalo PC: cột xanh hẹp sát mép trái (từ lg). Trên cùng avatar nick đang dùng (bấm mở Cài đặt > Tài khoản
  * Zalo, chấm màu = trạng thái nghe tin), rồi Hội thoại, Hàng đợi gửi. Dưới cùng: Tổng quan ngay trên nút bánh răng (menu
  * Thông tin tài khoản, Cài đặt, Dữ liệu, Giao diện, Đăng xuất) như Zalo PC. Dưới lg: thanh icon ở đáy màn hình, kèm nhãn nhỏ.
+ *
+ * Nút Trình chiếu (dưới Hàng đợi): mở hộp chọn hội thoại; đang trình chiếu thì nút đỏ, bấm là hỏi lại rồi mới thoát. Lúc trình chiếu ẩn Hàng
+ * đợi và Tổng quan (lộ tin gửi tới người khác, hội thoại nhiều tin nhất) để lỡ tay bấm cũng không lộ lên màn hình chia sẻ.
  */
 
 type NavItem = { to: string; label: string; short: string; icon: IconFn };
@@ -55,6 +59,23 @@ function TabLink({ item }: { item: NavItem }) {
   );
 }
 
+function PresentationRailButton() {
+  const p = usePresentationMode();
+  const title = p.active ? "Đang trình chiếu - bấm để thoát" : "Chế độ trình chiếu: chỉ hiện vài hội thoại khi chia sẻ màn hình";
+  return (
+    <button
+      type="button"
+      onClick={p.active ? p.requestStop : p.openSetup}
+      title={title}
+      aria-label={title}
+      aria-pressed={p.active}
+      className={`${RAIL_BTN} ${p.active ? "bg-red-500 hover:bg-red-600" : ""}`}
+    >
+      <IconPresentation size={26} strokeWidth={1.9} />
+    </button>
+  );
+}
+
 export function SidebarNav({
   session,
   killSwitch,
@@ -65,6 +86,8 @@ export function SidebarNav({
   onLogout: () => void;
 }) {
   const { openSettings } = useDashboardShell();
+  const presenting = usePresentationMode().active;
+  const topItems = presenting ? TOP_ITEMS.slice(0, 1) : TOP_ITEMS;
   const tone = sessionTone(session);
   const nickName = session?.account?.displayName ?? session?.displayName ?? session?.account?.id ?? "Chưa có nick";
   const statusText = `${nickName} - ${sessionShortText(session)} - v${__APP_VERSION__}`;
@@ -78,9 +101,10 @@ export function SidebarNav({
           <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-zalo-500 ${TONE_DOT_CLASS[tone]}`} />
         </button>
         <nav className="flex flex-1 flex-col items-center gap-2">
-          {TOP_ITEMS.map((item) => (
+          {topItems.map((item) => (
             <RailLink key={item.to} item={item} />
           ))}
+          <PresentationRailButton />
         </nav>
         {/* Khóa khẩn cấp đang bật thì mọi tin đều đứng: phải thấy được ở MỌI trang */}
         {killSwitch?.killed && (
@@ -88,9 +112,11 @@ export function SidebarNav({
             <IconWarning size={20} />
           </button>
         )}
-        <div className="mb-1">
-          <RailLink item={OVERVIEW} />
-        </div>
+        {!presenting && (
+          <div className="mb-1">
+            <RailLink item={OVERVIEW} />
+          </div>
+        )}
         <SidebarSettingsMenu variant="rail" onLogout={onLogout}>
           <IconGear size={26} strokeWidth={1.9} />
         </SidebarSettingsMenu>
@@ -98,7 +124,7 @@ export function SidebarNav({
 
       {/* Dưới lg: thanh icon ở đáy màn hình, cùng thứ tự với cột icon */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex h-14 items-stretch border-t border-line bg-surface lg:hidden">
-        {[...TOP_ITEMS, OVERVIEW].map((item) => (
+        {(presenting ? topItems : [...TOP_ITEMS, OVERVIEW]).map((item) => (
           <TabLink key={item.to} item={item} />
         ))}
         <SidebarSettingsMenu variant="tab" onLogout={onLogout}>

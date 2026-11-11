@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { IconChat } from "../../shared/dashboard-icons";
+import { usePresentationMode } from "../../layout/presentation-mode-context";
+import { IconChat, IconPresentation } from "../../shared/dashboard-icons";
+import { PresentationThreadListPanel } from "./presentation-thread-list-panel";
 import { ThreadListPanel } from "./thread-list-panel";
 import { ThreadMessagePane } from "./thread-message-pane";
 
@@ -15,6 +17,9 @@ import { ThreadMessagePane } from "./thread-message-pane";
  *
  * `?msg=<id tin>`: mở hội thoại tại đúng tin đó (bấm kết quả tìm chung). Mỗi lần bấm là một lần điều
  * hướng mới (`location.key` đổi), nên bấm lại đúng kết quả cũ vẫn nhảy lại tới tin.
+ *
+ * Đang trình chiếu: cột trái chỉ còn các hội thoại chọn sẵn; mở một hội thoại khác (lịch sử trình duyệt, link) thì khung tin
+ * chỉ báo đang ẩn, không hiện tin.
  */
 export function ThreadsPage() {
   const { threadId } = useParams();
@@ -30,20 +35,32 @@ export function ThreadsPage() {
   // Bấm icon Hội thoại ở thanh bên: mỗi lần bấm là một lần điều hướng mới (key đổi) - danh sách về đầu, thoát tìm kiếm.
   // Nút quay lại từ khung tin (màn hẹp) thì KHÔNG đặt cờ này: danh sách giữ nguyên ô tìm + chỗ đang cuộn
   const resetKey = (location.state as { resetThreadList?: boolean } | null)?.resetThreadList ? location.key : null;
+  const presentation = usePresentationMode();
 
   return (
     <div className="flex h-[calc(100dvh-109px)] min-h-[420px] lg:h-screen">
       <div className={`${threadId ? "hidden lg:flex" : "flex"} w-full shrink-0 flex-col border-line lg:w-80 lg:border-r xl:w-[360px]`}>
-        <ThreadListPanel
-          selectedId={threadId}
-          resetKey={resetKey}
-          onSelect={(id) => navigate(path(id))}
-          onOpenMessage={(id, messageId) => navigate(`${path(id)}?msg=${messageId}`)}
-        />
+        {presentation.active ? (
+          <PresentationThreadListPanel selectedId={threadId} onSelect={(id) => navigate(path(id))} />
+        ) : (
+          <ThreadListPanel
+            selectedId={threadId}
+            resetKey={resetKey}
+            onSelect={(id) => navigate(path(id))}
+            onOpenMessage={(id, messageId) => navigate(`${path(id)}?msg=${messageId}`)}
+          />
+        )}
       </div>
 
       <div className={`${threadId ? "flex" : "hidden lg:flex"} min-w-0 flex-1 flex-col`}>
-        {threadId ? (
+        {threadId && !presentation.isShown(threadId) ? (
+          <div className="flex h-full flex-col items-center justify-center gap-3 bg-chat p-6 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+              <IconPresentation size={26} />
+            </span>
+            <p className="text-[14px] text-ink-soft">Hội thoại này đang ẩn vì đang trình chiếu.</p>
+          </div>
+        ) : threadId ? (
           <ThreadMessagePane key={threadId} threadId={threadId} focus={focus} onBack={() => navigate("/threads")} />
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-3 bg-chat p-6 text-center">

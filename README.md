@@ -61,8 +61,14 @@ tới nick Zalo hay tin nhắn).
 Dashboard mở vào trang Hội thoại như Zalo (đọc tin cũ, xem ảnh/file, gửi
 ngay / hẹn giờ / lưu nháp; rê chuột vào tin có Trả lời, Chia sẻ tới tối đa 100 hội thoại, Copy, Chọn nhiều tin
 nhắn, Xóa khỏi kho, nút Thích + thanh 6 cảm xúc để thả cảm xúc; gõ tin là gửi ngay, tin hiện liền trong khung chat; tìm kiếm không phân biệt dấu ngay trong cột trái).
-Thanh bên trái: avatar nick (chấm màu = trạng thái nghe tin, bấm mở Tài khoản Zalo), Hội thoại, Hàng đợi gửi; dưới
-cùng Tổng quan (thống kê, khoảng mất kết nối, ở `/overview`) và nút bánh răng.
+Thanh bên trái: avatar nick (chấm màu = trạng thái nghe tin, bấm mở Tài khoản Zalo), Hội thoại, Hàng đợi gửi, nút
+Trình chiếu; dưới cùng Tổng quan (thống kê, khoảng mất kết nối, ở `/overview`) và nút bánh răng.
+
+Chia sẻ màn hình (thuyết trình, họp online...): bấm nút Trình chiếu, chọn sẵn các hội thoại sẽ dùng (tích từng cái, hoặc bấm một thẻ Phân
+loại đã gắn trên Zalo để chọn cả thẻ), rồi Bắt đầu trình chiếu - CHỌN XONG rồi mới chia sẻ màn hình. Lúc trình chiếu danh
+sách chỉ còn các hội thoại đó, Hàng đợi và Tổng quan ẩn, hộp Chia sẻ chỉ tới các hội thoại đó; gặp người bất ngờ thì gõ
+từ 3 chữ ở ô tìm để thêm (chỉ hiện tên). Bấm nút đỏ hoặc Thoát rồi xác nhận để về như cũ; thoát là quên danh sách, lần
+sau chọn lại từ đầu.
 
 Nút bánh răng mở menu như Zalo PC: Thông tin tài khoản, Cài đặt, Dữ liệu (Đồng bộ và sao lưu, Quản lý dữ
 liệu), Giao diện (Sáng / Tối / Theo hệ thống), Đăng xuất. Cài đặt là **cửa sổ mở đè lên trang đang xem** (không đổi trang;

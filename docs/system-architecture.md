@@ -114,6 +114,13 @@ nhóm) kèm `poll: { pollId, action }`. Phương án + số phiếu không có t
 getPollDetail (chỉ đọc, mỗi 5 giây tối đa một cuộc, luật chọn ở `storage/poll-store.ts`) và lưu `poll_snapshots`;
 `GET /api/polls/:pollId` đổi mã người chọn ra tên + avatar theo danh bạ. Không có lệnh bình chọn nào.
 
+Chế độ trình chiếu (chia sẻ màn hình chỉ hiện vài hội thoại): thẻ Phân loại của Zalo lấy bằng getLabels (chỉ đọc, cùng lượt
+đồng bộ bạn bè trong `daemon/directory-lookup-loop.ts`, `zalo/zalo-label-sync.ts`), lưu cả bộ JSON ở bảng meta
+(`storage/zalo-label-store.ts`; mã hội thoại nhóm của Zalo có tiền tố "g"), `GET /api/labels` trả kèm các hội thoại kho có.
+`GET /api/threads?ids=` lọc danh sách theo id. Phần còn lại ở web: trạng thái nhớ trong localStorage
+(`layout/presentation-mode-context.tsx`), cột danh sách riêng lúc trình chiếu, hộp Chia sẻ lọc theo danh sách, hội thoại
+khác mở bằng đường dẫn thì chỉ báo đang ẩn. Kho không bao giờ sửa thẻ trên Zalo.
+
 Quản lý dữ liệu (Cài đặt, người dùng chốt 2026-11-09, xóa file giữ tin): đính kèm có trạng thái `removed` (+ `removed_at`,
 migration 31 dựng lại bảng `attachments` để thêm vào CHECK, thêm chỉ mục `local_path`). `storage/attachment-file-removal-store.ts`
 chỉ xóa đính kèm đã tải (bỏ sticker), ghi DB trước rồi mới xóa file; file trên ổ khử trùng theo nội dung nên chỉ xóa khi không

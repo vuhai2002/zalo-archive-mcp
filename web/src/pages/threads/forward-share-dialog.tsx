@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { ArchivedMessage, ThreadListItem } from "../../archive-api-types";
 import { api, errorText } from "../../dashboard-api-client";
 import { useDashboardShell } from "../../layout/dashboard-shell-context";
+import { usePresentationMode } from "../../layout/presentation-mode-context";
 import { useChotNen } from "../../shared/backdrop-close-guard";
 import { IconClose, IconSearch, IconWarning } from "../../shared/dashboard-icons";
 import { threadDisplayName } from "../../shared/thread-kind-badge";
@@ -28,7 +29,9 @@ export function ForwardShareDialog({ message, onClose, onDone }: { message: Arch
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const list = useForwardTargetList(tab, query);
+  // Đang trình chiếu: chỉ chia sẻ được tới các hội thoại đang hiện, để danh sách đầy đủ không lộ lên màn hình
+  const presentation = usePresentationMode();
+  const list = useForwardTargetList(tab, query, presentation.active ? presentation.threadIds : null);
   const nen = useChotNen(onClose);
 
   useEffect(() => {

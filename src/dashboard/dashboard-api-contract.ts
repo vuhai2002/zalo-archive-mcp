@@ -108,6 +108,15 @@ export type ThreadListItem = ThreadSummary & {
 };
 export type ThreadListResponse = { threads: ThreadListItem[]; total: number };
 
+/**
+ * GET /api/labels: thẻ Phân loại mình gắn trên Zalo (daemon đồng bộ cùng lượt danh sách bạn bè, chỉ đọc), để chọn nhanh hội
+ * thoại cho chế độ trình chiếu. `threadIds`: các hội thoại kho có trong thẻ. `syncedAt` null = chưa đồng bộ lần nào.
+ */
+export type ZaloLabelsResponse = {
+  labels: Array<{ id: number; name: string; color: string | null; emoji: string | null; threadIds: string[] }>;
+  syncedAt: string | null;
+};
+
 export type AttachmentInfo = {
   id: number;
   /** sticker: ảnh sticker Zalo đã tải về kho - hiện như ảnh, không khung bong bóng */

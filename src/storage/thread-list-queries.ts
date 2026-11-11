@@ -44,7 +44,7 @@ export type ThreadListKind = "group" | "friend";
 
 export function listThreadsPage(
   db: DatabaseSync,
-  opts: { query?: string; limit: number; offset: number; pinnedFirst?: boolean; kind?: ThreadListKind },
+  opts: { query?: string; limit: number; offset: number; pinnedFirst?: boolean; kind?: ThreadListKind; ids?: readonly string[] },
 ): { threads: ThreadSummary[]; total: number } {
   const raw = opts.query?.trim() ?? "";
   // Lọc tên bằng JS vì cần bỏ dấu cả hai phía; vài nghìn hội thoại vẫn nhanh.
@@ -57,14 +57,17 @@ export function listThreadsPage(
 
   const needle = foldVietnameseForSearch(raw);
   const ofKind = opts.kind ? rows.filter((r) => (opts.kind === "group" ? r.thread_type === "group" : r.thread_type === "user" && Number(r.is_friend) === 1)) : rows;
+  // Chỉ các hội thoại có id trong danh sách (chế độ trình chiếu của dashboard)
+  const idSet = opts.ids ? new Set(opts.ids) : null;
+  const ofIds = idSet ? ofKind.filter((r) => idSet.has(String(r.thread_id))) : ofKind;
   const filtered = raw
-    ? ofKind.filter(
+    ? ofIds.filter(
         (r) =>
           r.thread_id === raw ||
           foldVietnameseForSearch(String(r.name ?? "")).includes(needle) ||
           foldVietnameseForSearch(String(r.other_name ?? "")).includes(needle),
       )
-    : ofKind;
+    : ofIds;
   const page = filtered.slice(opts.offset, opts.offset + opts.limit).map((r) => toThreadSummary(db, r));
   return { threads: page, total: filtered.length };
 }

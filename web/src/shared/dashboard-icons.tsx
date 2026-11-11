@@ -180,3 +180,16 @@ export const IconPin = (p: IconProps) => (
     <path d="M14.5 3.5 20.5 9.5l-2.2 1-3.9 3.9-.6 4.1-1.3 1.3-3.2-3.2L5 20.9l-1-1 4.3-4.3-3.2-3.2 1.3-1.3 4.1-.6 3.9-3.9 1.1-2.1Z" />
   </svg>
 );
+
+/** Chế độ trình chiếu (màn chiếu có biểu đồ) */
+export const IconPresentation = (p: IconProps) => (
+  <svg {...iconBase(p)}>
+    <path d="M3.5 4.5h17M5 4.5v9A1.5 1.5 0 0 0 6.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-9M12 15v3M8.5 20.5 12 18l3.5 2.5M8.5 11.5l2.5-2.5 2 2 2.5-3" />
+  </svg>
+);
+
+export const IconPlus = (p: IconProps) => (
+  <svg {...iconBase(p)}>
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);

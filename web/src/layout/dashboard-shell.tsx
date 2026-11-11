@@ -5,6 +5,8 @@ import { api, ApiError, errorText, loginPath } from "../dashboard-api-client";
 import { ErrorNote, LoadingText } from "../shared/ui-bits";
 import { SettingsModal } from "../pages/settings/settings-modal";
 import { DashboardShellContext, type DashboardShellValue, type SettingsSection } from "./dashboard-shell-context";
+import { PresentationSetupHost } from "../pages/threads/presentation-setup-dialog";
+import { PresentationModeProvider } from "./presentation-mode-context";
 import { SidebarNav } from "./sidebar-nav";
 import { useShellStatusPolling } from "./use-shell-status-polling";
 
@@ -77,31 +79,34 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
   return (
     <DashboardShellContext.Provider value={ctx}>
-      <div className="flex min-h-[100dvh] bg-canvas pb-14 lg:pb-0">
-        <SidebarNav session={session} killSwitch={killSwitch} onLogout={logout} />
+      <PresentationModeProvider>
+        <div className="flex min-h-[100dvh] bg-canvas pb-14 lg:pb-0">
+          <SidebarNav session={session} killSwitch={killSwitch} onLogout={logout} />
 
-        <div className="flex min-w-0 flex-1 flex-col lg:h-screen lg:overflow-hidden">
-          {/* Topbar chỉ ở mobile - desktop đã có cột icon cố định */}
-          <header className="sticky top-0 z-30 flex h-[53px] items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur lg:hidden">
-            <Link to="/threads" className="flex min-w-0 flex-1 items-center gap-2" title="Về trang tin nhắn">
-              <img src="/app-logo.png" alt="" className="h-7 w-7 shrink-0" />
-              <span className="truncate text-[15px] font-semibold text-ink">Kho Zalo</span>
-            </Link>
-          </header>
+          <div className="flex min-w-0 flex-1 flex-col lg:h-screen lg:overflow-hidden">
+            {/* Topbar chỉ ở mobile - desktop đã có cột icon cố định */}
+            <header className="sticky top-0 z-30 flex h-[53px] items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur lg:hidden">
+              <Link to="/threads" className="flex min-w-0 flex-1 items-center gap-2" title="Về trang tin nhắn">
+                <img src="/app-logo.png" alt="" className="h-7 w-7 shrink-0" />
+                <span className="truncate text-[15px] font-semibold text-ink">Kho Zalo</span>
+              </Link>
+            </header>
 
-          {/* Trang Hội thoại chiếm sát mép như Zalo PC; trang khác nền trơn + khoảng đệm */}
-          <main
-            className={
-              fullBleed
-                ? "min-w-0 flex-1 bg-surface lg:overflow-hidden"
-                : "min-w-0 flex-1 bg-canvas px-4 py-5 sm:px-6 lg:overflow-y-auto lg:px-8 lg:py-7 lg:scrollbar-stable"
-            }
-          >
-            <AccountGate session={session}>{children}</AccountGate>
-          </main>
-          {settingsAt && <SettingsModal initial={settingsAt} onClose={closeSettings} />}
+            {/* Trang Hội thoại chiếm sát mép như Zalo PC; trang khác nền trơn + khoảng đệm */}
+            <main
+              className={
+                fullBleed
+                  ? "min-w-0 flex-1 bg-surface lg:overflow-hidden"
+                  : "min-w-0 flex-1 bg-canvas px-4 py-5 sm:px-6 lg:overflow-y-auto lg:px-8 lg:py-7 lg:scrollbar-stable"
+              }
+            >
+              <AccountGate session={session}>{children}</AccountGate>
+            </main>
+            {settingsAt && <SettingsModal initial={settingsAt} onClose={closeSettings} />}
+            <PresentationSetupHost />
+          </div>
         </div>
-      </div>
+      </PresentationModeProvider>
     </DashboardShellContext.Provider>
   );
 }

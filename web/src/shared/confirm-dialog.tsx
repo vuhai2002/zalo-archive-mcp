@@ -22,6 +22,11 @@ export type ConfirmOptions = {
   cancelLabel?: string;
   /** danger = nút đỏ + icon cảnh báo (mặc định), normal = nút xanh */
   tone?: "danger" | "normal";
+  /**
+   * Nút Hủy là lựa chọn chính (vd "Tiếp tục trình chiếu"): nút Hủy nổi bật (nền xanh đặc), nằm bên phải như mọi nút chính và
+   * có con trỏ đặt sẵn - lỡ bấm Enter / Space cũng không làm gì; nút xác nhận lùi sang trái thành nút viền
+   */
+  preferCancel?: boolean;
 };
 
 export function useConfirmDialog() {
@@ -57,18 +62,48 @@ function ConfirmDialog({
   onClose: (ok: boolean) => void;
 }) {
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
   const danger = (options.tone ?? "danger") === "danger";
   const nen = useChotNen(() => onClose(false));
 
   useEffect(() => {
-    confirmRef.current?.focus();
+    (options.preferCancel ? cancelRef : confirmRef).current?.focus();
     // Esc để hủy - giữ đúng phản xạ của hộp thoại gốc
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, options.preferCancel]);
+
+  const cancelButton = (
+    <button
+      ref={cancelRef}
+      type="button"
+      onClick={() => onClose(false)}
+      className={
+        options.preferCancel
+          ? "rounded-lg bg-zalo-500 px-4 py-2 text-[14px] font-semibold text-white hover:bg-zalo-600"
+          : "rounded-lg border border-line px-4 py-2 text-[14px] font-medium text-ink-soft hover:bg-tile"
+      }
+    >
+      {options.cancelLabel ?? "Hủy"}
+    </button>
+  );
+  const confirmButton = (
+    <button
+      ref={confirmRef}
+      type="button"
+      onClick={() => onClose(true)}
+      className={
+        options.preferCancel
+          ? `rounded-lg border px-4 py-2 text-[14px] font-medium ${danger ? "border-red-300 text-red-600 hover:bg-red-50 dark:border-red-500/40 dark:text-red-400 dark:hover:bg-red-950/40" : "border-line text-ink-soft hover:bg-tile"}`
+          : `rounded-lg px-4 py-2 text-[14px] font-medium text-white ${danger ? "bg-red-600 hover:bg-red-700" : "bg-zalo-500 hover:bg-zalo-600"}`
+      }
+    >
+      {options.confirmLabel ?? "Xóa"}
+    </button>
+  );
 
   return (
     // z cao hơn modal thường (z-50) vì thường mở TỪ trong một modal
@@ -96,24 +131,19 @@ function ConfirmDialog({
           </div>
         </div>
 
+        {/* Nút chính luôn nằm bên phải: thường là nút xác nhận, còn khi Hủy là lựa chọn chính (preferCancel) thì Hủy sang phải */}
         <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => onClose(false)}
-            className="rounded-lg border border-line px-4 py-2 text-[14px] font-medium text-ink-soft hover:bg-tile"
-          >
-            {options.cancelLabel ?? "Hủy"}
-          </button>
-          <button
-            ref={confirmRef}
-            type="button"
-            onClick={() => onClose(true)}
-            className={`rounded-lg px-4 py-2 text-[14px] font-medium text-white ${
-              danger ? "bg-red-600 hover:bg-red-700" : "bg-zalo-500 hover:bg-zalo-600"
-            }`}
-          >
-            {options.confirmLabel ?? "Xóa"}
-          </button>
+          {options.preferCancel ? (
+            <>
+              {confirmButton}
+              {cancelButton}
+            </>
+          ) : (
+            <>
+              {cancelButton}
+              {confirmButton}
+            </>
+          )}
         </div>
       </div>
     </div>

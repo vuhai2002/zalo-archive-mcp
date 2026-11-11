@@ -19,6 +19,10 @@ const clampInt = (raw: string | undefined, def: number, min: number, max: number
   return Number.isInteger(n) ? Math.min(max, Math.max(min, n)) : def;
 };
 
+/** `ids=1,2,3`: danh sách id hội thoại (chỉ số, tối đa 200); không có tham số thì undefined (không lọc) */
+const threadIdsParam = (raw: string | undefined): string[] | undefined =>
+  raw === undefined ? undefined : raw.split(",").map((s) => s.trim()).filter((s) => /^\d{1,25}$/.test(s)).slice(0, 200);
+
 /** Xem kho: tổng quan, hội thoại, tin (tìm kiếm: message-search-routes.ts, file media: media-file-route.ts) */
 export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
   const app = new Hono();
@@ -62,6 +66,8 @@ export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
       pinnedFirst: true,
       // Tab Nhóm / Bạn bè của hộp Chia sẻ
       kind: c.req.query("kind") === "group" ? "group" : c.req.query("kind") === "friend" ? "friend" : undefined,
+      // Chế độ trình chiếu: chỉ các hội thoại được chọn (id cách nhau dấu phẩy, tối đa 200)
+      ids: threadIdsParam(c.req.query("ids")),
     });
     const threads = page.threads.map((t) => ({
       ...t,

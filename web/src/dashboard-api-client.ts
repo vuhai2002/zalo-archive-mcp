@@ -12,6 +12,7 @@ import type {
   MessageDeletePreview,
   MessageDeleteResult,
   MobileSyncResponse,
+  ZaloLabelsResponse,
   ZaloPcMediaImportStatus,
   MobileSyncStartRequest,
   OutboxItem,
@@ -124,9 +125,11 @@ export const api = {
 
   overview: (days: number) => request<OverviewResponse>(withQuery("/api/overview", { days })),
 
-  /** `kind`: chỉ nhóm / chỉ bạn bè (tab của hộp Chia sẻ) */
-  threads: (p: { query?: string; limit: number; offset: number; kind?: "group" | "friend" }) =>
+  /** `kind`: chỉ nhóm / chỉ bạn bè (tab của hộp Chia sẻ); `ids`: chỉ các hội thoại này, cách nhau dấu phẩy (chế độ trình chiếu) */
+  threads: (p: { query?: string; limit: number; offset: number; kind?: "group" | "friend"; ids?: string }) =>
     request<ThreadListResponse>(withQuery("/api/threads", p)),
+  /** Thẻ Phân loại của Zalo (chỉ đọc) để chọn nhanh hội thoại cho chế độ trình chiếu */
+  zaloLabels: () => request<ZaloLabelsResponse>("/api/labels"),
   threadMessages: (threadId: string, p: { beforeId?: number; afterId?: number; aroundId?: number; limit: number }) =>
     request<ThreadMessagesResponse>(withQuery(`/api/threads/${enc(threadId)}/messages`, p)),
   setThreadPinned: (threadId: string, pinned: boolean) => post<{ pinned: boolean }>(`/api/threads/${enc(threadId)}/pin`, { pinned }),
