@@ -3,6 +3,7 @@ import type { ArchivedMessage } from "../../archive-api-types";
 import { canOpenInNewTab, MessageAttachmentView, sameOriginUrl } from "./message-attachment-view";
 import { useMediaViewer } from "./media-viewer-context";
 import { viewerItemFromMessage } from "./media-viewer-items";
+import { VideoPosterFace } from "./video-poster-face";
 import { albumScale, zaloAlbumLayout, type AlbumCell } from "./zalo-photo-album-layout";
 
 /**
@@ -60,7 +61,7 @@ function AlbumPhoto({
   onMediaRetried: () => void;
 }) {
   const viewer = useMediaViewer();
-  const att = msg.attachments.find((a) => a.kind === "photo") ?? msg.attachments[0];
+  const att = msg.attachments.find((a) => a.kind === "photo" || a.kind === "video") ?? msg.attachments[0];
   const url = att?.status === "done" ? sameOriginUrl(att.url) : null;
   const frame: CSSProperties = {
     left: cell.x * k,
@@ -78,11 +79,23 @@ function AlbumPhoto({
       </div>
     );
   }
-  const img = <img src={url} alt={att.fileName ?? "Ảnh"} loading="lazy" onLoad={onMediaLoad} className="block h-full w-full" style={{ objectFit: cell.fit }} />;
+  // Video trong chùm như Zalo PC: khung hình đầu + thời lượng + nút phát; bấm mở cửa sổ xem và phát ở đó
+  const isVideo = att.kind === "video";
+  const img = isVideo ? (
+    <VideoPosterFace url={url} durationMs={msg.video?.durationMs ?? null} onMediaLoad={onMediaLoad} compact />
+  ) : (
+    <img src={url} alt={att.fileName ?? "Ảnh"} loading="lazy" onLoad={onMediaLoad} className="block h-full w-full" style={{ objectFit: cell.fit }} />
+  );
   const item = viewer ? viewerItemFromMessage(msg, att) : null;
   if (item) {
     return (
-      <button type="button" onClick={() => viewer?.open(item)} title="Xem ảnh" style={frame} className={`${frameClass} block cursor-zoom-in`}>
+      <button
+        type="button"
+        onClick={() => viewer?.open(item)}
+        title={isVideo ? "Xem video" : "Xem ảnh"}
+        style={frame}
+        className={`${frameClass} block ${isVideo ? "bg-black" : "cursor-zoom-in"}`}
+      >
         {img}
       </button>
     );

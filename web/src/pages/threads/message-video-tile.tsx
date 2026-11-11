@@ -1,7 +1,5 @@
-import { useState } from "react";
 import type { ArchivedMessage } from "../../archive-api-types";
-import { IconPlay } from "../../shared/action-and-media-icons";
-import { formatVideoDuration } from "./media-viewer-items";
+import { VideoPosterFace } from "./video-poster-face";
 
 /** Khung tối đa của ô video trong khung chat (px); video dọc thì chạm chiều cao, ngang thì chạm chiều rộng */
 const MAX_W = 300;
@@ -24,7 +22,6 @@ export function MessageVideoTile({
   onOpen: () => void;
   onMediaLoad?: () => void;
 }) {
-  const [durationMs, setDurationMs] = useState(video?.durationMs ?? null);
   const ratio = video?.width && video?.height ? video.width / video.height : 16 / 9;
   const width = Math.max(MIN_W, ratio < 1 ? MAX_H * ratio : MAX_W);
 
@@ -36,26 +33,7 @@ export function MessageVideoTile({
       style={{ width, aspectRatio: String(ratio), maxWidth: "100%" }}
       className="relative block overflow-hidden rounded-lg bg-black"
     >
-      <video
-        src={`${url}#t=0.1`}
-        preload="metadata"
-        muted
-        playsInline
-        onLoadedMetadata={(e) => {
-          const seconds = e.currentTarget.duration;
-          if (durationMs === null && Number.isFinite(seconds)) setDurationMs(seconds * 1000);
-          onMediaLoad?.();
-        }}
-        className="pointer-events-none h-full w-full object-cover"
-      />
-      {durationMs !== null && (
-        <span className="absolute left-2 top-2 rounded bg-black/55 px-1.5 py-0.5 text-[12px] font-semibold tabular-nums text-white">
-          {formatVideoDuration(durationMs)}
-        </span>
-      )}
-      <span className="absolute inset-0 m-auto flex h-11 w-11 items-center justify-center rounded-full bg-black/45 text-white">
-        <IconPlay size={20} />
-      </span>
+      <VideoPosterFace url={url} durationMs={video?.durationMs ?? null} onMediaLoad={onMediaLoad} />
     </button>
   );
 }

@@ -12,32 +12,30 @@ export const itemMessages = (item: ChatItem): ArchivedMessage[] => item.album ??
 const albumKey = (m: ArchivedMessage) => (m.album ? `${m.senderId}:${m.album.id}` : null);
 
 /**
- * Gộp ảnh của cùng một album như Zalo: các tin ảnh cùng người gửi, cùng mã album (trong phần đã
- * tải) thành MỘT mục đặt ở chỗ ảnh tới đầu tiên, xếp theo vị trí trong album. Tin khác chen giữa
- * giữ nguyên chỗ. Album chỉ có một ảnh trong phần đã tải thì hiện như ảnh thường.
+ * Gộp ảnh / video của cùng một chùm như Zalo PC: các tin cùng người gửi, cùng mã chùm tới LIỀN nhau thành MỘT mục
+ * (đặt ở chỗ món tới đầu tiên), xếp theo vị trí trong chùm. Có tin khác chen giữa (vd một tin chữ tới lúc chùm
+ * còn đang tới) thì tách: các món trước tin đó một khung, các món sau một khung khác - đúng như Zalo PC hiện. Một
+ * khúc chỉ có một món thì hiện như ảnh / video thường.
  */
 export function collapseAlbums(messages: ArchivedMessage[]): ChatItem[] {
-  const groups = new Map<string, ArchivedMessage[]>();
-  for (const m of messages) {
-    const key = albumKey(m);
-    if (!key) continue;
-    const list = groups.get(key);
-    if (list) list.push(m);
-    else groups.set(key, [m]);
-  }
-  const placed = new Set<string>();
   const items: ChatItem[] = [];
+  let run: ArchivedMessage[] = [];
+  const flush = () => {
+    if (run.length >= 2) items.push({ msg: run[0]!, album: [...run].sort((a, b) => a.album!.index - b.album!.index || a.id - b.id) });
+    else for (const m of run) items.push({ msg: m, album: null });
+    run = [];
+  };
   for (const m of messages) {
     const key = albumKey(m);
-    const group = key ? groups.get(key) : undefined;
-    if (!key || !group || group.length < 2) {
-      items.push({ msg: m, album: null });
+    if (key && run.length > 0 && albumKey(run[0]!) === key) {
+      run.push(m);
       continue;
     }
-    if (placed.has(key)) continue;
-    placed.add(key);
-    items.push({ msg: m, album: [...group].sort((a, b) => a.album!.index - b.album!.index || a.id - b.id) });
+    flush();
+    if (key) run = [m];
+    else items.push({ msg: m, album: null });
   }
+  flush();
   return items;
 }
 

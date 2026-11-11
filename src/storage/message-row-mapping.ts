@@ -133,7 +133,7 @@ export function toMessageRow(r: Record<string, unknown>): MessageRow {
     source: String(r.source),
     textStyles: shown.spans,
     call: call ? { missedIncoming: call.missedIncoming } : null,
-    album: photoAlbumOf(r.photo_params),
+    album: photoAlbumOf(r.photo_params ?? r.video_params),
     link: linkPreviewOf(rec),
     contactCard: card ? { ...card, threadId: null } : null,
     quote: null,
