@@ -22,6 +22,8 @@ export type SendToolContext = {
   waitTimeoutMs?: number;
   /** Thư mục media của kho (file đính kèm #N) và thư mục dữ liệu (chặn gửi file nội bộ) - cho send_file */
   readonly mediaRoot?: string;
+  /** Nơi chép file của tin hẹn giờ (send_file có send_date / send_time) để file gốc có bị xóa trước giờ gửi vẫn còn */
+  readonly outboxFilesDir?: string;
 };
 
 const DEFAULT_WAIT_MS = 60_000;

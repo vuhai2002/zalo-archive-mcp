@@ -13,7 +13,13 @@ import { safeToolHandler } from "./tool-result.js";
 export function registerSendFileTool(
   server: McpServer,
   ctx: SendToolContext,
-  shared: { threadId: ZodType<string>; mentions: ZodType<MentionArg[] | undefined>; replyTo: ZodType<number | undefined> },
+  shared: {
+    threadId: ZodType<string>;
+    mentions: ZodType<MentionArg[] | undefined>;
+    replyTo: ZodType<number | undefined>;
+    date: ZodType<string>;
+    time: ZodType<string>;
+  },
 ): void {
   server.registerTool(
     "send_file",
@@ -26,7 +32,9 @@ export function registerSendFileTool(
         `${MAX_FILES} file. Ảnh jpg/png/webp/gif đi dạng ảnh, mp4 dạng video, còn lại dạng file. Nhiều ảnh trong MỘT lệnh thành một ` +
         "chùm ảnh như Zalo; muốn gửi một chùm thì đưa hết ảnh vào cùng một lệnh. Thứ tự gửi: chùm ảnh, rồi file khác, rồi chữ SAU " +
         "CÙNG - LUẬT của người dùng: tin chữ luôn đi SAU ảnh / file. Vì vậy cần gửi chữ kèm file thì đặt chữ vào `text` của lệnh " +
-        "này, KHÔNG gọi send_message trước send_file. File bí mật (.env, khóa, mật khẩu) và dữ liệu nội bộ của kho bị chặn.",
+        "này, KHÔNG gọi send_message trước send_file. HẸN GIỜ gửi (vd 'sáng mai 9h gửi chùm ảnh rồi kèm tin'): thêm send_date + " +
+        "send_time vào CHÍNH lệnh này - kho chép file vào chỗ riêng ngay lúc hẹn rồi daemon tự gửi đúng giờ (ảnh trước, chữ sau), " +
+        "không cần tác vụ hẹn giờ nào khác. File bí mật (.env, khóa, mật khẩu) và dữ liệu nội bộ của kho bị chặn.",
       inputSchema: {
         thread_id: shared.threadId,
         file_paths: z.array(z.string().min(3).max(1000)).max(MAX_FILES).optional(),
@@ -38,6 +46,9 @@ export function registerSendFileTool(
           .describe("Chữ gửi kèm: luôn đi thành tin riêng SAU ảnh / file (nhắc tên, trả lời đi cùng tin chữ này)"),
         mentions: shared.mentions,
         reply_to: shared.replyTo,
+        send_date: shared.date.optional().describe("Hẹn ngày gửi YYYY-MM-DD theo giờ của kho; đi cùng send_time. Bỏ trống = gửi ngay"),
+        send_time: shared.time.optional().describe("Hẹn giờ gửi HH:mm theo giờ của kho; đi cùng send_date"),
+        note: z.string().max(500).optional().describe("Ghi chú cho mục hẹn giờ (hiện ở Hàng đợi trên dashboard)"),
       },
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
     },

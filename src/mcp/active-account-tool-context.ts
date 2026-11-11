@@ -17,7 +17,7 @@ import type { ReadToolContext } from "./archive-read-tool-handlers.js";
 export function createActiveAccountToolContext(
   env: AppEnv,
   dataDir: string,
-): ReadToolContext & { readonly readOnly: boolean; close: () => void } {
+): ReadToolContext & { readonly readOnly: boolean; readonly outboxFilesDir: string; close: () => void } {
   const dbs = new Map<string, DatabaseSync>();
   let cacheKey = "";
   let cached: AccountRecord | null = null;
@@ -62,6 +62,9 @@ export function createActiveAccountToolContext(
     },
     get mediaRoot() {
       return accountPaths(dataDir, activeId()).mediaDir;
+    },
+    get outboxFilesDir() {
+      return accountPaths(dataDir, activeId()).outboxFilesDir;
     },
     close: () => {
       for (const db of dbs.values()) db.close();

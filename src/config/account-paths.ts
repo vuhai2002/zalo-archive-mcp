@@ -17,6 +17,8 @@ export type AccountPaths = {
   journalDir: string;
   logFile: string;
   qrImageFile: string;
+  /** Bản chép file của tin hẹn giờ gửi qua MCP (send_file có send_date / send_time), xem stage-scheduled-outbox-files.ts */
+  outboxFilesDir: string;
 };
 
 export function resolveDataDir(env: AppEnv): string {
@@ -34,6 +36,7 @@ export function accountPaths(dataDir: string, accountId: string): AccountPaths {
     journalDir: path.join(root, "raw-events"),
     logFile: path.join(root, "logs", "daemon.log"),
     qrImageFile: path.join(root, "qr-login.png"),
+    outboxFilesDir: path.join(root, "outbox-files"),
   };
 }
 

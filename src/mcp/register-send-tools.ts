@@ -62,12 +62,14 @@ export function registerSendTools(server: McpServer, ctx: SendToolContext): void
     safeToolHandler((a) => sendMessageTool(ctx, a)),
   );
 
-  registerSendFileTool(server, ctx, { threadId, mentions, replyTo });
+  registerSendFileTool(server, ctx, { threadId, mentions, replyTo, date, time });
 
   server.registerTool(
     "schedule_message",
     {
-      description: "Hẹn giờ gửi một tin tới một hội thoại đã có. Ngày và giờ RỜI nhau, theo giờ của kho.",
+      description:
+        "Hẹn giờ gửi một TIN CHỮ tới một hội thoại đã có. Ngày và giờ RỜI nhau, theo giờ của kho. Hẹn gửi kèm ảnh / file thì " +
+        "dùng send_file với send_date + send_time (một lệnh: ảnh / file trước, chữ sau), KHÔNG dùng lệnh này.",
       inputSchema: { thread_id: threadId, text, send_date: date, send_time: time, note: z.string().max(500).optional(), mentions, reply_to: replyTo },
       annotations: SENDS,
     },

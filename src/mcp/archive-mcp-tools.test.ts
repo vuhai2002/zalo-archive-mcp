@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { DateTime } from "luxon";
 import { parseEnv } from "../config/env-schema.js";
 import { sampleMessage } from "../storage/archive-store-test-helpers.js";
 import { upsertMessage } from "../storage/message-write-store.js";
@@ -23,8 +24,8 @@ function seededDb() {
   return db;
 }
 
-async function connectClient(db = seededDb(), readOnly = false) {
-  const server = createArchiveMcpServer({ db, env, mediaRoot: "/media", accountId: "test", readOnly });
+async function connectClient(db = seededDb(), readOnly = false, outboxFilesDir?: string) {
+  const server = createArchiveMcpServer({ db, env, mediaRoot: "/media", accountId: "test", readOnly, outboxFilesDir });
   const [clientT, serverT] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "0" });
   await Promise.all([server.connect(serverT), client.connect(clientT)]);
@@ -124,6 +125,32 @@ describe("MCP server kho", () => {
     const down = await client.callTool({ name: "send_file", arguments: { thread_id: "u-lan", file_paths: [path.join(dir, "bao-gia.pdf")] } });
     assert.match(textOf(down), /Daemon chưa sẵn sàng/);
     assert.equal((db.prepare("SELECT COUNT(*) AS n FROM outbox").get() as { n: number }).n, 0);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("send_file có send_date + send_time: hẹn giờ (không cần daemon đang chạy), file chép sang chỗ riêng, thiếu giờ thì báo lỗi", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mcp-hen-"));
+    const staging = path.join(dir, "outbox-files");
+    const { client, db } = await connectClient(seededDb(), false, staging);
+    const photos = ["a.jpg", "b.png"].map((n) => path.join(dir, n));
+    for (const p of photos) fs.writeFileSync(p, "anh");
+    const tomorrow = DateTime.now().setZone(env.ARCHIVE_TIMEZONE).plus({ days: 1 }).toFormat("yyyy-LL-dd");
+
+    const half = await client.callTool({ name: "send_file", arguments: { thread_id: "u-lan", file_paths: photos, send_date: tomorrow } });
+    assert.match(textOf(half), /cần đủ send_date/);
+    const r = await client.callTool({
+      name: "send_file",
+      arguments: { thread_id: "u-lan", file_paths: photos, text: "Gửi bạn ảnh nhé", send_date: tomorrow, send_time: "09:15" },
+    });
+    assert.equal(r.isError, undefined, textOf(r));
+    assert.match(textOf(r), /Đã hẹn gửi mục #1 lúc .* 09:15 .*2 file \(a\.jpg .*b\.png .*\), rồi chữ "Gửi bạn ảnh nhé"/);
+    const row = db.prepare("SELECT status, text, not_before, files_json FROM outbox").get() as { status: string; text: string; not_before: string; files_json: string };
+    assert.equal(row.status, "approved");
+    assert.equal(row.text, "Gửi bạn ảnh nhé");
+    assert.ok(row.not_before > new Date().toISOString());
+    const files = JSON.parse(row.files_json) as Array<{ path: string; name: string }>;
+    assert.deepEqual(files.map((f) => f.name), ["a.jpg", "b.png"]);
+    for (const f of files) assert.ok(f.path.startsWith(staging) && fs.existsSync(f.path), "bản chép nằm trong chỗ riêng của nick");
     fs.rmSync(dir, { recursive: true, force: true });
   });
 

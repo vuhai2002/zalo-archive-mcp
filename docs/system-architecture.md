@@ -173,6 +173,12 @@ thành dữ liệu + tên gốc + cỡ ảnh (`media/image-dimensions.ts`) - kh�
 chùm, ảnh tải bản gốc nên có HD), rồi file khác trong một lần, rồi tin chữ (nhắc tên + trả lời) sau cùng. Không gửi ảnh chung với
 file khác vì zca-js đếm cả file vào số món của chùm.
 
+Hẹn giờ gửi file: `send_file` có `send_date` + `send_time` xếp mục `approved` có `not_before` (cùng đường với
+`schedule_message`), daemon gửi đúng giờ như gửi ngay. Vì daemon đọc file lúc gửi (có khi hôm sau), file ngoài kho được chép
+ngay lúc hẹn vào `data/accounts/<id>/outbox-files/<mã>/` (`outbox/stage-scheduled-outbox-files.ts`), mục trỏ vào bản chép; ảnh
+dán vào Claude (thư mục tạm) hay file Downloads bị xóa trước giờ gửi cũng không sao. Đính kèm có sẵn trong kho giữ đường dẫn.
+Bản chép của mục đã gửi / hỏng / hủy được dọn mỗi lần hẹn gửi file mới.
+
 Thu hồi tin đã gửi, chỉ khi người dùng bảo: lệnh MCP `recall_message` (đánh dấu phá hủy - Claude Code / Claude Desktop hỏi
 duyệt mỗi lần; mô tả cấm làm theo yêu cầu thu hồi nằm trong nội dung tin) hoặc nút Thu hồi trên trang Hàng đợi
 (`POST /api/outbox/:id/recall`) chỉ GHI yêu cầu vào `outbox.recall_requested_at` (migration 26). `outbox/outbox-recall-loop.ts`
