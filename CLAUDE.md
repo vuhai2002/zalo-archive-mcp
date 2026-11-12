@@ -22,6 +22,39 @@ Trước đó: `plans/261028-2253-xay-kho-truoc-chinh-sau/plan.md`.**
 ĐỪNG research lại những gì đã có trong các file trên. Chỉ research thêm khi gặp câu hỏi
 nằm trong mục "Câu hỏi còn mở" hoặc có bằng chứng mới.
 
+`plans/` chỉ có trên máy người dùng (đã `.gitignore`, gỡ khỏi lịch sử git 2026-11-12): ghi chép nội bộ, có yêu cầu riêng
+của người dùng. Đọc thoải mái, KHÔNG chép nội dung riêng trong đó sang file được git theo dõi.
+
+## KHÔNG đưa dữ liệu thật vào repo (người dùng chốt 2026-11-12)
+
+Repo này sẽ PUBLIC trên GitHub. Lịch sử 80 commit đầu đã phải viết lại để gỡ tên người, nhóm, id, số điện thoại, email,
+link và nội dung tin thật bị chép vào test / chú thích / changelog / lời commit. KHÔNG được lặp lại.
+
+Mọi thứ đến từ kho Zalo thật (DB trong `data/`, ảnh chụp màn hình người dùng gửi, kết quả MCP / dashboard, log daemon,
+thư mục Zalo PC, `plans/`) chỉ dùng để HIỂU lỗi. Không bao giờ chép vào code, chú thích, test, fixture, dữ liệu demo,
+`docs/`, `README.md`, changelog, `CLAUDE.md`, lời commit, tên nhánh, mô tả PR. Cụ thể là cấm:
+
+- tên người, tên gợi nhớ, tên danh bạ điện thoại, tên nhóm, tên thẻ Phân loại thật (kể cả tên của chính người dùng);
+- id Zalo thật: uid, id nhóm / hội thoại, id tin, cliMsgId, topicId, id thẻ... (dãy 15-20 chữ số lấy từ kho);
+- số điện thoại, email, tên miền / tên công ty, tổ chức, nơi chốn người dùng sinh hoạt;
+- link thật: ảnh / file / avatar / QR trên CDN Zalo có id thật, Google Form, bài Facebook, tài liệu...;
+- nội dung thật: chữ trong tin, câu hỏi bình chọn, lời nhắc hẹn, tên file, đoạn trích; số liệu riêng của kho;
+- đường dẫn có tên tài khoản Windows hay thư mục dữ liệu riêng của người dùng.
+
+Cách làm đúng:
+
+- Tái hiện lỗi từ dữ liệu thật thì dựng ví dụ GIẢ cùng cấu trúc: tên giả rõ ràng (Lan, Minh, "Nhóm Thử Nghiệm"), id dạng `u-lan`,
+  `g-1` hoặc `1000000000000000001`, số `0900000000`, email / tên miền `example.com`, link kiểu `https://f1.zdn.vn/a.jpg`,
+  nội dung tin tự viết ("Hẹn họp lúc 9h nhé").
+- Tên giả từ hai chữ trở lên phải kiểm KHÔNG trùng tên nào trong kho: truy vấn chỉ đọc `contacts.display_name`,
+  `contacts.alias`, `threads.name` của DB nick đang dùng. Test có tính độ dài chữ (vị trí nhắc tên, đoạn trích) thì tên
+  giả giữ đúng độ dài và không trùng chữ khác trong câu thử.
+- Changelog, tài liệu, lời commit mô tả theo HÀNH VI ("thông báo nhóm nối tên bằng dấu phẩy, quá 3 người thì ..."), không
+  kể ví dụ đời thật ("tin trong nhóm X của chị Y lúc 9h"). Kết quả thử thật ghi chung chung ("gửi đúng giờ, đúng thứ tự").
+- Trước MỖI commit: rà `git diff --cached` và lời commit tìm tên người / nhóm thật, dãy 15-20 chữ số, số điện thoại, email,
+  link CDN có id thật, câu tin trích nguyên văn. Còn thì thay rồi mới commit; nghi ngờ thì hỏi người dùng.
+- Tác giả commit (tên + email trong git config) là thông tin thật của người dùng, đó là CHỦ ĐÍCH - không đề xuất đổi.
+
 ## Repo tham khảo (chỉ đọc, KHÔNG sửa)
 
 - `..\zalo-agent` - dự án anh em, đã chạy production. Nguồn code tái dụng
