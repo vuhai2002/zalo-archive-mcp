@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { OutboxItem } from "../../archive-api-types";
-import { attention, groupByDay, OUTBOX_TABS, statusLine, tabCount } from "./outbox-list-display";
+import { attention, canSendNow, groupByDay, OUTBOX_TABS, statusLine, tabCount } from "./outbox-list-display";
 
 const TZ = "Asia/Ho_Chi_Minh";
 const NOW = new Date("2026-11-09T14:00:00.000Z"); // 21:00 ngày 09/11 giờ VN
@@ -79,5 +79,17 @@ describe("trang Hàng đợi: hiển thị", () => {
       OUTBOX_TABS.map((t) => tabCount(t, counts)),
       [0, 2, 0, 0, 0, 2, 0],
     );
+  });
+});
+
+describe("nút Gửi ngay", () => {
+  it("chỉ tin lẻ đã duyệt còn đang hẹn giờ; tin gửi ngay, đã tới giờ, tin lô, nháp, đã gửi thì không", () => {
+    const later = "2026-11-10T01:35:00.000Z";
+    assert.equal(canSendNow(item({ status: "approved", notBefore: later }), NOW), true);
+    assert.equal(canSendNow(item({ status: "approved", notBefore: null }), NOW), false);
+    assert.equal(canSendNow(item({ status: "approved", notBefore: "2026-11-09T13:00:00.000Z" }), NOW), false);
+    assert.equal(canSendNow(item({ status: "approved", notBefore: later, mode: "batch" }), NOW), false);
+    assert.equal(canSendNow(item({ status: "draft", notBefore: later }), NOW), false);
+    assert.equal(canSendNow(item({ status: "sent", notBefore: later }), NOW), false);
   });
 });

@@ -87,3 +87,10 @@ export function attention(it: OutboxItem): "warning" | "danger" | null {
 export function modeLabel(it: OutboxItem): string {
   return it.mode === "batch" ? "Gửi lô" : it.forwarded ? "Chuyển tiếp" : "Tin lẻ";
 }
+
+/**
+ * Hiện nút "Gửi ngay": tin lẻ đã duyệt, giờ hẹn còn ở tương lai (khớp điều kiện POST /api/outbox/:id/send-now). Tin lô
+ * gửi theo nhịp và khung giờ riêng nên không có nút này; nháp thì duyệt trước.
+ */
+export const canSendNow = (it: OutboxItem, now: Date = new Date()): boolean =>
+  it.status === "approved" && it.mode === "single" && !!it.notBefore && Date.parse(it.notBefore) > now.getTime();

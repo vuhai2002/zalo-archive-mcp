@@ -4,9 +4,10 @@ import type { OutboxItem, OutboxListResponse } from "../../archive-api-types";
 import { api, errorText } from "../../dashboard-api-client";
 import { useArchiveTimeZone } from "../../layout/dashboard-shell-context";
 import { IconRefresh } from "../../shared/action-and-media-icons";
-import { useConfirmDialog } from "../../shared/confirm-dialog";
+import { useConfirmDialog, type ConfirmOptions } from "../../shared/confirm-dialog";
 import { IconInbox } from "../../shared/dashboard-icons";
 import { KillSwitchBanner } from "../../shared/kill-switch-banner";
+import { formatDateTime } from "../../shared/format-archive-time";
 import { EmptyState, ErrorNote, LoadingText } from "../../shared/ui-bits";
 import { OutboxItemRow } from "./outbox-item-row";
 import { groupByDay, OUTBOX_TABS, tabCount } from "./outbox-list-display";
@@ -52,22 +53,29 @@ export function OutboxPage() {
     return () => clearInterval(timer);
   }, [load]);
 
-  async function act(item: OutboxItem, action: "approve" | "cancel" | "recall") {
+  async function act(item: OutboxItem, action: "approve" | "cancel" | "recall" | "send-now") {
     const name = item.threadName?.trim() || item.threadId;
-    const ok = await confirm(
-      action === "approve"
-        ? { title: "Duyệt tin này?", message: `Tin tới "${name}" sẽ vào hàng chờ gửi và được gửi theo nhịp đã cài.`, confirmLabel: "Duyệt", tone: "normal" }
-        : action === "recall"
-          ? { title: "Thu hồi tin này?", message: `Tin đã gửi tới "${name}" sẽ bị thu hồi trên Zalo: mọi người trong hội thoại thấy "Tin nhắn đã được thu hồi". Không hoàn tác được.`, confirmLabel: "Thu hồi" }
-          : { title: "Hủy tin này?", message: `Tin tới "${name}" sẽ không được gửi. Không hoàn tác được.`, confirmLabel: "Hủy tin" },
-    );
+    const files = item.files.length > 0 ? ` (kèm ${item.files.length} file)` : "";
+    const at = item.notBefore ? formatDateTime(item.notBefore, tz) : "";
+    const options: Record<typeof action, ConfirmOptions> = {
+      approve: { title: "Duyệt tin này?", message: `Tin tới "${name}" sẽ vào hàng chờ gửi và được gửi theo nhịp đã cài.`, confirmLabel: "Duyệt", tone: "normal" },
+      "send-now": { title: "Gửi ngay tin này?", message: `Tin tới "${name}"${files} đang hẹn ${at} sẽ được gửi ngay bây giờ.`, confirmLabel: "Gửi ngay", tone: "normal" },
+      recall: {
+        title: "Thu hồi tin này?",
+        message: `Tin đã gửi tới "${name}" sẽ bị thu hồi trên Zalo: mọi người trong hội thoại thấy "Tin nhắn đã được thu hồi". Không hoàn tác được.`,
+        confirmLabel: "Thu hồi",
+      },
+      cancel: { title: "Hủy tin này?", message: `Tin tới "${name}" sẽ không được gửi. Không hoàn tác được.`, confirmLabel: "Hủy tin" },
+    };
+    const ok = await confirm(options[action]);
     if (!ok) return;
     setBusyId(item.id);
     try {
-      await (action === "approve" ? api.outboxApprove(item.id) : action === "recall" ? api.outboxRecall(item.id) : api.outboxCancel(item.id));
+      const call = { approve: api.outboxApprove, recall: api.outboxRecall, cancel: api.outboxCancel, "send-now": api.outboxSendNow }[action];
+      await call(item.id);
       await load();
-      // Daemon thu hồi trong vài giây: hỏi lại sớm thay vì chờ nhịp tự cập nhật
-      if (action === "recall") setTimeout(() => void load(), 3_000);
+      // Daemon thu hồi / gửi trong vài giây: hỏi lại sớm thay vì chờ nhịp tự cập nhật
+      if (action === "recall" || action === "send-now") setTimeout(() => void load(), 3_000);
     } catch (err) {
       setError(errorText(err));
     } finally {
@@ -142,6 +150,7 @@ export function OutboxPage() {
                     onApprove={() => void act(it, "approve")}
                     onCancel={() => void act(it, "cancel")}
                     onRecall={() => void act(it, "recall")}
+                    onSendNow={() => void act(it, "send-now")}
                   />
                 ))}
               </ul>

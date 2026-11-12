@@ -159,6 +159,8 @@ export const api = {
   outboxCreate: (body: SendRequest) => post<OutboxItem>("/api/outbox", body),
   outboxApprove: (id: number) => post<OutboxItem>(`/api/outbox/${id}/approve`),
   outboxCancel: (id: number) => post<OutboxItem>(`/api/outbox/${id}/cancel`),
+  /** Tin lẻ đang hẹn giờ -> gửi ngay (dời giờ hẹn về bây giờ) */
+  outboxSendNow: (id: number) => post<OutboxItem>(`/api/outbox/${id}/send-now`),
   outboxRecall: (id: number) => post<OutboxItem>(`/api/outbox/${id}/recall`),
 
   /** Xóa tin khỏi KHO (không đụng Zalo): xem trước cho hộp xác nhận, rồi xóa */

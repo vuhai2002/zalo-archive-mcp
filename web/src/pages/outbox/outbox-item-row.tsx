@@ -10,7 +10,7 @@ import { IconPencil, IconUndo } from "../../shared/message-action-icons";
 import { ThreadAvatar } from "../../shared/thread-avatar";
 import { threadDisplayName } from "../../shared/thread-kind-badge";
 import { btnClass } from "../../shared/ui-bits";
-import { attention, modeLabel, statusLine, type StatusIcon, type StatusTone } from "./outbox-list-display";
+import { attention, canSendNow, modeLabel, statusLine, type StatusIcon, type StatusTone } from "./outbox-list-display";
 import { OutboxMessageBubble } from "./outbox-message-bubble";
 
 const TONE_TEXT: Record<StatusTone, string> = {
@@ -34,7 +34,8 @@ const QUIET_BTN = "inline-flex items-center gap-1 rounded px-1 text-[12.5px] tex
 
 /**
  * Một tin trong Hàng đợi, gọn như một dòng danh sách Zalo: avatar, tên hội thoại + loại tin, trạng thái kèm giờ ở góc phải,
- * nội dung như bong bóng tin mình gửi, file đính kèm, một dòng phụ (ai tạo, lô, ghi chú) và nút theo trạng thái.
+ * nội dung như bong bóng tin mình gửi, file đính kèm, một dòng phụ (ai tạo, lô, ghi chú) và nút theo trạng thái (tin lẻ đang
+ * hẹn giờ có Hủy + Gửi ngay).
  */
 export function OutboxItemRow(props: {
   item: OutboxItem;
@@ -44,6 +45,8 @@ export function OutboxItemRow(props: {
   onApprove: () => void;
   onCancel: () => void;
   onRecall: () => void;
+  /** Tin lẻ đang hẹn giờ: gửi luôn bây giờ */
+  onSendNow: () => void;
 }) {
   const { item, timeZone: tz, busy } = props;
   const status = statusLine(item, tz, props.now);
@@ -126,6 +129,11 @@ export function OutboxItemRow(props: {
             {item.status === "draft" && (
               <button type="button" className={btnClass("primary", "sm")} disabled={busy} onClick={props.onApprove}>
                 Duyệt
+              </button>
+            )}
+            {canSendNow(item, props.now) && (
+              <button type="button" className={btnClass("primary", "sm")} disabled={busy} onClick={props.onSendNow}>
+                Gửi ngay
               </button>
             )}
           </span>

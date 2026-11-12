@@ -28,6 +28,32 @@ async function setup() {
   return { ...h, cookie: await h.login() };
 }
 
+describe("Gửi ngay tin đang hẹn giờ", () => {
+  it("tin lẻ hẹn giờ: dời giờ hẹn về bây giờ; tin gửi ngay, tin lô, nháp, tin đã gửi thì từ chối; nick Chỉ đọc 409", async () => {
+    const h = await createDashboardHarness();
+    const db = h.nick("test").db;
+    const cookie = await h.login();
+    const later = new Date(Date.now() + 3 * 86_400_000).toISOString();
+    const add = (o: { notBefore: string | null; mode?: "single" | "batch"; status?: "draft" | "approved" }) =>
+      enqueueOutboxItem(db, { threadId: "u-lan", threadType: "user", text: "tin", mode: o.mode ?? "single", notBefore: o.notBefore, batchId: null, createdBy: "mcp", note: null, status: o.status ?? "approved" });
+    const scheduled = add({ notBefore: later });
+    const sendNow = (id: number) => h.call(`/api/outbox/${id}/send-now`, { ...h.json({}), cookie });
+
+    const before = Date.now();
+    const res = await sendNow(scheduled);
+    assert.equal(res.status, 200);
+    const nb = Date.parse(((await res.json()) as { notBefore: string }).notBefore);
+    assert.ok(nb >= before - 1000 && nb <= Date.now() + 1000, "giờ hẹn dời về bây giờ");
+    assert.equal((await sendNow(scheduled)).status, 400, "đã tới giờ rồi thì không còn gì để gửi ngay");
+    for (const id of [add({ notBefore: null }), add({ notBefore: later, mode: "batch" }), add({ notBefore: later, status: "draft" })]) {
+      assert.equal((await sendNow(id)).status, 400);
+    }
+    const other = add({ notBefore: later });
+    h.state.readOnly.add("test");
+    assert.equal((await sendNow(other)).status, 409, "nick Chỉ đọc không gửi được");
+  });
+});
+
 describe("danh sách Hàng đợi", () => {
   it("tab Lỗi lấy cả failed lẫn rejected trong một lần gọi; số đếm theo trạng thái của cả hàng đợi", async () => {
     const h = await setup();

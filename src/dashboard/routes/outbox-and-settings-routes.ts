@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { enqueueSingle, READ_ONLY_ERROR } from "../../outbox/enqueue-outbox-request.js";
 import { recallProblem } from "../../outbox/outbox-recall-loop.js";
 import { requestRecall } from "../../storage/outbox-recall-store.js";
+import { sendScheduledNow } from "../../storage/outbox-send-now-store.js";
 import {
   approveDraft,
   cancelOutboxItem,
@@ -81,6 +82,14 @@ export function outboxAndSettingsRoutes(ctx: DashboardContext): Hono {
     if (problem) return c.json({ error: problem }, 409);
     if (!requestRecall(db, item.id, new Date().toISOString())) return c.json({ error: "Tin này đang chờ thu hồi rồi" }, 409);
     return c.json(toOutboxItemDto(db, itemOr404(item.id)!));
+  });
+
+  // Tin lẻ đang hẹn giờ -> gửi ngay: chỉ dời giờ hẹn về bây giờ, daemon gửi ở lượt kế qua cổng gửi như mọi tin
+  app.post("/outbox/:id/send-now", (c) => {
+    if (ctx.readOnly()) return c.json({ error: READ_ONLY_ERROR }, 409);
+    const id = Number(c.req.param("id"));
+    if (!sendScheduledNow(db, id)) return c.json({ error: "Chỉ gửi ngay được tin lẻ đang hẹn giờ, chưa tới giờ gửi" }, 400);
+    return c.json(toOutboxItemDto(db, itemOr404(id)!));
   });
 
   app.post("/outbox/:id/cancel", (c) => {
