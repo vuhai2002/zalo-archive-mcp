@@ -27,32 +27,51 @@ của người dùng. Đọc thoải mái, KHÔNG chép nội dung riêng trong 
 
 ## KHÔNG đưa dữ liệu thật vào repo (người dùng chốt 2026-11-12)
 
-Repo này sẽ PUBLIC trên GitHub. Lịch sử 80 commit đầu đã phải viết lại để gỡ tên người, nhóm, id, số điện thoại, email,
-link và nội dung tin thật bị chép vào test / chú thích / changelog / lời commit. KHÔNG được lặp lại.
+Repo này sẽ PUBLIC trên GitHub. Ngày 2026-11-12 toàn bộ lịch sử đã phải viết lại NHIỀU LƯỢT để gỡ dữ liệu thật bị chép vào
+test / chú thích / changelog / lời commit: tên người, nhóm, id, số điện thoại, email, link, mẩu tin, tên file, số liệu kho,
+chữ gợi tới đời tư của người dùng. Lượt rà của chính Claude đã sót nhiều thứ; một subagent rà độc lập (đối chiếu với DB)
+mới tìm ra. KHÔNG được lặp lại.
 
 Mọi thứ đến từ kho Zalo thật (DB trong `data/`, ảnh chụp màn hình người dùng gửi, kết quả MCP / dashboard, log daemon,
 thư mục Zalo PC, `plans/`) chỉ dùng để HIỂU lỗi. Không bao giờ chép vào code, chú thích, test, fixture, dữ liệu demo,
 `docs/`, `README.md`, changelog, `CLAUDE.md`, lời commit, tên nhánh, mô tả PR. Cụ thể là cấm:
 
-- tên người, tên gợi nhớ, tên danh bạ điện thoại, tên nhóm, tên thẻ Phân loại thật (kể cả tên của chính người dùng);
-- id Zalo thật: uid, id nhóm / hội thoại, id tin, cliMsgId, topicId, id thẻ... (dãy 15-20 chữ số lấy từ kho);
-- số điện thoại, email, tên miền / tên công ty, tổ chức, nơi chốn người dùng sinh hoạt;
-- link thật: ảnh / file / avatar / QR trên CDN Zalo có id thật, Google Form, bài Facebook, tài liệu...;
-- nội dung thật: chữ trong tin, câu hỏi bình chọn, lời nhắc hẹn, tên file, đoạn trích; số liệu riêng của kho;
+- tên người, tên gợi nhớ, tên danh bạ điện thoại (cả KIỂU đặt tên riêng của người dùng), tên nhóm, tên thẻ Phân loại thật,
+  cách xưng hô quen của người dùng; kể cả tên của chính người dùng;
+- id lấy từ kho ở MỌI độ dài: uid, id nhóm / hội thoại (15-20 chữ số), id tin / cliMsgId / mã chùm ảnh / mốc giờ ms của tin
+  thật (13 chữ số), mã bình chọn, topicId, mã thẻ...; cả chuỗi giờ ISO đúng bằng giờ của một tin / sự kiện thật;
+- số điện thoại, mật khẩu, email, tên miền, tên công ty / tổ chức, nơi chốn người dùng hay nhắc tới;
+- bất cứ chữ nào gợi tới đời tư của người dùng: tín ngưỡng, sức khỏe, nơi làm việc, nhóm / cộng đồng họ tham gia;
+- link thật: ảnh / file / avatar / QR trên CDN Zalo có id thật, Google Form, bài Facebook, artifact, tài liệu...;
+- nội dung thật: chữ trong tin dù chỉ là một MẨU ngắn, câu hỏi bình chọn, lời nhắc hẹn và ngày giờ của nó, quảng cáo OA,
+  thời lượng cuộc gọi, tên file đính kèm;
+- số liệu riêng của kho (số tin, số file, dung lượng, số nhóm...) và lịch sinh hoạt của người dùng (giờ tắt máy, đi đâu,
+  giờ gửi một tin cụ thể...);
 - đường dẫn có tên tài khoản Windows hay thư mục dữ liệu riêng của người dùng.
 
 Cách làm đúng:
 
 - Tái hiện lỗi từ dữ liệu thật thì dựng ví dụ GIẢ cùng cấu trúc: tên giả rõ ràng (Lan, Minh, "Nhóm Thử Nghiệm"), id dạng `u-lan`,
-  `g-1` hoặc `1000000000000000001`, số `0900000000`, email / tên miền `example.com`, link kiểu `https://f1.zdn.vn/a.jpg`,
-  nội dung tin tự viết ("Hẹn họp lúc 9h nhé").
-- Tên giả từ hai chữ trở lên phải kiểm KHÔNG trùng tên nào trong kho: truy vấn chỉ đọc `contacts.display_name`,
-  `contacts.alias`, `threads.name` của DB nick đang dùng. Test có tính độ dài chữ (vị trí nhắc tên, đoạn trích) thì tên
-  giả giữ đúng độ dài và không trùng chữ khác trong câu thử.
-- Changelog, tài liệu, lời commit mô tả theo HÀNH VI ("thông báo nhóm nối tên bằng dấu phẩy, quá 3 người thì ..."), không
-  kể ví dụ đời thật ("tin trong nhóm X của chị Y lúc 9h"). Kết quả thử thật ghi chung chung ("gửi đúng giờ, đúng thứ tự").
-- Trước MỖI commit: rà `git diff --cached` và lời commit tìm tên người / nhóm thật, dãy 15-20 chữ số, số điện thoại, email,
-  link CDN có id thật, câu tin trích nguyên văn. Còn thì thay rồi mới commit; nghi ngờ thì hỏi người dùng.
+  `g-1`, `1000000000000000001` hay `8400000000001`, số `0900000000`, email / tên miền `example.com`, link kiểu
+  `https://f1.zdn.vn/a.jpg`, nội dung tin tự viết ("Hẹn họp lúc 9h nhé"), tên file kiểu `tai-lieu-mau.pdf`.
+- Chữ giả (tên từ hai chữ trở lên, cụm câu, địa danh, tên file) phải kiểm KHÔNG có trong kho: truy vấn chỉ đọc
+  `contacts.display_name`, `contacts.alias`, `threads.name` VÀ nội dung tin `messages.text` của DB nick đang dùng. Test có
+  tính độ dài chữ (vị trí nhắc tên, đoạn trích) thì khi đổi chữ, giữ đúng độ dài chữ cũ CỦA TEST và không trùng chữ khác
+  trong câu thử.
+- Ví dụ phải TỰ NGHĨ RA từ đầu, không biến đổi từ dữ liệu thật: không giữ độ dài / dáng của tên miền, link, tên file, kiểu
+  tên người thật; không giữ vài chữ số đầu của id hay mốc giờ thật; không lấy giờ thật rồi chỉ đổi ngày hay giờ (giữ
+  phút:giây); không chép số món, vị trí, kích thước, thời lượng của chùm ảnh / video thật; không lấy số đo trên máy hay
+  kho thật (dung lượng, số file, thời gian chạy, số lần nối lại) làm số mẫu. Số mẫu là số tròn tự đặt; giờ trong test
+  nên tròn (vd `2026-03-10T07:00:00.000Z`).
+- Changelog công khai (`docs/project-changelog.md`) là bản GỌN theo tính năng. Nhật ký chi tiết (có số liệu, chuyện thử thật)
+  chỉ ghi vào `plans/nhat-ky-thay-doi-chi-tiet.md` - chỉ trên máy, không lên git.
+- Lời commit, tài liệu mô tả theo HÀNH VI ("thông báo nhóm nối tên bằng dấu phẩy, quá 3 người thì ..."), không kể ví dụ
+  đời thật ("tin trong nhóm X của chị Y lúc 9h"), không ghi số liệu kho. Kết quả thử thật ghi chung chung ("gửi đúng giờ").
+- Trước MỖI commit: rà `git diff --cached` và lời commit tìm tên / nhóm thật, dãy từ 7 chữ số trở lên, số điện thoại, email,
+  mật khẩu, link có id thật, câu / mẩu tin trích, tên file, số liệu kho, chữ gợi đời tư. Đối chiếu chuỗi nghi
+  ngờ với DB (chỉ đọc). Còn thì thay rồi mới commit; nghi ngờ thì hỏi người dùng.
+- Trước khi báo người dùng repo "sạch": nhờ một subagent rà ĐỘC LẬP toàn bộ (file hiện tại, lời commit, mọi phiên bản cũ),
+  đối chiếu với DB kể cả nội dung tin; chỉ đưa repo + tiêu chí, không đưa kết luận của mình.
 - Tác giả commit (tên + email trong git config) là thông tin thật của người dùng, đó là CHỦ ĐÍCH - không đề xuất đổi.
 
 ## Repo tham khảo (chỉ đọc, KHÔNG sửa)
