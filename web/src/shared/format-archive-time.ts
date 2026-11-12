@@ -56,12 +56,15 @@ export function formatClock(iso: string | null | undefined, timeZone: string): s
   return `${p.hour}:${p.minute}`;
 }
 
-/** "28/10 14:30" trong năm nay, "28/10/2025 14:30" nếu khác năm - kho có tin nhiều năm trước */
-export function formatDateTime(iso: string | null | undefined, timeZone: string): string {
+/**
+ * "28/10 14:30" trong năm nay, "28/10/2025 14:30" nếu khác năm - kho có tin nhiều năm trước. `now` quyết định "năm nay"
+ * (mặc định giờ hiện tại); hàm thuần nào đã nhận `now` thì truyền xuống để kết quả không đổi theo năm của máy.
+ */
+export function formatDateTime(iso: string | null | undefined, timeZone: string, now: Date = new Date()): string {
   const d = parse(iso);
   if (!d) return "-";
   const p = zonedParts(d, timeZone);
-  const year = p.year === zonedParts(new Date(), timeZone).year ? "" : `/${p.year}`;
+  const year = p.year === zonedParts(now, timeZone).year ? "" : `/${p.year}`;
   return `${p.day}/${p.month}${year} ${p.hour}:${p.minute}`;
 }
 

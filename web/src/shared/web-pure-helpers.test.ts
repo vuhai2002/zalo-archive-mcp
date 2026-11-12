@@ -17,6 +17,13 @@ describe("format-archive-time", () => {
     assert.equal(formatDateTime("2024-05-12T00:00:00Z", VN), "12/05/2024 07:00");
   });
 
+  it("'năm nay' tính theo `now` truyền vào (theo múi giờ kho), không theo năm của máy", () => {
+    const now = new Date("2030-06-01T00:00:00Z");
+    assert.equal(formatDateTime("2030-01-02T03:00:00Z", VN, now), "02/01 10:00");
+    assert.equal(formatDateTime("2029-12-31T18:00:00Z", VN, now), "01/01 01:00"); // UTC còn 2029, giờ VN đã sang 2030
+    assert.equal(formatDateTime("2031-01-02T03:00:00Z", VN, now), "02/01/2031 10:00");
+  });
+
   it("mốc rỗng hoặc hỏng ra '-' thay vì 'Invalid Date'", () => {
     assert.equal(formatDateTime(null, VN), "-");
     assert.equal(formatClock("không phải ngày", VN), "-");

@@ -44,15 +44,15 @@ export type StatusTone = "amber" | "blue" | "green" | "red" | "gray";
 export type StatusIcon = "draft" | "clock" | "check" | "error" | "recall" | "cancel";
 export type StatusLine = { text: string; tone: StatusTone; icon: StatusIcon };
 
-/** Giờ ngắn nếu cùng ngày tạo (đã có dải ngày phía trên), không thì kèm ngày */
-function timeNear(iso: string | null, createdAt: string, tz: string): string {
+/** Giờ ngắn nếu cùng ngày tạo (đã có dải ngày phía trên), không thì kèm ngày (kèm năm nếu khác năm của `now`) */
+function timeNear(iso: string | null, createdAt: string, tz: string, now: Date): string {
   if (!iso) return "";
-  return dayKey(iso, tz) === dayKey(createdAt, tz) ? formatClock(iso, tz) : formatDateTime(iso, tz);
+  return dayKey(iso, tz) === dayKey(createdAt, tz) ? formatClock(iso, tz) : formatDateTime(iso, tz, now);
 }
 
 /** Chữ trạng thái góc phải mỗi tin, như "Đã gửi 20:11", "Gửi lúc 08:00 10/11", "Nháp chờ duyệt" */
 export function statusLine(it: OutboxItem, tz: string, now: Date = new Date()): StatusLine {
-  const at = (iso: string | null) => timeNear(iso, it.createdAt, tz);
+  const at = (iso: string | null) => timeNear(iso, it.createdAt, tz, now);
   const join = (label: string, iso: string | null) => [label, at(iso)].filter(Boolean).join(" ");
   if (it.recalledAt) return { text: join("Đã thu hồi", it.recalledAt), tone: "gray", icon: "recall" };
   if (it.recallRequestedAt && !it.recallError) return { text: "Đang thu hồi...", tone: "amber", icon: "recall" };
