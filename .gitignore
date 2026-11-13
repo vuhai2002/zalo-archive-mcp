@@ -21,3 +21,7 @@ web/dist/
 
 # Ghi chép nghiên cứu / kế hoạch nội bộ, chỉ để trên máy
 plans/
+
+# Chrome riêng cho chrome-devtools-mcp: file chạy + cấu hình MCP theo máy này
+chrome-mcp/
+.mcp.json
