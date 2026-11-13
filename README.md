@@ -99,11 +99,48 @@ rồi `pnpm start`, vào Cài đặt > **Tài khoản Zalo** và chuyển sang n
 Thử trên NICK PHỤ trước khi dùng nick chính. Mỗi thư mục `data/` chỉ một daemon (có khóa chống chạy
 trùng), và KHÔNG chạy daemon này cùng zalo-agent trên cùng một tài khoản.
 
-## Gắn vào Claude Code
+## Gắn vào Claude (dùng ở mọi phiên)
+
+Thay `C:/duong-dan/zalo-archive-mcp` bằng đường dẫn thật tới thư mục repo trên máy bạn (trên Windows viết dấu `/` cho
+gọn). Không cần biến môi trường nào: MCP tự tìm thư mục dữ liệu `data/` theo vị trí repo, dù Claude mở nó từ thư mục nào.
+
+**Claude Code** (dòng lệnh `claude` và tab Code của ứng dụng Claude): cài ở phạm vi `user` để MỌI phiên, ở mọi thư mục, đều
+hỏi được kho. Thiếu `--scope user` thì MCP chỉ có trong đúng thư mục đã chạy lệnh.
 
 ```bash
-claude mcp add zalo-archive -- node C:/duong-dan/zalo-archive-mcp/node_modules/tsx/dist/cli.mjs --disable-warning=ExperimentalWarning C:/duong-dan/zalo-archive-mcp/src/bin/run-mcp-stdio-server.ts
+claude mcp add --scope user zalo-archive -- node C:/duong-dan/zalo-archive-mcp/node_modules/tsx/dist/cli.mjs --disable-warning=ExperimentalWarning C:/duong-dan/zalo-archive-mcp/src/bin/run-mcp-stdio-server.ts
 ```
+
+Kiểm tra: `claude mcp get zalo-archive` phải ghi `Scope: User config` và `Status: ✔ Connected`. Gỡ: `claude mcp remove
+zalo-archive -s user`.
+
+**Ứng dụng Claude Desktop** (tab chat thường): mở Settings -> Developer -> Edit Config (file `claude_desktop_config.json`,
+trên Windows ở `%APPDATA%\Claude\`, trên macOS ở `~/Library/Application Support/Claude/`), thêm vào `mcpServers` rồi thoát hẳn
+và mở lại ứng dụng:
+
+```json
+{
+  "mcpServers": {
+    "zalo-archive": {
+      "command": "node",
+      "args": [
+        "C:/duong-dan/zalo-archive-mcp/node_modules/tsx/dist/cli.mjs",
+        "--disable-warning=ExperimentalWarning",
+        "C:/duong-dan/zalo-archive-mcp/src/bin/run-mcp-stdio-server.ts"
+      ]
+    }
+  }
+}
+```
+
+File đã có `mcpServers` cho MCP khác thì chỉ thêm khóa `"zalo-archive"` vào trong đó, không tạo `mcpServers` thứ hai.
+
+Lưu ý:
+- MCP chạy thẳng code trong repo: `git pull` / sửa code xong thì nối lại MCP (Claude Code: lệnh `/mcp` -> Reconnect, hoặc mở
+  phiên mới; Claude Desktop: mở lại ứng dụng) để Claude dùng bản mới.
+- Đọc / tìm tin chỉ cần đã có kho. GỬI tin cần daemon đang chạy và đã đăng nhập Zalo (`pnpm start` hoặc tự chạy khi đăng
+  nhập Windows): MCP chỉ ghi vào hàng đợi, daemon mới gửi.
+- Cần Node >= 22.13 trong `PATH` (lệnh `node` chạy được ở terminal bất kỳ).
 
 | Nhóm | Tool | Việc |
 |---|---|---|
