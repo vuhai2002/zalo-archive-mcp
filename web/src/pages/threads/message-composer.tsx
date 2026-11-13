@@ -3,7 +3,6 @@ import type { ArchivedMessage, OutboxItem, TextStyleSpan } from "../../archive-a
 import { useDashboardShell } from "../../layout/dashboard-shell-context";
 import { IconWarning } from "../../shared/dashboard-icons";
 import { nowInZone } from "../../shared/format-archive-time";
-import { PHOTO_ACCEPT, type SendAs } from "./composer-attachment-rules";
 import { ComposerAttachmentStrip } from "./composer-attachment-strip";
 import { EMPTY_FORMAT, type FormatState } from "./composer-editor-commands";
 import { ComposerFormatToolbar } from "./composer-format-toolbar";
@@ -14,6 +13,7 @@ import { ComposerTopToolbar } from "./composer-top-toolbar";
 import { MessageComposerSchedulePanel } from "./message-composer-schedule-panel";
 import { OutboxSendStatusLine } from "./outbox-send-status-line";
 import { useComposerAttachments } from "./use-composer-attachments";
+import { useComposerFilePickers } from "./use-composer-file-pickers";
 import { useComposerSend } from "./use-composer-send";
 import { useOutboxItemTracking } from "./use-outbox-item-tracking";
 
@@ -31,10 +31,9 @@ const loadFormatOn = () => {
 };
 
 /**
- * Khung soạn tin cuối hội thoại, kiểu Zalo PC: hàng công cụ phía trên (Gửi hình ảnh, Đính kèm File, Định dạng tin nhắn, Hẹn
- * giờ, Lưu nháp), khay file dán / kéo thả, ô nhập có định dạng, thanh định dạng phía dưới khi bật (Ctrl+Shift+X). Enter gửi
- * ngay, Shift+Enter xuống dòng. Mọi nút chỉ ghi vào hàng đợi; daemon mới là nơi gửi thật. Đang trả lời một tin thì có dải
- * trích dẫn phía trên ô nhập; tin chữ gửi đi mang ô trích dẫn tin đó như Zalo.
+ * Khung soạn tin kiểu Zalo PC: hàng công cụ (ảnh, Đính kèm File, Định dạng, Hẹn giờ, Lưu nháp), ô nhập có định dạng, khay file
+ * chờ gửi dưới ô nhập. Enter gửi, Shift+Enter xuống dòng. Mọi nút chỉ ghi vào hàng đợi; daemon mới gửi thật. Đang trả lời một
+ * tin thì có dải trích dẫn phía trên ô nhập.
  */
 export function MessageComposer({
   threadId,
@@ -52,8 +51,6 @@ export function MessageComposer({
 }) {
   const { me, killSwitch } = useDashboardShell();
   const editor = useRef<ComposerEditorHandle>(null);
-  const photoInput = useRef<HTMLInputElement>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
   const [content, setContent] = useState({ length: 0, empty: true });
   const [formatOn, setFormatOn] = useState(loadFormatOn);
   const [fmt, setFmt] = useState<FormatState>(EMPTY_FORMAT);
@@ -64,6 +61,11 @@ export function MessageComposer({
   const tracking = useOutboxItemTracking(NOOP);
   const [attachError, setAttachError] = useState<string | null>(null);
   const attachments = useComposerAttachments(setAttachError);
+  // Chọn ảnh / file / thư mục xong thì vào khay chờ (không gửi ngay) như Zalo
+  const pickers = useComposerFilePickers((files, as) => {
+    setAttachError(null);
+    attachments.add(files, as);
+  }, setAttachError);
   const send = useComposerSend({
     threadId,
     editor,
@@ -116,12 +118,6 @@ export function MessageComposer({
 
   const sendButton = <ComposerSendButton disabled={!canSubmit} onClick={() => void send.submit("now")} />;
 
-  function picked(input: HTMLInputElement | null, as: SendAs) {
-    const files = [...(input?.files ?? [])];
-    if (input) input.value = "";
-    if (files.length > 0) void send.sendPicked(files, as);
-  }
-
   return (
     <div className="border-t border-line bg-surface">
       {killSwitch?.killed && (
@@ -138,14 +134,14 @@ export function MessageComposer({
         scheduleOpen={scheduleOpen}
         length={content.length}
         maxLength={MAX_TEXT}
-        onPhoto={() => photoInput.current?.click()}
-        onFile={() => fileInput.current?.click()}
+        onPhoto={pickers.openPhotos}
+        onPickFiles={pickers.openFiles}
+        onPickFolder={pickers.openFolder}
         onToggleFormat={toggleFormat}
         onSchedule={openSchedule}
         onDraft={() => void send.submit("draft")}
       />
-      <input ref={photoInput} type="file" accept={PHOTO_ACCEPT} multiple hidden onChange={(e) => picked(e.currentTarget, "photo")} />
-      <input ref={fileInput} type="file" multiple hidden onChange={(e) => picked(e.currentTarget, "file")} />
+      {pickers.inputs}
 
       {scheduleOpen && (
         <MessageComposerSchedulePanel
@@ -160,7 +156,6 @@ export function MessageComposer({
       )}
 
       {replyTarget && onCancelReply && <ComposerReplyStrip target={replyTarget} onCancel={onCancelReply} />}
-      <ComposerAttachmentStrip items={attachments.items} disabled={send.busy !== null} onRemove={attachments.remove} />
 
       {/* Số đo như Zalo Web: lề 10/12px; thường cao 50px; bật định dạng cao cố định 178px, Mở rộng khoảng 57% chiều cao màn
           hình; chữ ở trên, thanh định dạng + nút gửi ở dưới. Ô soạn luôn là con đầu: bật / tắt định dạng không mất chữ */}
@@ -187,6 +182,13 @@ export function MessageComposer({
           sendButton
         )}
       </div>
+
+      <ComposerAttachmentStrip
+        items={attachments.items}
+        disabled={send.busy !== null}
+        onRemove={attachments.remove}
+        onAddMore={attachments.items.every((a) => a.as === "photo") ? pickers.openPhotos : pickers.openFiles}
+      />
 
       {(error || send.progress || tracking.item) && (
         <div className="space-y-1 px-4 pb-2">

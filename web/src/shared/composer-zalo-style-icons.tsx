@@ -122,3 +122,27 @@ export const IconZaloExpand = (p: IconProps) => (
     <path d="M14 4h6v6M20 4l-6.5 6.5M10 20H4v-6M4 20l6.5-6.5" />
   </svg>
 );
+
+/** Mục "Chọn File" của menu kẹp giấy */
+export const IconZaloFileOutline = (p: IconProps) => (
+  <svg {...iconBase(p)}>
+    <path d="M7 3.5h6.6L18.5 8.4v11a1.1 1.1 0 0 1-1.1 1.1H7a1.1 1.1 0 0 1-1.1-1.1V4.6A1.1 1.1 0 0 1 7 3.5Z" />
+    <path d="M13.5 3.6v4.9h4.9" />
+  </svg>
+);
+
+/** Mục "Chọn Thư mục" của menu kẹp giấy */
+export const IconZaloFolderOutline = (p: IconProps) => (
+  <svg {...iconBase(p)}>
+    <path d="M3.5 7.2a1.7 1.7 0 0 1 1.7-1.7h4.1l2 2.2h7.5a1.7 1.7 0 0 1 1.7 1.7v8.4a1.7 1.7 0 0 1-1.7 1.7H5.2a1.7 1.7 0 0 1-1.7-1.7Z" />
+  </svg>
+);
+
+/** Ô file trong khay chờ gửi: tờ giấy xanh có kẹp giấy trắng (vẽ theo dáng ô file của Zalo PC) */
+export const IconZaloFileTile = ({ size = 28 }: { size?: number }) => (
+  <svg width={size} height={(size * 32) / 26} viewBox="0 0 26 32" aria-hidden="true">
+    <path d="M3 0h13l10 10v19a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3V3a3 3 0 0 1 3-3Z" fill="#4db2f2" />
+    <path d="M16 0l10 10h-7a3 3 0 0 1-3-3Z" fill="#a6dbfb" />
+    <path d="m15.6 14.6-5 5a1.4 1.4 0 0 0 2 2l5.4-5.4a2.6 2.6 0 0 0-3.7-3.7l-5.5 5.5a3.9 3.9 0 0 0 5.5 5.5l4.6-4.6" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+);

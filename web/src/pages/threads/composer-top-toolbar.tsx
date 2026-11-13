@@ -1,5 +1,6 @@
 import { IconClock, IconFileText } from "../../shared/action-and-media-icons";
-import { IconZaloAttach, IconZaloPhoto, IconZaloTextFormat } from "../../shared/composer-zalo-style-icons";
+import { IconZaloPhoto, IconZaloTextFormat } from "../../shared/composer-zalo-style-icons";
+import { ComposerAttachMenu } from "./composer-attach-menu";
 import { ComposerToolButton } from "./composer-tool-button";
 
 /**
@@ -15,7 +16,8 @@ export function ComposerTopToolbar(p: {
   length: number;
   maxLength: number;
   onPhoto: () => void;
-  onFile: () => void;
+  onPickFiles: () => void;
+  onPickFolder: () => void;
   onToggleFormat: () => void;
   onSchedule: () => void;
   onDraft: () => void;
@@ -25,9 +27,7 @@ export function ComposerTopToolbar(p: {
       <ComposerToolButton title="Gửi hình ảnh" disabled={p.busy} onClick={p.onPhoto}>
         <IconZaloPhoto size={24} />
       </ComposerToolButton>
-      <ComposerToolButton title="Đính kèm File" disabled={p.busy} onClick={p.onFile}>
-        <IconZaloAttach size={24} />
-      </ComposerToolButton>
+      <ComposerAttachMenu disabled={p.busy} onPickFiles={p.onPickFiles} onPickFolder={p.onPickFolder} />
       <ComposerToolButton title="Định dạng tin nhắn (Ctrl + Shift + X)" active={p.formatOn} onClick={p.onToggleFormat}>
         <IconZaloTextFormat size={24} />
       </ComposerToolButton>

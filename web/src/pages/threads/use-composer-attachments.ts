@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SendRequest } from "../../archive-api-types";
 import { api } from "../../dashboard-api-client";
-import { pasteProblem, sendAsForPasted, type SendAs } from "./composer-attachment-rules";
+import { pasteProblem, pickProblem, sendAsForPasted, type SendAs } from "./composer-attachment-rules";
 
-/** Một file trong khay chờ gửi (dán / kéo thả vào ô soạn): ảnh có ảnh xem trước */
+/** Một file trong khay chờ gửi: ảnh vào chùm có ảnh xem trước */
 export type PendingAttachment = { key: string; file: File; as: SendAs; previewUrl: string | null };
 
 /**
- * Khay file dán / kéo thả vào ô soạn, như Zalo: file nằm chờ phía trên ô nhập, bấm Enter / nút gửi mới gửi (ảnh thành chùm,
- * file khác thành thẻ file, chữ đi sau cùng). Ảnh xem trước dùng URL tạm của trình duyệt, bỏ file / gửi xong thì thu hồi.
+ * Khay file chờ gửi như Zalo: file chọn bằng nút ảnh / file / thư mục, dán hay kéo thả đều nằm chờ dưới ô nhập, còn bỏ / thêm
+ * được; bấm Enter / nút gửi mới gửi (ảnh thành chùm, file khác thành thẻ file, chữ đi sau cùng). Ảnh xem trước dùng URL tạm của trình duyệt, bỏ file / gửi xong thì thu hồi.
  */
 export function useComposerAttachments(onProblem: (message: string) => void) {
   const [items, setItems] = useState<PendingAttachment[]>([]);
@@ -18,12 +18,14 @@ export function useComposerAttachments(onProblem: (message: string) => void) {
 
   useEffect(() => () => itemsRef.current.forEach((i) => i.previewUrl && URL.revokeObjectURL(i.previewUrl)), []);
 
+  /** `as` có sẵn khi chọn bằng nút (ảnh / file / thư mục); dán / kéo thả thì mỗi file tự xếp theo đuôi */
   const add = useCallback(
-    (files: File[]) => {
-      const problem = pasteProblem(files, itemsRef.current.length);
+    (files: File[], forcedAs?: SendAs) => {
+      const already = itemsRef.current.length;
+      const problem = forcedAs ? pickProblem(files, forcedAs, already) : pasteProblem(files, already);
       if (problem) return onProblem(problem);
       const added = files.map((file) => {
-        const as = sendAsForPasted(file.name);
+        const as = forcedAs ?? sendAsForPasted(file.name);
         return { key: `a${++seq.current}`, file, as, previewUrl: as === "photo" ? URL.createObjectURL(file) : null };
       });
       setItems((cur) => [...cur, ...added]);

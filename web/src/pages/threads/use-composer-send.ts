@@ -1,7 +1,6 @@
 import { useState, type RefObject } from "react";
 import type { ArchivedMessage, OutboxItem, SendRequest, TextStyleSpan } from "../../archive-api-types";
 import { api, errorText } from "../../dashboard-api-client";
-import { pickProblem, type SendAs } from "./composer-attachment-rules";
 import type { ComposerEditorHandle } from "./composer-rich-editor";
 import { zaloStylesToSpans } from "./composer-zalo-format";
 import { uploadAll, type PendingAttachment } from "./use-composer-attachments";
@@ -12,8 +11,8 @@ export type ComposerBusy = SendRequest["when"] | "upload";
 /**
  * Gửi từ khung soạn tin, mọi đường đều chỉ ghi vào hàng đợi (`POST /api/outbox`), daemon mới gửi thật:
  * - Tin chữ gửi ngay (không file): ô soạn trống liền, khung chat hiện bong bóng tạm có định dạng; lỗi thì trả chữ + định dạng.
- * - Có file trong khay (dán / kéo thả): tải lên lần lượt rồi gửi một tin - chùm ảnh, file khác, chữ sau cùng.
- * - Nút Gửi hình ảnh / Đính kèm File: chọn xong gửi ngay, chữ đang gõ dở vẫn nằm trong ô như Zalo.
+ * - Có file trong khay (chọn bằng nút ảnh / file / thư mục, dán, kéo thả): tải lên lần lượt rồi gửi một tin - chùm ảnh, file
+ *   khác, chữ sau cùng.
  */
 export function useComposerSend(o: {
   threadId: string;
@@ -83,28 +82,5 @@ export function useComposerSend(o: {
     }
   }
 
-  /** Nút Gửi hình ảnh (chùm ảnh) / Đính kèm File (thẻ file, kể cả ảnh): gửi ngay các file vừa chọn, không đụng chữ đang gõ */
-  async function sendPicked(files: File[], as: SendAs) {
-    if (busy) return;
-    const problem = pickProblem(files, as);
-    if (problem) return setError(problem);
-    setError(null);
-    o.tracking.clear();
-    setBusy("upload");
-    try {
-      const uploads = await uploadAll(
-        files.map((file) => ({ file, as })),
-        setProgress,
-      );
-      o.tracking.track(await api.outboxCreate({ threadId: o.threadId, text: "", when: "now", uploads }));
-    } catch (err) {
-      setError(errorText(err));
-    } finally {
-      setBusy(null);
-      setProgress(null);
-      o.editor.current?.focus();
-    }
-  }
-
-  return { busy, progress, error, setError, submit, sendPicked };
+  return { busy, progress, error, setError, submit };
 }

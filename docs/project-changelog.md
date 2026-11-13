@@ -68,8 +68,9 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
 
 ## 2026-11-13: gửi ảnh / file và định dạng tin nhắn trên dashboard
 
-- Khung soạn tin có nút Gửi hình ảnh (chùm ảnh) và Đính kèm File (thẻ file, kể cả ảnh / video, qua cờ `asFile` của bản vá
-  zca-js); dán hoặc kéo thả ảnh / file vào ô soạn thì file nằm chờ, Enter gửi; icon vẽ theo dáng icon của Zalo.
+- Khung soạn tin có nút Gửi hình ảnh (chùm ảnh) và Đính kèm File (menu Chọn File / Chọn Thư mục như Zalo, thư mục gói thành
+  một file .zip; thẻ file kể cả ảnh / video, qua cờ `asFile` của bản vá zca-js); file chọn, dán hay kéo thả đều nằm chờ trong
+  khay dưới ô nhập ("N file", ô + để thêm, X để bỏ), Enter mới gửi; icon vẽ theo dáng icon của Zalo.
 - Thanh Định dạng tin nhắn như Zalo (Ctrl+Shift+X): đậm, nghiêng, gạch chân, gạch ngang, cỡ chữ, màu chữ, bỏ định dạng, gạch
   đầu dòng, đánh số, thụt lề, hoàn tác, mở rộng ô soạn; bật thì dán giữ định dạng, tắt thì dán chữ trơn.
 - Tin trong kho hiện thêm cỡ Rất lớn, danh sách gạch đầu dòng / đánh số và thụt lề; cỡ chữ đúng px của Zalo.
