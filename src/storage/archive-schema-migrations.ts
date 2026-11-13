@@ -462,4 +462,8 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
     error       TEXT
   );
   `,
+  // 33: định dạng chữ của tin gửi từ dashboard (đậm, màu, cỡ, danh sách...) theo đúng kiểu textProperties của Zalo
+  `
+  ALTER TABLE outbox ADD COLUMN styles_json TEXT;
+  `,
 ];

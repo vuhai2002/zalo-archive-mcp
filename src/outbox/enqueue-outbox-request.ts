@@ -8,6 +8,7 @@ import { findThread, type ThreadSummary } from "../storage/message-read-queries.
 import { enqueueOutboxItem, type OutboxCreator, type OutboxFile } from "../storage/outbox-store.js";
 import { getSendSettings } from "../storage/send-settings-store.js";
 import { buildReplyQuote } from "./build-reply-quote.js";
+import { checkOutboxStyles } from "./outbox-text-styles.js";
 import { resolveOutboxMentions, type MentionRequest } from "./resolve-outbox-mentions.js";
 
 /**
@@ -67,16 +68,19 @@ function isDuplicatePending(db: DatabaseSync, threadId: string, text: string): n
 /**
  * Một tin tới một hội thoại (tin lẻ: không trần, không khung giờ); vào nhóm thì có thể nhắc tên (@) người trong nhóm.
  * `replyToMessageId` = số tin trong kho của tin được trả lời (tin mới mang ô trích dẫn tin đó, như Trả lời trên Zalo).
+ * `styles` = định dạng chữ theo chữ GỐC chưa cắt khoảng trắng (thanh Định dạng tin nhắn của dashboard).
  */
 export function enqueueSingle(
   ctx: EnqueueContext,
-  req: Common & { threadId: string; text: string; mentions?: MentionRequest[]; replyToMessageId?: number; files?: OutboxFile[] },
+  req: Common & { threadId: string; text: string; mentions?: MentionRequest[]; replyToMessageId?: number; files?: OutboxFile[]; styles?: unknown },
 ): EnqueueResult {
   if (ctx.readOnly) return { ok: false, error: READ_ONLY_ERROR };
   if (req.note && containsUnsafeControlChars(req.note)) return { ok: false, error: UNSAFE_CHARS_ERROR };
   const files = req.files ?? [];
   const text = checkText(req.text, files.length > 0);
   if (typeof text !== "string") return { ok: false, ...text };
+  const styles = checkOutboxStyles(req.styles, req.text);
+  if ("error" in styles) return { ok: false, ...styles };
   const thread = checkThread(ctx.db, req.threadId);
   if ("error" in thread) return { ok: false, ...thread };
   const mentions = resolveOutboxMentions(ctx.db, thread, text, req.mentions);
@@ -102,6 +106,7 @@ export function enqueueSingle(
     mentions,
     replyTo: reply.quote,
     files,
+    styles: styles.styles,
   });
   return { ok: true, ids: [id], batchId: null, notBefore: schedule.notBefore, warnings: [] };
 }

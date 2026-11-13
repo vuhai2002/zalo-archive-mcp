@@ -65,5 +65,14 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
   quên danh sách.
 - MCP hẹn giờ gửi ảnh / file (`send_file` có `send_date` + `send_time`): file ngoài kho được chép vào kho lúc hẹn.
 - Hàng đợi: nút Gửi ngay cho tin lẻ đang hẹn giờ.
+
+## 2026-11-13: gửi ảnh / file và định dạng tin nhắn trên dashboard
+
+- Khung soạn tin có nút Gửi hình ảnh (chùm ảnh) và Đính kèm File (thẻ file, kể cả ảnh / video, qua cờ `asFile` của bản vá
+  zca-js); dán hoặc kéo thả ảnh / file vào ô soạn thì file nằm chờ, Enter gửi; icon vẽ theo dáng icon của Zalo.
+- Thanh Định dạng tin nhắn như Zalo (Ctrl+Shift+X): đậm, nghiêng, gạch chân, gạch ngang, cỡ chữ, màu chữ, bỏ định dạng, gạch
+  đầu dòng, đánh số, thụt lề, hoàn tác, mở rộng ô soạn; bật thì dán giữ định dạng, tắt thì dán chữ trơn.
+- Tin trong kho hiện thêm cỡ Rất lớn, danh sách gạch đầu dòng / đánh số và thụt lề; cỡ chữ đúng px của Zalo.
+- Test Hàng đợi không còn phụ thuộc năm của máy.
 - Repo chuẩn bị public: gỡ dữ liệu thật khỏi toàn bộ lịch sử; luật "KHÔNG đưa dữ liệu thật vào repo" trong `CLAUDE.md`.
   Nhật ký thay đổi chi tiết chỉ giữ trên máy (`plans/`, không lên git).

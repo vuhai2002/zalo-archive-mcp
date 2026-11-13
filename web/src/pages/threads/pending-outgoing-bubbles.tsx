@@ -1,6 +1,7 @@
 import { IconClock } from "../../shared/action-and-media-icons";
 import { IconClose } from "../../shared/dashboard-icons";
 import { replyTargetText } from "./composer-reply-strip";
+import { RichMessageText } from "./rich-message-text";
 import type { PendingOutgoing } from "./use-pending-outgoing";
 
 /**
@@ -24,7 +25,7 @@ export function PendingOutgoingBubbles({ items, onDismiss }: { items: PendingOut
                   <div className="truncate text-chat-time">{replyTargetText(p.quote)}</div>
                 </div>
               )}
-              <div className="whitespace-pre-wrap [overflow-wrap:anywhere]">{p.text}</div>
+              <RichMessageText text={p.text} styles={p.styles} />
               {!p.failed && (
                 <div className="mt-1 flex justify-end text-chat-time" title="Đang gửi">
                   <IconClock size={12} />

@@ -38,11 +38,16 @@ export function stageFilesForLater(files: OutboxFile[], dirs: StagingDirs, token
   }
 }
 
+/** File dashboard vừa tải lên nằm ở đây trước khi yêu cầu gửi gắn nó vào một mục: chừa chừng này để không dọn nhầm */
+export const FRESH_UPLOAD_GRACE_MS = 60 * 60 * 1000;
+
 /**
- * Dọn bản chép không còn mục nào chờ gửi dùng tới (đã gửi, hỏng, hủy). Chạy mỗi lần hẹn gửi file mới - việc hiếm, rẻ, không
- * cần vòng riêng trong daemon. Trả số thư mục đã xóa.
+ * Dọn bản chép không còn mục nào chờ gửi dùng tới (đã gửi, hỏng, hủy). Chạy mỗi lần hẹn gửi file mới hay gửi file từ
+ * dashboard - việc hiếm, rẻ, không cần vòng riêng trong daemon. Thư mục mới hơn `graceMs` thì để yên: có thể là file vừa
+ * tải lên mà yêu cầu gửi chưa tới. Trả số thư mục đã xóa.
  */
-export function sweepStagedFiles(db: DatabaseSync, stagingDir: string): number {
+export function sweepStagedFiles(db: DatabaseSync, stagingDir: string, opts: { graceMs?: number; now?: number } = {}): number {
+  const youngerThan = (opts.now ?? Date.now()) - (opts.graceMs ?? FRESH_UPLOAD_GRACE_MS);
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(stagingDir, { withFileTypes: true });
@@ -62,6 +67,7 @@ export function sweepStagedFiles(db: DatabaseSync, stagingDir: string): number {
   for (const e of entries) {
     const dir = path.resolve(stagingDir, e.name);
     if (!e.isDirectory() || inUse.has(dir)) continue;
+    if (fs.statSync(dir).mtimeMs > youngerThan) continue;
     fs.rmSync(dir, { recursive: true, force: true });
     removed++;
   }

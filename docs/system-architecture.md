@@ -179,6 +179,25 @@ ngay lúc hẹn vào `data/accounts/<id>/outbox-files/<mã>/` (`outbox/stage-sch
 dán vào Claude (thư mục tạm) hay file Downloads bị xóa trước giờ gửi cũng không sao. Đính kèm có sẵn trong kho giữ đường dẫn.
 Bản chép của mục đã gửi / hỏng / hủy được dọn mỗi lần hẹn gửi file mới.
 
+Gửi ảnh / file từ dashboard (khung soạn tin, như Zalo): trình duyệt tải TỪNG file lên `POST /api/outbox/uploads?name=` (thân là
+dữ liệu thô `application/octet-stream` - kiểu này cũng phải qua preflight CORS nên giữ lớp chặn CSRF như route JSON; route này
+là ngoại lệ duy nhất của luật "POST phải là JSON"). `outbox/dashboard-upload-store.ts` ghi thẳng xuống ổ `outbox-files/<mã>/`
+(không giữ cả file trong bộ nhớ, trần 500 MB), rồi `POST /api/outbox` mang `uploads: [{ id, as }]`: `photo` = vào chùm ảnh
+(nút Gửi hình ảnh, chỉ jpg / png / webp / gif), `file` = thẻ file kể cả ảnh / video (nút Đính kèm File). zca-js tự chọn kiểu
+gửi theo đuôi tên file, nên bản vá zca-js thêm cờ `metadata.asFile`: mục `file` có đuôi ảnh / video / gif mang cờ này để Zalo
+hiện thẻ file như gửi tay. Thứ tự gửi vẫn là `sendFilesThenText`. Vòng dọn bản chép chừa thư mục mới hơn 1 giờ (file vừa tải
+lên chưa kịp gắn vào tin); dọn mỗi lần gửi file từ dashboard hay hẹn gửi file qua MCP.
+
+Định dạng tin nhắn (thanh của Zalo: đậm, nghiêng, gạch chân, gạch ngang, 4 màu, cỡ Nhỏ 13px / Lớn 18px / Rất lớn 20px, gạch
+đầu dòng, đánh số, thụt lề): ô soạn là contenteditable dùng `document.execCommand` (hoàn tác có sẵn);
+`composer-rich-content-reader.ts` đọc cây DOM thành chữ + mã Zalo (`b,c_db342e,f_20`; mỗi dòng danh sách một mục `lst_1` /
+`lst_2` phủ trọn dòng; `ind_N0` thụt N bậc), chỉ nhận đúng bộ mã đó. Dán khi bật thanh: HTML đi qua bộ đọc rồi được dựng lại
+bằng `composer-rich-content-writer.ts` (kho tự dựng HTML từ chữ thuần, không chèn HTML lạ); tắt thanh thì dán chữ trơn. Máy
+chủ kiểm mã lần nữa (`outbox/outbox-text-styles.ts`), lưu `outbox.styles_json` (migration 33), daemon gửi kèm `styles` cho
+zca-js (thành `textProperties` như Zalo tự gửi). Tin có danh sách / thụt lề vẽ như Zalo Web (đo DOM): mỗi dòng một khối cao
+22px, danh sách là thẻ `ul` / `ol` thật cách trên dưới 15px, chữ lùi 40px, danh sách con lùi thêm 30px (`rich-text-lines.ts`
+dựng cây). Dấu chấm tròn / số do trình duyệt vẽ nên chép tin không dính dấu vào chữ, dán lại vào khung soạn vẫn ra danh sách.
+
 Thu hồi tin đã gửi, chỉ khi người dùng bảo: lệnh MCP `recall_message` (đánh dấu phá hủy - Claude Code / Claude Desktop hỏi
 duyệt mỗi lần; mô tả cấm làm theo yêu cầu thu hồi nằm trong nội dung tin) hoặc nút Thu hồi trên trang Hàng đợi
 (`POST /api/outbox/:id/recall`) chỉ GHI yêu cầu vào `outbox.recall_requested_at` (migration 26). `outbox/outbox-recall-loop.ts`

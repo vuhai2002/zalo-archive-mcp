@@ -18,6 +18,7 @@ import type {
   OutboxItem,
   OutboxListResponse,
   OutboxStatus,
+  OutboxUploadResult,
   OverviewResponse,
   ReactResult,
   SearchFilter,
@@ -157,6 +158,9 @@ export const api = {
     request<OutboxListResponse>(withQuery("/api/outbox", { status: statuses.length > 0 ? statuses.join(",") : undefined, limit })),
   outboxGet: (id: number) => request<OutboxItem>(`/api/outbox/${id}`),
   outboxCreate: (body: SendRequest) => post<OutboxItem>("/api/outbox", body),
+  /** Tải một file lên để gửi (dữ liệu thô, không phải JSON - route riêng, xem outbox-upload-route.ts) */
+  outboxUpload: (file: File) =>
+    request<OutboxUploadResult>(`/api/outbox/uploads?name=${enc(file.name)}`, { method: "POST", body: file, headers: { "content-type": "application/octet-stream" } }),
   outboxApprove: (id: number) => post<OutboxItem>(`/api/outbox/${id}/approve`),
   outboxCancel: (id: number) => post<OutboxItem>(`/api/outbox/${id}/cancel`),
   /** Tin lẻ đang hẹn giờ -> gửi ngay (dời giờ hẹn về bây giờ) */

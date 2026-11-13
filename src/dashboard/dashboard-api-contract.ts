@@ -214,9 +214,14 @@ export type TextStyleSpan = {
   underline: boolean;
   strike: boolean;
   color: string | null;
-  size: "small" | "big" | null;
+  /** Nhỏ 13px, Lớn 18px, Rất lớn 20px (null = Trung bình) */
+  size: "small" | "big" | "xbig" | null;
   /** Chỗ nhắc tên (@Tên, đã đổi sang tên gợi nhớ nếu có): tô xanh như Zalo */
   mention?: boolean;
+  /** Dòng bắt đầu ở `start` là mục danh sách: gạch đầu dòng / đánh số (dấu do giao diện vẽ, không nằm trong chữ) */
+  list?: "bullet" | "number";
+  /** Dòng bắt đầu ở `start` thụt lề mấy bậc (1-5) */
+  indent?: number;
 };
 
 // GET /api/threads/:threadId/messages?beforeId=&afterId=&aroundId=&limit=50
@@ -332,6 +337,10 @@ export type ForwardResult = { ids: number[]; batchId: string };
 //      when "now": vào hàng đợi đã duyệt, daemon gửi trong vài giây (web hỏi lại GET /api/outbox/:id)
 //      when "schedule": cần sendDate + sendTime (giờ của kho)
 //      when "draft": chỉ lưu nháp, chờ bấm Duyệt
+//      uploads: file đã tải lên (POST /api/outbox/uploads), gửi theo thứ tự chùm ảnh, file khác, rồi chữ (có thể trống)
+//      styles: định dạng chữ theo chữ GỐC (chưa cắt khoảng trắng), đúng mã Zalo, xem src/outbox/outbox-text-styles.ts
+// POST /api/outbox/uploads?name=<tên file>  body: dữ liệu thô, Content-Type: application/octet-stream
+//      -> OutboxUploadResult | 400 / 413 ApiError. Chỉ lưu file (tối đa 500 MB), chưa gửi gì
 // GET  /api/outbox/:id                          -> OutboxItem
 // POST /api/outbox/:id/approve  {}              -> OutboxItem (draft -> approved)
 // POST /api/outbox/:id/cancel   {}              -> OutboxItem (draft/approved -> cancelled)
@@ -344,7 +353,12 @@ export type SendRequest = {
   sendTime?: string; // HH:mm
   /** Trả lời tin này (số tin trong kho): tin mới mang ô trích dẫn tin gốc như Zalo */
   replyToMessageId?: number;
+  /** `photo` = vào chùm ảnh (nút Gửi hình ảnh), `file` = thẻ file kể cả ảnh / video (nút Đính kèm File); tối đa 10 */
+  uploads?: Array<{ id: string; as: "photo" | "file" }>;
+  /** Định dạng chữ: mỗi đoạn `{ start, len, st }` như Zalo ("b,c_db342e", "lst_1", "ind_20"...) */
+  styles?: Array<{ start: number; len: number; st: string }>;
 };
+export type OutboxUploadResult = { uploadId: string; name: string; size: number };
 export type OutboxListResponse = { items: OutboxItem[]; counts: Record<OutboxStatus, number> };
 
 // ---------- Cài đặt gửi + khóa khẩn cấp ----------

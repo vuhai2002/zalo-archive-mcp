@@ -17,6 +17,7 @@ import { messageForwardRoute } from "./routes/message-forward-route.js";
 import { messageReactionRoute } from "./routes/message-reaction-route.js";
 import { storageManagementRoutes } from "./routes/storage-management-routes.js";
 import { outboxAndSettingsRoutes } from "./routes/outbox-and-settings-routes.js";
+import { outboxUploadRoute } from "./routes/outbox-upload-route.js";
 import type { Logger } from "pino";
 import { zaloPcMediaRoutes } from "./routes/zalo-pc-media-routes.js";
 import { pollDetailRoute } from "./routes/poll-detail-route.js";
@@ -40,6 +41,7 @@ function accountScopedApi(ctx: DashboardContext): Hono {
   api.route("/", archiveBrowseRoutes(ctx));
   api.route("/", messageSearchRoutes(ctx));
   api.route("/", outboxAndSettingsRoutes(ctx));
+  api.route("/", outboxUploadRoute(ctx));
   api.route("/", messageDeleteRoutes(ctx));
   api.route("/", messageForwardRoute(ctx));
   api.route("/", messageReactionRoute(ctx));

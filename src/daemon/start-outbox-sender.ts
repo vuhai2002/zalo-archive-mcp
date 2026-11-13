@@ -26,15 +26,16 @@ export function startOutboxSender(d: {
     log: d.log.child({ part: "sender" }),
     isListenerConnected: d.isListenerConnected,
     isReadOnly: d.isReadOnly,
-    sendText: async (threadId, type, text, mentions, replyTo) => {
-      // Có nhắc tên (@) thì gửi kèm danh sách nhắc - Zalo mới tô xanh và báo cho người được nhắc; trả lời tin thì kèm tin gốc
-      const res = await api.sendMessage(toZaloMessage(text, mentions, replyTo), threadId, toZaloType(type));
+    sendText: async (threadId, type, text, mentions, replyTo, styles) => {
+      // Có nhắc tên (@) thì gửi kèm danh sách nhắc - Zalo mới tô xanh và báo cho người được nhắc; trả lời tin thì kèm tin gốc;
+      // có định dạng thì kèm định dạng
+      const res = await api.sendMessage(toZaloMessage(text, mentions, replyTo, styles), threadId, toZaloType(type));
       return { msgId: res.message?.msgId !== undefined ? String(res.message.msgId) : null };
     },
     // Gửi file theo thứ tự như gửi tay: chùm ảnh, rồi file khác, rồi tin chữ SAU CÙNG (nhắc tên + trả lời đi cùng phần chữ)
     sendFiles: async (item) =>
       sendFilesThenText(item, (content) => api.sendMessage(content, item.threadId, toZaloType(item.threadType)), (text) =>
-        toZaloMessage(text, item.mentions, item.replyTo),
+        toZaloMessage(text, item.mentions, item.replyTo, item.styles),
       ),
     forwardText: async (threadId, type, text) => forwardedMsgId(await api.forwardMessage({ message: text }, [threadId], toZaloType(type))),
     sendTyping: async (threadId, type) => {

@@ -59,7 +59,10 @@ Quên mật khẩu dashboard: `pnpm reset-password` rồi tải lại trang đ�
 tới nick Zalo hay tin nhắn).
 
 Dashboard mở vào trang Hội thoại như Zalo (đọc tin cũ, xem ảnh/file, gửi
-ngay / hẹn giờ / lưu nháp; rê chuột vào tin có Trả lời, Chia sẻ tới tối đa 100 hội thoại, Copy, Chọn nhiều tin
+ngay / hẹn giờ / lưu nháp; nút Gửi hình ảnh (chùm ảnh) và Đính kèm File (thẻ file, kể cả ảnh) gửi ngay file vừa chọn; dán
+hoặc kéo thả ảnh / file vào ô soạn thì file nằm chờ, Enter mới gửi; nút Định dạng tin nhắn (Ctrl+Shift+X) bật thanh đậm,
+nghiêng, gạch, cỡ chữ, màu, gạch đầu dòng, đánh số, thụt lề như Zalo - bật thì dán giữ định dạng, tắt thì dán chữ trơn;
+rê chuột vào tin có Trả lời, Chia sẻ tới tối đa 100 hội thoại, Copy, Chọn nhiều tin
 nhắn, Xóa khỏi kho, nút Thích + thanh 6 cảm xúc để thả cảm xúc; gõ tin là gửi ngay, tin hiện liền trong khung chat; tìm kiếm không phân biệt dấu ngay trong cột trái).
 Thanh bên trái: avatar nick (chấm màu = trạng thái nghe tin, bấm mở Tài khoản Zalo), Hội thoại, Hàng đợi gửi, nút
 Trình chiếu; dưới cùng Tổng quan (thống kê, khoảng mất kết nối, ở `/overview`) và nút bánh răng.

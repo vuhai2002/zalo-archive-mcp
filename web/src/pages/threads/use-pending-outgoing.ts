@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
-import type { ArchivedMessage, OutboxItem, OutboxStatus } from "../../archive-api-types";
+import type { ArchivedMessage, OutboxItem, OutboxStatus, TextStyleSpan } from "../../archive-api-types";
 import { api } from "../../dashboard-api-client";
 
 /** Tin vừa gõ trên dashboard, đang chờ daemon gửi + listener ghi lại vào kho */
-export type PendingOutgoing = { item: OutboxItem; text: string; quote: ArchivedMessage | null; failed: string | null; sentSeenAt: number | null };
+export type PendingOutgoing = {
+  item: OutboxItem;
+  text: string;
+  /** Định dạng chữ (thanh Định dạng tin nhắn) để bong bóng tạm hiện giống tin thật */
+  styles: TextStyleSpan[];
+  quote: ArchivedMessage | null;
+  failed: string | null;
+  sentSeenAt: number | null;
+};
 
 const TICK_MS = 700;
 /** Đã gửi mà quá lâu chưa thấy tin trong kho (vd đang xem đoạn cũ): thôi giữ bong bóng tạm, tải lại phần mới nhất */
@@ -36,10 +44,10 @@ export function usePendingOutgoing(o: {
   live.current = { pending, have };
 
   const add = useCallback(
-    (item: OutboxItem, text: string, quote: ArchivedMessage | null) => {
+    (item: OutboxItem, text: string, quote: ArchivedMessage | null, styles: TextStyleSpan[] = []) => {
       stickToBottom.current = true;
       if (!atLatest) backToLatest();
-      setPending((cur) => [...cur, { item, text, quote, failed: null, sentSeenAt: null }]);
+      setPending((cur) => [...cur, { item, text, styles, quote, failed: null, sentSeenAt: null }]);
     },
     [atLatest, backToLatest, stickToBottom],
   );

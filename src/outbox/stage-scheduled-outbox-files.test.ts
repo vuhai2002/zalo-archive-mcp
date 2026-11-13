@@ -53,7 +53,8 @@ describe("chép file của tin hẹn giờ", () => {
       enqueueOutboxItem(db, { threadId: "u-lan", threadType: "user", text: "", mode: "single", notBefore: null, batchId: null, createdBy: "mcp", note: null, status: "approved", files });
     add(pending.files);
     db.prepare("UPDATE outbox SET status = 'sent' WHERE id = ?").run(add(done.files));
-    assert.equal(sweepStagedFiles(db, d.stagingDir), 1);
+    assert.equal(sweepStagedFiles(db, d.stagingDir), 0, "thư mục vừa tạo (có thể là file vừa tải lên chưa gửi) được chừa");
+    assert.equal(sweepStagedFiles(db, d.stagingDir, { now: Date.now() + 2 * 3600_000 }), 1);
     assert.ok(fs.existsSync(pending.stagedDir!));
     assert.ok(!fs.existsSync(done.stagedDir!));
     assert.equal(sweepStagedFiles(db, path.join(d.root, "chua-co")), 0, "chưa có thư mục thì thôi");

@@ -39,6 +39,36 @@ index ce5d95e1ea1791f5225e7d4a6f2cd734f0c2d67d..90505b986382ef166c30605c7e920ed0
                  }
                  if (cmd == 602 && subCmd == 0) {
                      const parsedData = (await decodeEventData(parsed, this.cipherKey)).data;
+diff --git a/dist/apis/sendMessage.js b/dist/apis/sendMessage.js
+index 5bda5bc8b587cd2cc24b08c60590d206c3315748..ab9ca76e51b85c8c4ccf2df25df129bfae6d022d 100644
+--- a/dist/apis/sendMessage.js
++++ b/dist/apis/sendMessage.js
+@@ -240,8 +240,9 @@ export const sendMessageFactory = apiFactory()((api, ctx, utils) => {
+         const isSingleFile = attachments.length == 1;
+         const isGroupMessage = type == ThreadType.Group;
+         const canBeDesc = isSingleFile && ["jpg", "jpeg", "png", "webp"].includes(firstExtFile);
+-        const gifFiles = attachments.filter((e) => getFileExtension(typeof e == "string" ? e : e.filename) == "gif");
+-        attachments = attachments.filter((e) => getFileExtension(typeof e == "string" ? e : e.filename) != "gif");
++        const isGifSticker = (e) => getFileExtension(typeof e == "string" ? e : e.filename) == "gif" && !(typeof e != "string" && e.metadata && e.metadata.asFile);
++        const gifFiles = attachments.filter(isGifSticker);
++        attachments = attachments.filter((e) => !isGifSticker(e));
+         const uploadAttachment = attachments.length == 0 ? [] : await api.uploadAttachment(attachments, threadId, type);
+         const attachmentsData = [];
+         let indexInGroupLayout = 0;
+diff --git a/dist/apis/uploadAttachment.js b/dist/apis/uploadAttachment.js
+index 62a0419d455ba6efdbde6134737bd285ead62a7c..9e0f563815ecf824120e646df7267eda26f2abd5 100644
+--- a/dist/apis/uploadAttachment.js
++++ b/dist/apis/uploadAttachment.js
+@@ -69,7 +69,8 @@ export const uploadAttachmentFactory = apiFactory()((api, ctx, utils) => {
+                 data.params.grid = threadId;
+             else
+                 data.params.toid = threadId;
+-            switch (extFile) {
++            // zalo-archive-mcp: metadata.asFile = gửi như file thường (ảnh / video đính kèm dạng file, như nút kẹp giấy của Zalo)
++            switch (!isFilePath && source.metadata && source.metadata.asFile ? "" : extFile) {
+                 case "jpg":
+                 case "jpeg":
+                 case "png":
 diff --git a/dist/cjs/apis/listen.cjs b/dist/cjs/apis/listen.cjs
 index 1e8be5688e3684404b1452a4a2743db4d8a69fd6..255880cb36e4a59aadea46f0834587795fec1cee 100644
 --- a/dist/cjs/apis/listen.cjs
@@ -80,3 +110,33 @@ index 1e8be5688e3684404b1452a4a2743db4d8a69fd6..255880cb36e4a59aadea46f083458779
                  }
                  if (cmd == 602 && subCmd == 0) {
                      const parsedData = (await utils.decodeEventData(parsed, this.cipherKey)).data;
+diff --git a/dist/cjs/apis/sendMessage.cjs b/dist/cjs/apis/sendMessage.cjs
+index a6f4bab225e867ba1db7c863e66798ed5ac24857..95fa198db9236cd8d48d07a3f9c7beb73ad4d724 100644
+--- a/dist/cjs/apis/sendMessage.cjs
++++ b/dist/cjs/apis/sendMessage.cjs
+@@ -252,8 +252,9 @@ const sendMessageFactory = utils.apiFactory()((api, ctx, utils$1) => {
+         const isSingleFile = attachments.length == 1;
+         const isGroupMessage = type == Enum.ThreadType.Group;
+         const canBeDesc = isSingleFile && ["jpg", "jpeg", "png", "webp"].includes(firstExtFile);
+-        const gifFiles = attachments.filter((e) => utils.getFileExtension(typeof e == "string" ? e : e.filename) == "gif");
+-        attachments = attachments.filter((e) => utils.getFileExtension(typeof e == "string" ? e : e.filename) != "gif");
++        const isGifSticker = (e) => utils.getFileExtension(typeof e == "string" ? e : e.filename) == "gif" && !(typeof e != "string" && e.metadata && e.metadata.asFile);
++        const gifFiles = attachments.filter(isGifSticker);
++        attachments = attachments.filter((e) => !isGifSticker(e));
+         const uploadAttachment = attachments.length == 0 ? [] : await api.uploadAttachment(attachments, threadId, type);
+         const attachmentsData = [];
+         let indexInGroupLayout = 0;
+diff --git a/dist/cjs/apis/uploadAttachment.cjs b/dist/cjs/apis/uploadAttachment.cjs
+index ba6fc4ba408813ceee423320a0ad541d7ecbd1af..51ee4a8c4811f5555b334e9583b79a1f93a24413 100644
+--- a/dist/cjs/apis/uploadAttachment.cjs
++++ b/dist/cjs/apis/uploadAttachment.cjs
+@@ -81,7 +81,8 @@ const uploadAttachmentFactory = utils.apiFactory()((api, ctx, utils$1) => {
+                 data.params.grid = threadId;
+             else
+                 data.params.toid = threadId;
+-            switch (extFile) {
++            // zalo-archive-mcp: metadata.asFile = gửi như file thường (ảnh / video đính kèm dạng file, như nút kẹp giấy của Zalo)
++            switch (!isFilePath && source.metadata && source.metadata.asFile ? "" : extFile) {
+                 case "jpg":
+                 case "jpeg":
+                 case "png":

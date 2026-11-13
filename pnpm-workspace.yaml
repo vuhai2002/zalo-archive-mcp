@@ -10,6 +10,8 @@ allowBuilds:
   esbuild: true # binary của tsx
 
 # zca-js 2.2.0 trên npm bỏ sót tin 1-1 tới bằng cmd 551 (chỉ xử lý 501). Bản vá chép đúng
-# sửa của PR #378 upstream (đã merge, chưa phát hành). Lên zca-js mới có sửa này thì gỡ patch.
+# sửa của PR #378 upstream (đã merge, chưa phát hành). Lên zca-js mới có sửa này thì gỡ phần đó.
+# Bản vá còn thêm cờ `metadata.asFile` cho file gửi kèm: ảnh / video / gif đi như file thường (nút
+# Đính kèm File của Zalo) thay vì zca-js tự đoán theo đuôi tên file. Lên bản mới phải vá lại phần này.
 patchedDependencies:
   zca-js@2.2.0: patches/zca-js@2.2.0.patch

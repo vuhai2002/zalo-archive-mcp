@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import type { MessageContent, SendMessageResponse } from "zca-js";
 import type { OutboxFile } from "../storage/outbox-item-mapping.js";
-import { sendFilesThenText, splitFilesForSending } from "./outbox-zalo-attachments.js";
+import { sendFilesThenText, splitFilesForSending, toAttachmentSources } from "./outbox-zalo-attachments.js";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outbox-files-"));
 const file = (name: string, kind: OutboxFile["kind"]): OutboxFile => {
@@ -59,5 +59,19 @@ describe("gửi file qua Zalo: chùm ảnh, rồi file khác, rồi chữ sau c�
   it("chia nhóm: bỏ nhóm rỗng; video đi cùng nhóm file thường", () => {
     const groups = splitFilesForSending([file("clip.mp4", "video"), file("ghi-chu.txt", "file")]);
     assert.deepEqual(groups.map((g) => g.map((x) => x.name)), [["clip.mp4", "ghi-chu.txt"]]);
+  });
+});
+
+describe("ảnh / video chọn bằng nút Đính kèm File", () => {
+  it("mục loại file mang cờ asFile để zca-js gửi thẻ file; ảnh của chùm thì không", async () => {
+    const [asFile, asPhoto] = await toAttachmentSources([file("anh-mau.jpg", "file"), file("anh-chum.jpg", "image")]);
+    const meta = (s: unknown) => (s as { metadata: Record<string, unknown> }).metadata;
+    assert.equal(meta(asFile).asFile, true);
+    assert.equal(meta(asPhoto).asFile, undefined);
+  });
+
+  it("ảnh dạng file đi chung nhóm file thường, không vào chùm ảnh", () => {
+    const groups = splitFilesForSending([file("anh-mau.jpg", "file"), file("anh-chum.jpg", "image")]);
+    assert.deepEqual(groups.map((g) => g.map((x) => x.name)), [["anh-chum.jpg"], ["anh-mau.jpg"]]);
   });
 });

@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  zca-js@2.2.0: 135d1b8b5462cd391b75f1a14c7ff58992b23516a027b42325a2c6504fb705b0
+  zca-js@2.2.0: c0fe916e6df7a7e6ac53de545f1c294b6a6e56f3560edab2f9f6d6db825a937d
 
 importers:
 
@@ -34,7 +34,7 @@ importers:
         version: 0.2.3
       zca-js:
         specifier: 2.2.0
-        version: 2.2.0(patch_hash=135d1b8b5462cd391b75f1a14c7ff58992b23516a027b42325a2c6504fb705b0)
+        version: 2.2.0(patch_hash=c0fe916e6df7a7e6ac53de545f1c294b6a6e56f3560edab2f9f6d6db825a937d)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -2571,7 +2571,7 @@ snapshots:
 
   xz-decompress@0.2.3: {}
 
-  zca-js@2.2.0(patch_hash=135d1b8b5462cd391b75f1a14c7ff58992b23516a027b42325a2c6504fb705b0):
+  zca-js@2.2.0(patch_hash=c0fe916e6df7a7e6ac53de545f1c294b6a6e56f3560edab2f9f6d6db825a937d):
     dependencies:
       crypto-js: 4.2.0
       form-data: 4.0.6

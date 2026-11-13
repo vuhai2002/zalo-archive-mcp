@@ -1,8 +1,11 @@
 import { Hono } from "hono";
+import { resolveUploads, UploadRejected, type UploadUse } from "../../outbox/dashboard-upload-store.js";
 import { enqueueSingle, READ_ONLY_ERROR } from "../../outbox/enqueue-outbox-request.js";
 import { recallProblem } from "../../outbox/outbox-recall-loop.js";
+import { sweepStagedFiles } from "../../outbox/stage-scheduled-outbox-files.js";
 import { requestRecall } from "../../storage/outbox-recall-store.js";
 import { sendScheduledNow } from "../../storage/outbox-send-now-store.js";
+import type { OutboxFile } from "../../storage/outbox-item-mapping.js";
 import {
   approveDraft,
   cancelOutboxItem,
@@ -45,6 +48,14 @@ export function outboxAndSettingsRoutes(ctx: DashboardContext): Hono {
     if (replyTo !== undefined && (typeof replyTo !== "number" || !Number.isInteger(replyTo) || replyTo <= 0)) {
       return c.json({ error: "replyToMessageId phải là số tin trong kho" }, 400);
     }
+    if (body.uploads !== undefined && !Array.isArray(body.uploads)) return c.json({ error: "uploads phải là danh sách" }, 400);
+    let files: OutboxFile[] = [];
+    try {
+      files = resolveUploads(ctx.paths.outboxFilesDir, (body.uploads ?? []) as UploadUse[]);
+    } catch (err) {
+      if (err instanceof UploadRejected) return c.json({ error: err.message }, 400);
+      throw err;
+    }
     const r = enqueueSingle(
       { db, env, readOnly: ctx.readOnly() },
       {
@@ -54,10 +65,14 @@ export function outboxAndSettingsRoutes(ctx: DashboardContext): Hono {
         sendDate: body.sendDate,
         sendTime: body.sendTime,
         replyToMessageId: replyTo,
+        files,
+        styles: body.styles,
         createdBy: "dashboard",
       },
     );
     if (!r.ok) return c.json({ error: r.error }, 400);
+    // Dọn file của các tin đã gửi xong / file tải lên bỏ dở từ lâu (thư mục mới tải thì được chừa)
+    if (files.length > 0) sweepStagedFiles(db, ctx.paths.outboxFilesDir);
     return c.json(toOutboxItemDto(db, itemOr404(r.ids[0]!)!));
   });
 
