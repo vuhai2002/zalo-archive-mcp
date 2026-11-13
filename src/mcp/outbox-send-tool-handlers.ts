@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { AppEnv } from "../config/env-schema.js";
 import { enqueueBatch, enqueueSingle } from "../outbox/enqueue-outbox-request.js";
+import { markdownToZaloStyles } from "../outbox/markdown-to-zalo-styles.js";
 import { cancelOutboxItem, getOutboxItem, listOutbox, type OutboxStatus } from "../storage/outbox-store.js";
 import { formatLocalTime } from "./format-messages-for-model.js";
 import { sendNowAndAwait } from "./send-now-and-await.js";
@@ -35,7 +36,12 @@ const mentionNote = (m?: MentionArg[]) => (m?.length ? ` (nhắc tên ${m.map((x
 const replyNote = (id?: number) => (id === undefined ? "" : `, trả lời tin #${id}`);
 /** Tham số chung của tin lẻ: nhắc tên (@) và trả lời một tin (số tin #N ở read_thread) */
 type SingleArgs = { thread_id: string; text: string; mentions?: MentionArg[]; reply_to?: number };
-const singleReq = (a: SingleArgs) => ({ threadId: a.thread_id, text: a.text, mentions: toMentions(a.mentions), replyToMessageId: a.reply_to });
+/** Chữ Claude viết kiểu markdown (**đậm**, - danh sách, <red>...) -> chữ trơn + định dạng Zalo; chữ không dấu nào thì y như cũ */
+export const formattedText = (text: string) => {
+  const f = markdownToZaloStyles(text);
+  return { text: f.text, styles: f.styles };
+};
+const singleReq = (a: SingleArgs) => ({ threadId: a.thread_id, ...formattedText(a.text), mentions: toMentions(a.mentions), replyToMessageId: a.reply_to });
 
 export async function sendMessageTool(ctx: SendToolContext, args: SingleArgs): Promise<ToolResult> {
   return sendNowAndAwait(ctx, singleReq(args), {

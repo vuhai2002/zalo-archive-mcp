@@ -74,5 +74,7 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
   đầu dòng, đánh số, thụt lề, hoàn tác, mở rộng ô soạn; bật thì dán giữ định dạng, tắt thì dán chữ trơn.
 - Tin trong kho hiện thêm cỡ Rất lớn, danh sách gạch đầu dòng / đánh số và thụt lề; cỡ chữ đúng px của Zalo.
 - Test Hàng đợi không còn phụ thuộc năm của máy.
+- MCP: chữ gửi đi định dạng được bằng markdown + thẻ ngắn (đậm, nghiêng, gạch, màu, cỡ, danh sách, thụt lề); `send_file` có
+  `as_file` gửi ảnh / video thành thẻ file; `read_thread` / `search_messages` hiện lại dấu danh sách cho tin có danh sách.
 - Repo chuẩn bị public: gỡ dữ liệu thật khỏi toàn bộ lịch sử; luật "KHÔNG đưa dữ liệu thật vào repo" trong `CLAUDE.md`.
   Nhật ký thay đổi chi tiết chỉ giữ trên máy (`plans/`, không lên git).

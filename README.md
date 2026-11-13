@@ -106,13 +106,13 @@ claude mcp add zalo-archive -- node C:/duong-dan/zalo-archive-mcp/node_modules/t
 
 | Nhóm | Tool | Việc |
 |---|---|---|
-| Đọc | `list_threads`, `read_thread`, `search_messages`, `get_attachment`, `list_group_members`, `sync_status` | đọc (lùi / tới / quanh một tin), tìm (chữ, người gửi, tên file, ngày), xem file, thành viên nhóm, kho phủ tới đâu |
+| Đọc | `list_threads`, `read_thread`, `search_messages`, `get_attachment`, `list_group_members`, `sync_status` | đọc (lùi / tới / quanh một tin), tìm (chữ, người gửi, tên file, ngày), xem file, thành viên nhóm, kho phủ tới đâu; tin có danh sách hiện lại "- " / "1. " và thụt lề để Claude đọc đúng cấu trúc |
 | Đọc | `list_threads` với `unreplied_only` | hội thoại đang chờ bạn trả lời ("có tin nào tôi chưa rep"): 1-1 có tin cuối của người kia, nhóm có tin nhắc tên / trả lời bạn mà bạn chưa đáp; mặc định 14 ngày qua, đổi bằng `from_date`. Kho không biết bạn đã đọc tin trên điện thoại chưa, nên nhắn lại, nghe máy hoặc thả cảm xúc mới tính là đã trả lời |
-| Gửi | `send_message` | gửi ngay một tin, chờ tới khi gửi xong rồi báo kết quả; trong nhóm nhắc tên (@) được bằng `mentions`; trả lời (trích dẫn) một tin bằng `reply_to` = số tin #N ở `read_thread` |
+| Gửi | `send_message` | gửi ngay một tin, chờ tới khi gửi xong rồi báo kết quả; trong nhóm nhắc tên (@) được bằng `mentions`; trả lời (trích dẫn) một tin bằng `reply_to` = số tin #N ở `read_thread`; chữ định dạng được như thanh của Zalo bằng `**đậm**`, `*nghiêng*`, `~~gạch~~`, `<u>gạch chân</u>`, `<red>` / `<orange>` / `<yellow>` / `<green>`, `<small>` / `<big>` / `<huge>`, dòng `- ` / `1. ` (cũng dùng được cho `schedule_message`, `draft_message`, chữ của `send_file`) |
 | Gửi | `schedule_message` | hẹn giờ một tin chữ (hẹn kèm ảnh / file: `send_file` có `send_date` + `send_time`) |
 | Gửi | `send_batch` | gửi nhiều người, mỗi người một nội dung, chỉ bạn bè, có nhịp |
 | Gửi | `draft_message`, `list_outbox`, `cancel_outbox` | nháp để duyệt trên dashboard, xem / hủy hàng đợi |
-| Gửi | `send_file` | gửi file / ảnh / video (kèm chữ) - chỉ khi bạn bảo; nhiều ảnh một lần thành một chùm như Zalo, chữ luôn gửi SAU ảnh / file; Claude liệt kê người nhận + file + chữ, ứng dụng hỏi bạn duyệt mỗi lần; thêm `send_date` + `send_time` là hẹn giờ (kho chép file vào `outbox-files/` của nick ngay lúc hẹn, daemon tự gửi đúng giờ); file bí mật (.env, khóa, mật khẩu) và dữ liệu nội bộ của kho bị chặn |
+| Gửi | `send_file` | gửi file / ảnh / video (kèm chữ) - chỉ khi bạn bảo; nhiều ảnh một lần thành một chùm như Zalo, `as_file: true` thì mọi file (kể cả ảnh / video) đi thành thẻ file như nút Đính kèm File; chữ luôn gửi SAU ảnh / file; Claude liệt kê người nhận + file + chữ, ứng dụng hỏi bạn duyệt mỗi lần; thêm `send_date` + `send_time` là hẹn giờ (kho chép file vào `outbox-files/` của nick ngay lúc hẹn, daemon tự gửi đúng giờ); file bí mật (.env, khóa, mật khẩu) và dữ liệu nội bộ của kho bị chặn |
 | Gửi | `react_to_message` | thả cảm xúc (👍 ❤️ 😆 😮 😭 😡) vào một tin, số tin #N ở `read_thread` - chỉ khi bạn bảo |
 | Gửi | `recall_message` | thu hồi tin kho đã gửi - chỉ khi bạn bảo; Claude Code / Claude Desktop hỏi duyệt trước mỗi lần |
 

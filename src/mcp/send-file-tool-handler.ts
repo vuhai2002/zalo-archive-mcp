@@ -4,7 +4,7 @@ import { enqueueSingle, READ_ONLY_ERROR } from "../outbox/enqueue-outbox-request
 import { resolveOutboxFiles } from "../outbox/resolve-outbox-files.js";
 import { stageFilesForLater, sweepStagedFiles } from "../outbox/stage-scheduled-outbox-files.js";
 import type { OutboxFile } from "../storage/outbox-item-mapping.js";
-import { toMentions, type MentionArg, type SendToolContext } from "./outbox-send-tool-handlers.js";
+import { formattedText, toMentions, type MentionArg, type SendToolContext } from "./outbox-send-tool-handlers.js";
 import { sendNowAndAwait } from "./send-now-and-await.js";
 import { formatLocalTime } from "./format-messages-for-model.js";
 import { toolError, toolOk, type ToolResult } from "./tool-result.js";
@@ -19,6 +19,8 @@ export type SendFileArgs = {
   text?: string;
   mentions?: MentionArg[];
   reply_to?: number;
+  /** Gửi mọi file thành thẻ file, kể cả ảnh / video (như nút Đính kèm File của Zalo); mặc định ảnh thành ảnh / chùm ảnh */
+  as_file?: boolean;
   /** Hẹn giờ: cả hai cùng có thì xếp hẹn giờ thay vì gửi ngay */
   send_date?: string;
   send_time?: string;
@@ -42,11 +44,12 @@ export async function sendFileTool(ctx: SendToolContext, args: SendFileArgs): Pr
     { paths: args.file_paths, attachmentIds: args.attachment_ids },
   );
   if ("error" in resolved) return toolError(resolved.error);
-  const files = resolved.files;
+  // as_file: ảnh / video cũng đi thành thẻ file (daemon gắn cờ asFile của bản vá zca-js cho các đuôi này)
+  const files = args.as_file ? resolved.files.map((f) => ({ ...f, kind: "file" as const })) : resolved.files;
   if (args.send_date !== undefined || args.send_time !== undefined) return scheduleFiles(ctx, args, files);
   return sendNowAndAwait(
     ctx,
-    { threadId: args.thread_id, text: args.text ?? "", files, mentions: toMentions(args.mentions), replyToMessageId: args.reply_to },
+    { threadId: args.thread_id, ...formattedText(args.text ?? ""), files, mentions: toMentions(args.mentions), replyToMessageId: args.reply_to },
     {
       defaultWaitMs: DEFAULT_WAIT_MS,
       describe: (item) => `Đã gửi ${files.length} file tới thread_id=${item.threadId}: ${describeFiles(files)}${item.text ? `, kèm chữ "${item.text.slice(0, 80)}"` : ""}`,
@@ -68,7 +71,7 @@ function scheduleFiles(ctx: SendToolContext, args: SendFileArgs, files: OutboxFi
   }
   const r = enqueueSingle(ctx, {
     threadId: args.thread_id,
-    text: args.text ?? "",
+    ...formattedText(args.text ?? ""),
     files: staged.files,
     mentions: toMentions(args.mentions),
     replyToMessageId: args.reply_to,

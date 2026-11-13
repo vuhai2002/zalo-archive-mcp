@@ -1,5 +1,6 @@
 import { DateTime } from "luxon";
 import type { AttachmentRow, MessageRow, ThreadSummary } from "../storage/message-read-queries.js";
+import { textWithListMarkers } from "./format-rich-text-for-model.js";
 
 /** Định dạng dữ liệu kho thành chữ gọn cho model đọc. Module thuần. */
 
@@ -48,7 +49,9 @@ export function formatMessage(m: MessageRow, timeZone: string): string {
     m.source !== "live" ? `nguồn: ${m.source}` : null,
   ].filter(Boolean);
   const head = `[#${m.id} ${formatLocalTime(m.sentAt, timeZone)}] ${who}${flags.length ? ` (${flags.join(", ")})` : ""}:`;
-  const body = m.text ? ` ${m.text}` : "";
+  // Tin có danh sách / thụt lề: thêm lại "- " / "1. " (Zalo không lưu dấu đó trong chữ)
+  const text = m.text ? textWithListMarkers(m.text, m.textStyles ?? []) : "";
+  const body = text ? ` ${text}` : "";
   return [head + body, ...m.attachments.map(formatAttachment), ...formatReactions(m)].join("\n");
 }
 

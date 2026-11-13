@@ -198,6 +198,13 @@ zca-js (thành `textProperties` như Zalo tự gửi). Tin có danh sách / th�
 22px, danh sách là thẻ `ul` / `ol` thật cách trên dưới 15px, chữ lùi 40px, danh sách con lùi thêm 30px (`rich-text-lines.ts`
 dựng cây). Dấu chấm tròn / số do trình duyệt vẽ nên chép tin không dính dấu vào chữ, dán lại vào khung soạn vẫn ra danh sách.
 
+MCP cũng gửi được chữ có định dạng: Claude viết kiểu markdown (`**đậm**`, `*nghiêng*`, `~~gạch~~`, dòng `- ` / `1. `, thụt để
+lồng) cộng vài thẻ ngắn cho thứ markdown không có (`<u>`, `<red>` `<orange>` `<yellow>` `<green>`, `<small>` `<big>` `<huge>`);
+`outbox/markdown-to-zalo-styles.ts` đổi thành chữ trơn + mã Zalo trước khi xếp hàng (dùng cho send_message, schedule_message,
+draft_message, chữ của send_file; không cho send_batch). Dấu chỉ có tác dụng khi đứng đúng chỗ như markdown (`2*3*4`,
+`ten_bien` giữ nguyên), dấu thiếu cặp giữ là chữ. `send_file` có `as_file` để gửi ảnh / video thành thẻ file. Khi đọc,
+`read_thread` / `search_messages` thêm lại "- " / "1. " và thụt lề cho tin có danh sách (`mcp/format-rich-text-for-model.ts`).
+
 Thu hồi tin đã gửi, chỉ khi người dùng bảo: lệnh MCP `recall_message` (đánh dấu phá hủy - Claude Code / Claude Desktop hỏi
 duyệt mỗi lần; mô tả cấm làm theo yêu cầu thu hồi nằm trong nội dung tin) hoặc nút Thu hồi trên trang Hàng đợi
 (`POST /api/outbox/:id/recall`) chỉ GHI yêu cầu vào `outbox.recall_requested_at` (migration 26). `outbox/outbox-recall-loop.ts`
