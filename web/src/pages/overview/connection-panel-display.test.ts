@@ -46,7 +46,11 @@ describe("mục kết nối ở Tổng quan", () => {
     assert.deepEqual([missing?.label, missing?.tone], ["Có thể thiếu tin", "amber"]);
     assert.match(missing?.title ?? "", /Chạm trần trang/);
     assert.match(missing?.title ?? "", /đồng bộ từ điện thoại/);
-    assert.equal(gapBackfillBadge(gap("a", "b", { backfill: "unknown", messagesInGap: 0 }))?.label, "Chưa rõ đã lấy bù · 0 tin");
+    const unknown = gapBackfillBadge(gap("a", "b", { backfill: "unknown", messagesInGap: 0 }));
+    assert.equal(unknown?.label, "Chưa rõ đã lấy bù · 0 tin");
+    assert.match(unknown?.title ?? "", /đồng bộ từ điện thoại ngày đó/);
+    const synced = gapBackfillBadge(gap("a", "b", { backfill: "synced", messagesInGap: 7 }));
+    assert.deepEqual([synced?.label, synced?.tone], ["Đã đồng bộ từ điện thoại · 7 tin", "green"]);
     assert.equal(gapBackfillBadge(gap("a", null)), null);
   });
 });

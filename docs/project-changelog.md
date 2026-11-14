@@ -91,3 +91,6 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
 - Khoảng listener không nghe ghi rõ Zalo đã gửi bù đủ chưa: mỗi lượt lấy bù lưu kết quả (đủ / dừng dở kèm lý do / đăng nhập lại
   bằng QR); `sync_status` và thẻ "Khoảng mất kết nối" ở Tổng quan hiện "Đã lấy bù đủ", "Có thể thiếu tin" (kèm cách lấy lại)
   hay "Chưa rõ", kèm số tin kho có trong khoảng - không còn gọi chung mọi khoảng là "có thể thiếu".
+- Máy thức mà kết nối không đứt thì kho vẫn chủ động xin Zalo gửi bù, để khoảng ngủ ngắn cũng có kết quả; lượt lấy bù dừng dở
+  thì lần kết nối sau xin lại ngay. Đồng bộ từ điện thoại phủ trọn một khoảng thì khoảng đó hiện "Đã đồng bộ từ điện thoại";
+  nhãn "Chưa rõ" chỉ cách làm cho chắc (đồng bộ điện thoại ngày đó).

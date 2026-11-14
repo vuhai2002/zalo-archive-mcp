@@ -38,6 +38,8 @@ export type ArchiveListenerHandle = {
   retryInfo: () => ListenerRetryInfo;
   /** Nối lại ngay thay vì chờ giờ hẹn; false nếu không có lần nối lại nào đang hẹn */
   reconnectNow: () => boolean;
+  /** Xin Zalo gửi bù tin lỡ ngay (máy vừa thức mà kết nối không đứt); false nếu đang mất kết nối hoặc đang có lượt dở */
+  requestMissedNow: () => boolean;
 };
 
 /** Mã giả khi `start()` ném (không phải close code thật) */
@@ -211,6 +213,7 @@ export function startArchiveListener(opts: ArchiveListenerOptions): ArchiveListe
       log.info("Người dùng bấm nối lại ngay");
       return retry.fireNow();
     },
+    requestMissedNow: () => (!stopped && connected && missed ? missed.requestNow() : false),
     stop: () => {
       stopped = true;
       retry.clear();

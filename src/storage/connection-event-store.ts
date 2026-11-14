@@ -98,8 +98,8 @@ export type ListenerGap = {
   asleep?: boolean;
   /** Daemon không chạy: tắt máy, khởi động lại daemon (Windows dừng tiến trình ngay, ghi bù lúc chạy lại) hay dừng hẳn */
   daemonStopped?: boolean;
-  /** Lượt xin Zalo gửi bù sau khoảng này: đủ / có thể thiếu / chưa rõ (`listener-gap-backfill.ts`) */
-  backfill?: "filled" | "incomplete" | "unknown";
+  /** Lượt xin Zalo gửi bù sau khoảng này: đủ / có thể thiếu / chưa rõ, hoặc đã đồng bộ từ điện thoại (`listener-gap-backfill.ts`) */
+  backfill?: "filled" | "incomplete" | "unknown" | "synced";
   /** Số tin Zalo gửi lại ở lượt lấy bù đủ */
   backfillItems?: number;
   /** Vì sao có thể thiếu (dừng dở, đăng nhập lại bằng QR...) */

@@ -103,7 +103,9 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
     if (lastTick.connected && now - lastTick.at > HEARTBEAT_STALE_MS) {
       const fromIso = new Date(lastTick.at).toISOString();
       recordSuspendGap(db, { fromIso, nowIso: new Date(now).toISOString(), listenerConnected: connected });
-      log.warn({ from: fromIso, minutes: Math.round((now - lastTick.at) / 60_000) }, "Máy vừa ngủ dậy (hoặc daemon bị treo) - đã ghi khoảng không nghe");
+      // Kết nối sống qua giấc ngủ thì không có lần nối lại nào để lấy bù: chủ động xin bù để biết khoảng này đủ chưa
+      const asked = connected && listener.requestMissedNow();
+      log.warn({ from: fromIso, minutes: Math.round((now - lastTick.at) / 60_000), asked }, "Máy vừa ngủ dậy (hoặc daemon bị treo) - đã ghi khoảng không nghe");
     }
     lastTick = { at: now, connected };
     if (connected) setMeta(db, "listener_heartbeat_at", new Date(now).toISOString());

@@ -6,6 +6,7 @@ import type { ListenerGap } from "./connection-event-store.js";
 import { annotateGapsWithBackfill } from "./listener-gap-backfill.js";
 import { upsertMessage } from "./message-write-store.js";
 import { openArchiveDatabase } from "./open-archive-database.js";
+import { recordPhoneSyncCoverage } from "./phone-sync-coverage-store.js";
 
 const FROM = "2026-03-10T07:00:00.000Z";
 const TO = "2026-03-10T09:00:00.000Z";
@@ -22,6 +23,13 @@ describe("annotateGapsWithBackfill", () => {
     }
     const [g] = annotateGapsWithBackfill(db, [{ from: FROM, to: TO, closeCode: null, asleep: true }]);
     assert.deepEqual([g?.backfill, g?.messagesInGap, g?.backfillItems], ["filled", 2, 2]);
+  });
+
+  it("đồng bộ từ điện thoại phủ trọn khoảng: ghi đã đồng bộ, kể cả khi lấy bù chưa rõ", () => {
+    const db = openArchiveDatabase(":memory:");
+    recordPhoneSyncCoverage(db, { fromTs: Date.parse("2026-03-10T00:00:00.000Z"), toTs: Date.parse("2026-03-10T23:59:59.999Z"), backupAt: "2026-03-11T00:00:00.000Z" });
+    const [g] = annotateGapsWithBackfill(db, [{ from: FROM, to: TO, closeCode: null }]);
+    assert.equal(g?.backfill, "synced");
   });
 
   it("khoảng chưa nối lại hay chỉ suy từ heartbeat: không gắn gì", () => {

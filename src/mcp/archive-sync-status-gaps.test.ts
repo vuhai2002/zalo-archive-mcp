@@ -21,10 +21,17 @@ describe("describeListenerGaps (sync_status)", () => {
     assert.match(out, /đồng bộ từ điện thoại/);
   });
 
-  it("khoảng chưa rõ và khoảng chưa nối lại", () => {
+  it("khoảng chưa rõ (kèm cách làm cho chắc) và khoảng chưa nối lại", () => {
     const out = describeListenerGaps([gap({ backfill: "unknown", messagesInGap: 0 }), gap({ to: null })], t, 7);
     assert.match(out, /chưa rõ đã lấy bù đủ chưa/);
+    assert.match(out, /đồng bộ từ điện thoại ngày đó/);
     assert.match(out, /HIỆN VẪN CHƯA NỐI LẠI/);
+  });
+
+  it("khoảng đã đồng bộ từ điện thoại", () => {
+    const out = describeListenerGaps([gap({ backfill: "synced", messagesInGap: 7 })], t, 7);
+    assert.match(out, /ĐÃ ĐỒNG BỘ TỪ ĐIỆN THOẠI \(kho có 7 tin trong khoảng này\)/);
+    assert.match(out, /1 khoảng đã đồng bộ từ điện thoại/);
   });
 
   it("dòng tóm tắt đếm theo kết quả", () => {

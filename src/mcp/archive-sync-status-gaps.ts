@@ -7,7 +7,8 @@ function backfillText(g: ListenerGap): string {
   if (g.backfill === "incomplete") {
     return ` - CÓ THỂ THIẾU TIN: ${g.backfillDetail ?? "lấy bù dừng dở"}; ${inGap}. Lấy lại bằng đồng bộ từ điện thoại trên dashboard`;
   }
-  if (g.backfill === "unknown") return ` - chưa rõ đã lấy bù đủ chưa (${inGap})`;
+  if (g.backfill === "unknown") return ` - chưa rõ đã lấy bù đủ chưa (${inGap}; muốn chắc chắn thì đồng bộ từ điện thoại ngày đó)`;
+  if (g.backfill === "synced") return ` - ĐÃ ĐỒNG BỘ TỪ ĐIỆN THOẠI (${inGap})`;
   return "";
 }
 
@@ -28,6 +29,7 @@ export function describeListenerGaps(gaps: ListenerGap[], t: (iso: string | null
   );
   return (
     `Khoảng KHÔNG nghe trong ${lookbackDays} ngày - ${n("filled")} khoảng đã lấy bù đủ, ${n("incomplete")} khoảng có thể thiếu tin, ` +
-    `${n("unknown")} khoảng chưa rõ (khoảng trước khi kho ghi kết quả lấy bù, hay nối lại liền không xin bù):\n${lines.join("\n")}`
+    `${n("unknown")} khoảng chưa rõ, ${n("synced")} khoảng đã đồng bộ từ điện thoại (chưa rõ: khoảng trước khi kho ghi kết quả ` +
+    `lấy bù, hay nối lại liền không xin bù):\n${lines.join("\n")}`
   );
 }

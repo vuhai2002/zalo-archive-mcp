@@ -504,4 +504,14 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX backfill_runs_started ON backfill_runs (started_at);
   `,
+  // 36: các lượt đồng bộ từ điện thoại đã xong phủ khoảng thời gian nào (from_at NULL = từ đầu lịch sử) - khoảng listener
+  // không nghe nằm trọn trong đó thì chắc chắn đủ tin
+  `
+  CREATE TABLE phone_sync_coverage (
+    id          INTEGER PRIMARY KEY,
+    from_at     TEXT,
+    to_at       TEXT NOT NULL,
+    finished_at TEXT NOT NULL
+  );
+  `,
 ];

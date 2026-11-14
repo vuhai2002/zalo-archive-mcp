@@ -31,6 +31,16 @@ const page = (lastActionId: string | number | undefined, more: boolean | number,
 /** Chạy hết các hàng chờ bắt đầu lệch giờ (tin nhóm ~3,5 giây, cảm xúc ~9,5 và ~12,5, sự kiện nhóm ~15,5 giây) */
 const startAll = () => mock.timers.tick(18_000);
 
+/** Ngay sau onConnected: từng hàng chờ bắt đầu thì Zalo trả luôn một trang "hết" - cả lượt xong hẳn, không trang nào hết giờ */
+function completeRound(r: { onPage: (q: "user_messages" | "group_messages" | "user_reactions" | "group_reactions" | "group_events", p: unknown) => void }) {
+  const done = { count: 0, meta: { more: 0, lastActionId: "1" } };
+  r.onPage("user_messages", done);
+  for (const [ms, q] of [[3_500, "group_messages"], [6_000, "user_reactions"], [3_000, "group_reactions"], [3_000, "group_events"]] as const) {
+    mock.timers.tick(ms);
+    r.onPage(q, done);
+  }
+}
+
 function withTimers(fn: () => void) {
   mock.timers.enable({ apis: ["setTimeout"] });
   try {
@@ -43,7 +53,7 @@ function withTimers(fn: () => void) {
 describe("xin bù tin + cảm xúc lỡ", () => {
   it("mỗi lần kết nối một lượt cho cả năm hàng chờ, lệch giờ nhau; nối lại liền thì không xin lại", () =>
     withTimers(() => {
-      const { r, sent, advanceClock } = setup();
+      const { r, sent } = setup();
       r.onConnected();
       assert.deepEqual(sent, [{ cmd: 510, first: true, lastId: null }], "tin 1-1 ngay");
       mock.timers.tick(3_500);
@@ -51,10 +61,14 @@ describe("xin bù tin + cảm xúc lỡ", () => {
       startAll();
       assert.deepEqual(sent.map((s) => s.cmd), [510, 511, 610, 611, 603], "cảm xúc, sự kiện nhóm xin sau phần tin");
 
-      advanceClock(120_000);
-      r.onConnected();
+      // Lượt xong hẳn (Zalo báo hết trang) thì nối lại liền bỏ qua; lượt dừng dở thì lần nối sau xin lại ngay (test riêng)
+      const s2 = setup();
+      s2.r.onConnected();
+      completeRound(s2.r);
+      s2.advanceClock(120_000);
+      s2.r.onConnected();
       startAll();
-      assert.equal(sent.length, 5, "nối lại sau 2 phút thì bỏ qua");
+      assert.equal(s2.sent.length, 5, "nối lại sau 2 phút thì bỏ qua");
     }));
 
   it("còn trang thì xin tiếp bằng lastActionId, có nhịp; mỗi trang lưu mốc; tối đa MAX_PAGES trang", () =>
@@ -252,5 +266,40 @@ describe("ghi kết quả mỗi lượt lấy bù (để báo khoảng không ng
         [["user_messages", "incomplete"]],
       );
       assert.match(runs(db)[0]?.detail ?? "", /mất kết nối/i);
+    }));
+});
+
+describe("xin bù ngay khi máy vừa thức mà kết nối không đứt", () => {
+  it("requestNow xin bù ngay cả khi vừa xin gần đây (không chờ khoảng tối thiểu)", () =>
+    withTimers(() => {
+      const { r, sent, advanceClock } = setup();
+      r.onConnected();
+      completeRound(r);
+      advanceClock(60_000);
+      assert.equal(r.requestNow(), true);
+      startAll();
+      assert.deepEqual(sent.slice(5).map((s) => s.cmd), [510, 511, 610, 611, 603]);
+    }));
+
+  it("đang có lượt dở thì requestNow không xin chồng", () =>
+    withTimers(() => {
+      const { r, sent } = setup();
+      r.onConnected();
+      assert.equal(r.requestNow(), false);
+      assert.equal(sent.length, 1);
+    }));
+
+  it("lượt trước dừng dở (trang không về) thì lần kết nối sau xin lại ngay, không chờ khoảng tối thiểu", () =>
+    withTimers(() => {
+      const { r, sent, advanceClock } = setup();
+      r.onConnected();
+      r.onPage("user_messages", page("101", 1));
+      mock.timers.tick(4_000);
+      mock.timers.tick(9_000); // trang 2 không về: lượt tin 1-1 dừng dở
+      startAll();
+      const before = sent.length;
+      advanceClock(120_000);
+      r.onConnected();
+      assert.ok(sent.length > before, "nối lại sau 2 phút vẫn xin bù vì lượt trước chưa đủ");
     }));
 });

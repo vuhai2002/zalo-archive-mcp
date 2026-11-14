@@ -334,10 +334,17 @@ là "có thể thiếu" (kèm lý do, cách lấy lại: đồng bộ từ đi�
 bảng này, hay nối lại liền không xin bù); cộng số tin kho đang có trong khoảng. `sync_status` và thẻ "Khoảng mất kết nối"
 ở Tổng quan hiện các nhãn này, không còn gọi chung mọi khoảng là "có thể thiếu".
 
+Hai đường để khoảng không nghe không bị "chưa rõ":
+- Máy thức mà kết nối sống qua giấc ngủ (không có lần nối lại nào): vòng heartbeat thấy máy vừa thức thì chủ động xin bù
+  (`requestMissedNow`, không chờ khoảng tối thiểu giữa hai lượt). Lượt nào dừng dở thì lần kết nối sau xin lại ngay.
+- Đồng bộ từ điện thoại xong thì ghi khoảng nó phủ (`phone_sync_coverage`, migration 36, `phone-sync-coverage-store.ts`):
+  khoảng không nghe nằm trọn trong đó hiện "Đã đồng bộ từ điện thoại". Nhãn "chưa rõ" / "có thể thiếu" chỉ cách này.
+
 ## Bảng chính (`src/storage/archive-schema-migrations.ts`)
 
 `messages` (UNIQUE msg_id, cột `source`), `messages_fts`, `message_recalls`, `attachments`,
 `threads`, `connection_events` (tính khoảng listener không nghe), `backfill_runs` (kết quả mỗi lượt lấy bù),
+`phone_sync_coverage` (khoảng các lượt đồng bộ điện thoại đã phủ),
 `outbox` (mode single/batch),
 `send_control` (kill switch), `meta` (cài đặt gửi, trạng thái daemon, heartbeat).
 

@@ -35,8 +35,8 @@ export type ListenerGap = {
   asleep?: boolean;
   /** Daemon không chạy (tắt máy, khởi động lại daemon) */
   daemonStopped?: boolean;
-  /** Zalo đã gửi bù khoảng này: đủ / có thể thiếu / chưa rõ (khoảng trước khi kho ghi kết quả lấy bù) */
-  backfill?: "filled" | "incomplete" | "unknown";
+  /** Zalo đã gửi bù khoảng này: đủ / có thể thiếu / chưa rõ (khoảng trước khi kho ghi kết quả lấy bù) / đã đồng bộ từ điện thoại */
+  backfill?: "filled" | "incomplete" | "unknown" | "synced";
   /** Số tin Zalo gửi lại ở lượt lấy bù đủ */
   backfillItems?: number;
   /** Vì sao có thể thiếu */

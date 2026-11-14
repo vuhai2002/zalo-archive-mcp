@@ -45,7 +45,14 @@ export function gapBackfillBadge(g: ListenerGap): { label: string; tone: BadgeTo
     };
   }
   if (g.backfill === "unknown") {
-    return { label: `Chưa rõ đã lấy bù · ${inGap} tin`, tone: "gray", title: `Khoảng này chưa có kết quả lấy bù được ghi. Kho có ${inGap} tin trong khoảng này.` };
+    return {
+      label: `Chưa rõ đã lấy bù · ${inGap} tin`,
+      tone: "gray",
+      title: `Khoảng này chưa có kết quả lấy bù được ghi. Kho có ${inGap} tin trong khoảng này. Muốn chắc chắn: đồng bộ từ điện thoại ngày đó (Cài đặt > Đồng bộ và sao lưu).`,
+    };
+  }
+  if (g.backfill === "synced") {
+    return { label: `Đã đồng bộ từ điện thoại · ${inGap} tin`, tone: "green", title: `Một lượt đồng bộ từ điện thoại đã phủ trọn khoảng này. Kho có ${inGap} tin trong khoảng này.` };
   }
   return null;
 }

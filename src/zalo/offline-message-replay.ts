@@ -33,6 +33,11 @@ import {
  */
 export type MissedMessageRequester = {
   onConnected: () => void;
+  /**
+   * Xin bù ngay (không chờ khoảng tối thiểu) - dùng khi máy vừa thức mà kết nối không đứt: không có lần nối lại nào nên
+   * lượt lấy bù thường không chạy. false nếu đang có lượt dở.
+   */
+  requestNow: () => boolean;
   onPage: (queue: ReplayQueue, page: unknown) => void;
   /** Tin / cảm xúc nhận trực tiếp: đẩy mốc của hàng chờ đó lên nếu hàng chờ đã lấy bù xong */
   onLiveEvent: (queue: ReplayQueue, msgId: unknown) => void;
@@ -111,6 +116,8 @@ export function createMissedMessageRequester(
   /** Kết thúc lượt của một hàng chờ và ghi kết quả (đủ / dừng dở kèm lý do) để báo khoảng không nghe đã lấy bù đủ chưa */
   const finish = (queue: ReplayQueue, r: Run, outcome: "complete" | "incomplete", detail: string | null) => {
     if (run[queue] === r) delete run[queue];
+    // Lượt dừng dở: lần kết nối sau xin lại ngay, không chờ khoảng tối thiểu giữa hai lượt
+    if (outcome === "incomplete") lastRequestAt = Number.NEGATIVE_INFINITY;
     try {
       const finishedAt = new Date(now()).toISOString();
       recordBackfillRun(db, { queue, startedAt: r.startedAt, finishedAt, pages: r.pages, items: r.items, outcome, detail });
@@ -157,21 +164,33 @@ export function createMissedMessageRequester(
     ask(queue, r, cursor, true);
   };
 
+  /** Một lượt cho cả năm hàng chờ, lệch giờ nhau; trong lúc lấy bù tin trực tiếp chưa được đẩy mốc */
+  const startRound = () => {
+    caughtUp.clear();
+    lastRequestAt = now();
+    for (const q of QUEUES) {
+      const { startMs, spreadMs } = QUEUE[q];
+      if (startMs === 0) begin(q);
+      else later(startMs + Math.floor(random() * spreadMs), () => begin(q));
+    }
+  };
+
   return {
     onConnected: () => {
-      // Kết nối mới: chưa lấy bù xong hàng nào, tin trực tiếp chưa được đẩy mốc
-      caughtUp.clear();
       const sinceLast = now() - lastRequestAt;
       if (sinceLast < opts.minIntervalMs) {
+        // Kết nối mới: tin trực tiếp chưa được đẩy mốc tới khi lấy bù xong (lần này bỏ qua nên chờ lần sau)
+        caughtUp.clear();
         log.debug({ sinceLastMs: sinceLast }, "Vừa xin bù tin lỡ gần đây - lần nối lại này bỏ qua");
         return;
       }
-      lastRequestAt = now();
-      for (const q of QUEUES) {
-        const { startMs, spreadMs } = QUEUE[q];
-        if (startMs === 0) begin(q);
-        else later(startMs + Math.floor(random() * spreadMs), () => begin(q));
-      }
+      startRound();
+    },
+
+    requestNow: () => {
+      if (timers.size > 0 || QUEUES.some((q) => run[q])) return false;
+      startRound();
+      return true;
     },
 
     onPage: (queue, page) => {
