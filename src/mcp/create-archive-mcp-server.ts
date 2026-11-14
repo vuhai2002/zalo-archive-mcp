@@ -105,7 +105,7 @@ export function createArchiveMcpServer(ctx: ReadToolContext & { readonly readOnl
     "sync_status",
     {
       description:
-        "Kho phủ tới đâu: số tin, các khoảng listener KHÔNG nghe (tin có thể thiếu), media, trạng thái gửi. Gọi trước khi khẳng định 'không có tin'.",
+        "Kho phủ tới đâu: số tin, các khoảng listener KHÔNG nghe, mỗi khoảng ghi Zalo đã gửi bù đủ hay có thể thiếu tin, media, trạng thái gửi. Gọi trước khi khẳng định 'không có tin'; chỉ báo 'có thể thiếu' cho khoảng được ghi là có thể thiếu hoặc chưa rõ.",
       inputSchema: {},
       annotations: READ_ONLY,
     },

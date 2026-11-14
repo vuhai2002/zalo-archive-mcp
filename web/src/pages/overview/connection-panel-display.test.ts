@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { ListenerGap } from "../../archive-api-types";
-import { gapReason, isQuickGap, shortEventDetail, visibleConnectionEvents } from "./connection-panel-display";
+import { gapBackfillBadge, gapReason, isQuickGap, shortEventDetail, visibleConnectionEvents } from "./connection-panel-display";
 
 const NOW = Date.parse("2026-10-31T05:00:00.000Z");
 const gap = (from: string, to: string | null, extra: Partial<ListenerGap> = {}): ListenerGap => ({ from, to, closeCode: null, ...extra });
@@ -37,5 +37,16 @@ describe("mục kết nối ở Tổng quan", () => {
     assert.equal(shortEventDetail("Máy ngủ hoặc tiến trình bị treo (ghi bù khi chạy tiếp)"), "Máy ngủ / tiến trình bị treo");
     assert.equal(shortEventDetail("Nghe tiếp sau khi máy thức"), "Nghe tiếp sau khi máy thức");
     assert.equal(shortEventDetail(null), null);
+  });
+
+  it("nhãn lấy bù: đủ (kèm số tin), có thể thiếu (kèm lý do), chưa rõ; khoảng chưa gắn thì không có nhãn", () => {
+    const filled = gapBackfillBadge(gap("a", "b", { backfill: "filled", backfillItems: 20, messagesInGap: 30 }));
+    assert.deepEqual([filled?.label, filled?.tone], ["Đã lấy bù đủ · 30 tin", "green"]);
+    const missing = gapBackfillBadge(gap("a", "b", { backfill: "incomplete", backfillDetail: "Chạm trần trang", messagesInGap: 3 }));
+    assert.deepEqual([missing?.label, missing?.tone], ["Có thể thiếu tin", "amber"]);
+    assert.match(missing?.title ?? "", /Chạm trần trang/);
+    assert.match(missing?.title ?? "", /đồng bộ từ điện thoại/);
+    assert.equal(gapBackfillBadge(gap("a", "b", { backfill: "unknown", messagesInGap: 0 }))?.label, "Chưa rõ đã lấy bù · 0 tin");
+    assert.equal(gapBackfillBadge(gap("a", null)), null);
   });
 });

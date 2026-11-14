@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { storageSummaryState } from "../../archive/archive-storage-summary.js";
 import { startOfLocalDayDaysAgoUtc, startOfTodayUtc } from "../../shared/local-date-range.js";
 import { listenerGaps, recentConnectionEvents } from "../../storage/connection-event-store.js";
+import { annotateGapsWithBackfill } from "../../storage/listener-gap-backfill.js";
 import { HEARTBEAT_STALE_MS } from "../../storage/daemon-liveness.js";
 import { findThread, listThreadsPage, readThread } from "../../storage/message-read-queries.js";
 import { readThreadAfter, readThreadAround } from "../../storage/message-window-queries.js";
@@ -47,11 +48,15 @@ export function archiveBrowseRoutes(ctx: DashboardContext): Hono {
       daily: dailyMessageCounts(db, tz, days, now),
       // Cùng cửa sổ với biểu đồ ngày: từ 00:00 của ngày đầu tiên theo giờ kho
       topThreads: topThreadsSince(db, startOfLocalDayDaysAgoUtc(tz, days - 1, now), 10),
-      gaps: listenerGaps(db, new Date(now.getTime() - 7 * 86_400_000).toISOString(), {
-        lastHeartbeatAt: getMeta(db, "listener_heartbeat_at"),
-        nowIso: now.toISOString(),
-        staleAfterMs: HEARTBEAT_STALE_MS,
-      }),
+      // Mỗi khoảng kèm Zalo đã gửi bù đủ chưa + số tin kho có trong khoảng
+      gaps: annotateGapsWithBackfill(
+        db,
+        listenerGaps(db, new Date(now.getTime() - 7 * 86_400_000).toISOString(), {
+          lastHeartbeatAt: getMeta(db, "listener_heartbeat_at"),
+          nowIso: now.toISOString(),
+          staleAfterMs: HEARTBEAT_STALE_MS,
+        }),
+      ),
       // Dư ra để còn đủ dòng sau khi dashboard bỏ "Đăng nhập" (mỗi lần khởi động lại ghi 3 sự kiện)
       recentEvents: recentConnectionEvents(db, 40),
     };

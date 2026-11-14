@@ -7,6 +7,7 @@ import type { AppEnv } from "../config/env-schema.js";
 import type { SessionState } from "../dashboard/dashboard-api-contract.js";
 import { recordConnectionEvent } from "../storage/connection-event-store.js";
 import { MY_DOCUMENTS_META_KEY } from "../storage/my-documents-deletion-store.js";
+import { recordNewSessionBackfill } from "../storage/backfill-run-store.js";
 import { suggestPhoneSyncForGap } from "../storage/phone-sync-suggestion-store.js";
 import { getMeta, setMeta } from "../storage/thread-directory-store.js";
 import { loginWithStoredCredentials, persistSessionCredentials, startQrLoginForWeb } from "../zalo/zalo-session-login.js";
@@ -144,6 +145,8 @@ export class ZaloSessionManager {
     const nowIso = new Date().toISOString();
     if (lastHeard && suggestPhoneSyncForGap(this.d.db, lastHeard, nowIso, nowIso)) {
       this.d.log.warn({ from: lastHeard }, "Đăng nhập lại bằng QR sau một quãng không nghe - nhắc đồng bộ từ điện thoại");
+      // Khoảng không nghe này phải báo "có thể thiếu" dù lượt lấy bù sau đó trả hết (Zalo không gửi bù cho phiên mới)
+      recordNewSessionBackfill(this.d.db, nowIso);
     }
     const my = ++this.gen;
     this.lastError = null;

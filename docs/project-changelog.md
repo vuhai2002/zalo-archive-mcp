@@ -88,3 +88,6 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
 - `send_batch` gửi được tới người chưa kết bạn và định dạng chữ từng tin; luật cũ "lô chỉ bạn bè" bỏ.
 - Gửi tới người chưa kết bạn hỏng chỉ hỏng tin đó; 3 người liền hỏng mới bật khóa khẩn cấp.
 - Cài đặt: thêm mục Tra số điện thoại (tối đa mỗi ngày, nhịp ngắn nhất / dài nhất).
+- Khoảng listener không nghe ghi rõ Zalo đã gửi bù đủ chưa: mỗi lượt lấy bù lưu kết quả (đủ / dừng dở kèm lý do / đăng nhập lại
+  bằng QR); `sync_status` và thẻ "Khoảng mất kết nối" ở Tổng quan hiện "Đã lấy bù đủ", "Có thể thiếu tin" (kèm cách lấy lại)
+  hay "Chưa rõ", kèm số tin kho có trong khoảng - không còn gọi chung mọi khoảng là "có thể thiếu".

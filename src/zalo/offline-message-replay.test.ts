@@ -190,3 +190,67 @@ describe("xin bù tin + cảm xúc lỡ", () => {
       assert.deepEqual(readReplayCursors(db), { group_messages: "8400008799999" });
     }));
 });
+
+describe("ghi kết quả mỗi lượt lấy bù (để báo khoảng không nghe đã lấy bù đủ chưa)", () => {
+  const runs = (db: DatabaseSync) =>
+    db.prepare("SELECT queue, pages, items, outcome, detail FROM backfill_runs ORDER BY id").all().map((r) => ({ ...r })) as Array<{
+      queue: string;
+      pages: number;
+      items: number;
+      outcome: string;
+      detail: string | null;
+    }>;
+
+  it("Zalo báo hết trang: lượt đó xong, đếm số tin qua các trang", () =>
+    withTimers(() => {
+      const { r, db } = setup();
+      r.onConnected();
+      r.onPage("user_messages", page("101", 1, 50));
+      mock.timers.tick(4_000);
+      r.onPage("user_messages", page("102", 0, 7));
+      assert.deepEqual(runs(db), [{ queue: "user_messages", pages: 2, items: 57, outcome: "complete", detail: null }]);
+    }));
+
+  it("Zalo báo đã bỏ bớt phần cũ: lượt đó không đủ", () =>
+    withTimers(() => {
+      const { r, db } = setup();
+      r.onConnected();
+      r.onPage("user_messages", { count: 3, meta: { more: 0, lastActionId: "101", queueStatus: { "510_1": { evict: 1 } } } });
+      assert.equal(runs(db)[0]?.outcome, "incomplete");
+      assert.match(runs(db)[0]?.detail ?? "", /bỏ bớt/);
+    }));
+
+  it("chạm trần trang: không đủ", () =>
+    withTimers(() => {
+      const { r, db } = setup();
+      r.onConnected();
+      for (let n = 1; n <= MAX_PAGES; n++) {
+        r.onPage("user_messages", page(`${100 + n}`, 1));
+        mock.timers.tick(4_000);
+      }
+      assert.equal(runs(db).find((x) => x.queue === "user_messages")?.outcome, "incomplete");
+      assert.match(runs(db).find((x) => x.queue === "user_messages")?.detail ?? "", /trần trang/);
+    }));
+
+  it("trang không về: không đủ", () =>
+    withTimers(() => {
+      const { r, db } = setup();
+      r.onConnected();
+      r.onPage("user_messages", page("101", 1));
+      mock.timers.tick(4_000);
+      mock.timers.tick(9_000);
+      assert.equal(runs(db).find((x) => x.queue === "user_messages")?.outcome, "incomplete");
+    }));
+
+  it("mất kết nối giữa lúc lấy bù: lượt đang dở không đủ", () =>
+    withTimers(() => {
+      const { r, db } = setup();
+      r.onConnected();
+      r.onDisconnected();
+      assert.deepEqual(
+        runs(db).map((x) => [x.queue, x.outcome]),
+        [["user_messages", "incomplete"]],
+      );
+      assert.match(runs(db)[0]?.detail ?? "", /mất kết nối/i);
+    }));
+});

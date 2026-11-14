@@ -8,6 +8,7 @@ import { accountPaths } from "../config/account-paths.js";
 import { parseEnv } from "../config/env-schema.js";
 import { createSilentLogger } from "../shared/logger.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
+import { backfillForGap } from "../storage/backfill-run-store.js";
 import { readPhoneSyncSuggestion } from "../storage/phone-sync-suggestion-store.js";
 import { setMeta } from "../storage/thread-directory-store.js";
 import { ZaloSessionManager, type SessionIdentity, type SessionIo } from "./zalo-session-manager.js";
@@ -115,6 +116,8 @@ describe("ZaloSessionManager", () => {
     setMeta(db, "listener_heartbeat_at", lastHeard);
     await m.attach(fakeApi);
     assert.equal(readPhoneSyncSuggestion(db)?.fromIso, lastHeard);
+    // Khoảng đó cũng được báo là có thể thiếu (Zalo không gửi bù cho phiên mới), dù lượt lấy bù sau đó trả hết
+    assert.equal(backfillForGap(db, new Date().toISOString()).status, "incomplete");
   });
 
   it("vừa bật máy, mạng chưa sẵn: tự thử lại giãn dần rồi vào được, KHÔNG bắt quét QR", async (t) => {

@@ -28,6 +28,28 @@ export function gapReason(g: ListenerGap): { label: string; tone: BadgeTone } {
   return { label: "Mất kết nối", tone: "gray" };
 }
 
+/**
+ * Nhãn "Zalo đã gửi bù khoảng này chưa" (máy chủ gắn `backfill`): đủ thì yên tâm, có thể thiếu thì chỉ cách lấy lại, chưa rõ
+ * (khoảng trước khi kho ghi kết quả lấy bù) thì kèm số tin kho đang có. `title` là chữ hiện khi rê chuột.
+ */
+export function gapBackfillBadge(g: ListenerGap): { label: string; tone: BadgeTone; title: string } | null {
+  const inGap = g.messagesInGap ?? 0;
+  if (g.backfill === "filled") {
+    return { label: `Đã lấy bù đủ · ${inGap} tin`, tone: "green", title: `Zalo đã gửi lại hết tin lỡ (${g.backfillItems ?? 0} tin). Kho có ${inGap} tin trong khoảng này.` };
+  }
+  if (g.backfill === "incomplete") {
+    return {
+      label: "Có thể thiếu tin",
+      tone: "amber",
+      title: `${g.backfillDetail ?? "Lấy bù dừng dở"}. Kho có ${inGap} tin trong khoảng này. Lấy lại bằng đồng bộ từ điện thoại (Cài đặt > Đồng bộ và sao lưu).`,
+    };
+  }
+  if (g.backfill === "unknown") {
+    return { label: `Chưa rõ đã lấy bù · ${inGap} tin`, tone: "gray", title: `Khoảng này chưa có kết quả lấy bù được ghi. Kho có ${inGap} tin trong khoảng này.` };
+  }
+  return null;
+}
+
 /** Sự kiện đáng hiện trong danh sách (bỏ "Đăng nhập") */
 export function visibleConnectionEvents(events: ConnectionEvent[]): ConnectionEvent[] {
   return events.filter((e) => e.kind !== "login");

@@ -6,7 +6,7 @@ import { IconClock } from "../../shared/action-and-media-icons";
 import { eventKindInfo } from "../../shared/archive-status-labels";
 import { formatClock, formatDateTime, formatDuration } from "../../shared/format-archive-time";
 import { Badge, EmptyState, SectionCard } from "../../shared/ui-bits";
-import { gapReason, isQuickGap, QUICK_GAP_MS, shortEventDetail, visibleConnectionEvents } from "./connection-panel-display";
+import { gapBackfillBadge, gapReason, isQuickGap, QUICK_GAP_MS, shortEventDetail, visibleConnectionEvents } from "./connection-panel-display";
 
 /** Nút chữ nhỏ cuối mục: "Xem tất cả" / "Thu gọn" */
 function ToggleMore({ expanded, total, onToggle }: { expanded: boolean; total: number; onToggle: () => void }) {
@@ -63,6 +63,7 @@ export function ListenerGapsPanel({ gaps }: { gaps: ListenerGap[] }) {
         <ul className="divide-y divide-line">
           {shown.map((g, i) => {
             const reason = gapReason(g);
+            const backfill = gapBackfillBadge(g);
             return (
               <li
                 key={`${g.from}-${i}`}
@@ -70,6 +71,11 @@ export function ListenerGapsPanel({ gaps }: { gaps: ListenerGap[] }) {
               >
                 <span className="whitespace-nowrap font-medium tabular-nums">{gapRange(g, tz)}</span>
                 <Badge tone={reason.tone}>{reason.label}</Badge>
+                {backfill && (
+                  <span title={backfill.title}>
+                    <Badge tone={backfill.tone}>{backfill.label}</Badge>
+                  </span>
+                )}
                 <span className="ml-auto whitespace-nowrap text-[12px] tabular-nums text-ink-soft">{formatDuration(g.from, g.to)}</span>
               </li>
             );

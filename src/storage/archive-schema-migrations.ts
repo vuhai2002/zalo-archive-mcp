@@ -490,4 +490,18 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX phone_lookup_calls_at ON phone_lookup_calls (at);
   `,
+  // 35: kết quả mỗi lượt xin Zalo gửi bù tin lỡ (theo hàng chờ) - để báo một khoảng không nghe đã lấy bù đủ hay có thể thiếu
+  `
+  CREATE TABLE backfill_runs (
+    id          INTEGER PRIMARY KEY,
+    queue       TEXT NOT NULL,
+    started_at  TEXT NOT NULL,
+    finished_at TEXT NOT NULL,
+    pages       INTEGER NOT NULL,
+    items       INTEGER NOT NULL,
+    outcome     TEXT NOT NULL CHECK (outcome IN ('complete', 'incomplete', 'new_session')),
+    detail      TEXT
+  );
+  CREATE INDEX backfill_runs_started ON backfill_runs (started_at);
+  `,
 ];

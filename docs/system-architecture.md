@@ -325,10 +325,20 @@ lại; tiến trình chết đột ngột thì lần khởi động sau ghi bù 
 heartbeat (mỗi phút) thấy hai nhịp cách nhau quá 3 phút theo giờ máy và ghi bù khoảng đó
 (`recordSuspendGap`), vì lúc ngủ WebSocket chết im lặng, listener chỉ biết khi máy đã thức.
 
+Mỗi lượt lấy bù ghi kết quả theo hàng chờ vào `backfill_runs` (migration 35): `complete` khi Zalo báo hết trang và không
+báo bỏ bớt phần cũ; `incomplete` kèm lý do khi dừng dở (chạm trần trang, trang không về, mất kết nối giữa chừng, Zalo bỏ
+bớt phần cũ, gửi lệnh lỗi); đăng nhập lại bằng QR sau một quãng không nghe ghi `new_session` (phiên mới không được gửi
+bù). `listener-gap-backfill.ts` gắn cho mỗi khoảng đã nối lại: lượt lấy bù quanh lúc nối lại (2 phút trước tới 30 phút
+sau) của hai hàng chờ TIN đều xong là "đã lấy bù đủ" (kèm số tin Zalo gửi lại), có `new_session` hay chỉ có lượt dừng dở
+là "có thể thiếu" (kèm lý do, cách lấy lại: đồng bộ từ điện thoại), không có lượt nào là "chưa rõ" (khoảng trước khi có
+bảng này, hay nối lại liền không xin bù); cộng số tin kho đang có trong khoảng. `sync_status` và thẻ "Khoảng mất kết nối"
+ở Tổng quan hiện các nhãn này, không còn gọi chung mọi khoảng là "có thể thiếu".
+
 ## Bảng chính (`src/storage/archive-schema-migrations.ts`)
 
 `messages` (UNIQUE msg_id, cột `source`), `messages_fts`, `message_recalls`, `attachments`,
-`threads`, `connection_events` (tính khoảng listener không nghe), `outbox` (mode single/batch),
+`threads`, `connection_events` (tính khoảng listener không nghe), `backfill_runs` (kết quả mỗi lượt lấy bù),
+`outbox` (mode single/batch),
 `send_control` (kill switch), `meta` (cài đặt gửi, trạng thái daemon, heartbeat).
 
 ## Quyết định chính
