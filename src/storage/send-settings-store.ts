@@ -20,10 +20,18 @@ export const sendSettingsSchema = z
     batchDailyCap: z.number().int().min(0).max(5000),
     batchMaxItems: z.number().int().min(1).max(500),
     maxLatenessHours: z.number().int().min(1).max(720),
+    /** Tra số điện thoại (lookup_phones): tối đa mỗi ngày + nhịp ngẫu nhiên giữa hai lượt tra */
+    lookupDailyCap: z.number().int().min(0).max(1000),
+    lookupMinGapSeconds: z.number().int().min(1).max(3600),
+    lookupMaxGapSeconds: z.number().int().min(1).max(3600),
   })
   .refine((s) => s.batchMinGapSeconds <= s.batchMaxGapSeconds, {
     message: "Nhịp tối thiểu của lô phải <= nhịp tối đa",
     path: ["batchMinGapSeconds"],
+  })
+  .refine((s) => s.lookupMinGapSeconds <= s.lookupMaxGapSeconds, {
+    message: "Nhịp tra số ngắn nhất phải <= dài nhất",
+    path: ["lookupMinGapSeconds"],
   })
   .refine((s) => s.batchWindowStartHour < s.batchWindowEndHour, {
     message: "Giờ bắt đầu khung gửi lô phải nhỏ hơn giờ kết thúc",
@@ -44,6 +52,9 @@ export function defaultSendSettings(env: AppEnv): SendSettings {
     batchDailyCap: env.SEND_BATCH_DAILY_CAP,
     batchMaxItems: env.SEND_BATCH_MAX_ITEMS,
     maxLatenessHours: env.SEND_MAX_LATENESS_HOURS,
+    lookupDailyCap: env.PHONE_LOOKUP_DAILY_CAP,
+    lookupMinGapSeconds: env.PHONE_LOOKUP_MIN_GAP_SECONDS,
+    lookupMaxGapSeconds: env.PHONE_LOOKUP_MAX_GAP_SECONDS,
   };
 }
 

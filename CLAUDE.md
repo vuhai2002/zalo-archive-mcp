@@ -88,20 +88,21 @@ Cách làm đúng:
 - **Claude GỬI ĐƯỢC NGAY khi người dùng bảo** (người dùng chốt 2026-10-28, đã được báo rủi ro
   prompt injection). Mọi lệnh gửi vẫn đi qua hàng đợi + cổng ở MÁY CHỦ (daemon), không gọi
   zca-js từ MCP. Tin lẻ: không trần, không khung giờ, chỉ cách nhau vài giây. Gửi nhiều người
-  (lô): từng tin, nhịp ngẫu nhiên, chỉ bạn bè, khung giờ + trần ngày riêng cho lô. Kill switch
-  luôn có hiệu lực; lỗi gửi đầu tiên tự bật. Số chỉnh trên dashboard (Cài đặt).
+  (lô): từng tin, nhịp ngẫu nhiên, tới bạn bè lẫn người chưa kết bạn (không nhóm), khung giờ + trần ngày riêng cho lô.
+  Kill switch luôn có hiệu lực; lỗi gửi đầu tiên tự bật, trừ lỗi gửi tới người chưa kết bạn (chỉ hỏng tin đó; 3 người
+  liền hỏng thì bật). Số chỉnh trên dashboard (Cài đặt).
 - **Tin chữ luôn gửi SAU ảnh / file** (người dùng chốt 2026-11-10). Gửi chữ kèm file: một lệnh `send_file` có `text`, không
   gọi `send_message` trước. Daemon gửi theo thứ tự: chùm ảnh (mọi ảnh trong một lần, Zalo hiện thành một chùm), rồi file khác,
   rồi tin chữ (`sendFilesThenText` trong `src/outbox/outbox-zalo-attachments.ts`) - không để chữ thành chú thích ảnh.
 - **Không tool chuyển tiền / thanh toán / VietQR** (`zalo-agent-cli` có sẵn - không harvest).
-- **Không gửi kiểu campaign / bắn hàng loạt.** "Gửi nhiều người" = hàng đợi gửi TỪNG tin,
-  nội dung riêng từng người, nhịp ngẫu nhiên, chỉ tới bạn bè. Ngoại lệ người dùng chốt 2026-11-09: nút Chia sẻ
-  (chuyển tiếp) trên DASHBOARD, như Zalo, tối đa 100 hội thoại mỗi lần, cả nhóm; không mở cho MCP.
+- **Tra số + gửi người chưa kết bạn** (người dùng chốt 2026-11-14, bỏ luật cũ "không tra số, không gửi kiểu chiến dịch,
+  lô chỉ bạn bè"): MCP `lookup_phones` xếp số, daemon tra như gõ số vào ô Tìm kiếm của Zalo (trần ngày, nhịp, khung giờ lô,
+  tạm dừng khi Zalo trả mã lạ); `send_batch` gửi TỪNG tin, nội dung riêng từng người, tới cả người chưa kết bạn. Nút Chia
+  sẻ (chuyển tiếp) chỉ có trên DASHBOARD, như Zalo, tối đa 100 hội thoại mỗi lần, cả nhóm; không mở cho MCP.
 - **Xóa tin:** "Xóa khỏi kho" trên dashboard xóa hẳn tin + file không ai dùng, ghi nhớ mã tin để đồng bộ sau không
   lấy lại (người dùng chốt 2026-11-09). Xóa trên Zalo (điện thoại / PC) thì kho GIỮ, trừ My Documents (xóa theo).
   Không mở lệnh xóa cho MCP.
-- **Không tự gửi lời mời kết bạn, tra số điện thoại, thêm người vào nhóm** - đây là các
-  thao tác Zalo bóp mạnh nhất (xem report).
+- **Không tự gửi lời mời kết bạn, thêm người vào nhóm** - đây là các thao tác Zalo bóp mạnh nhất (xem report).
 - **Mọi thử nghiệm rủi ro chạy trên NICK PHỤ trước** (pha 0), rồi mới lên nick chính.
 - **1 listener/account.** Không chạy app này và zalo-agent trên CÙNG một tài khoản.
 - **Dữ liệu Zalo PC trên máy: được ĐỌC và lấy về kho, tuyệt đối KHÔNG sửa** (người dùng chốt

@@ -18,6 +18,7 @@ import { MobileSyncSession } from "../zalo/mobile-sync/mobile-sync-session.js";
 import { startKeepAliveLoop } from "../zalo/keep-alive-loop.js";
 import { startDirectoryLookupLoop } from "./directory-lookup-loop.js";
 import { startOutboxSender } from "./start-outbox-sender.js";
+import { startPhoneLookupLoop } from "./start-phone-lookup-loop.js";
 import { startRecallAndReactionLoops } from "./start-recall-and-reaction-loops.js";
 import { startPollDetailRefresher } from "./poll-detail-refresher.js";
 import { applyPastMyDocumentsDeletes } from "./my-documents-past-deletes-backfill.js";
@@ -159,6 +160,8 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
   }
 
   stops.push(startOutboxSender({ api, db, env, log, isListenerConnected: listener.isConnected, isReadOnly: d.isReadOnly }));
+  // Tra số điện thoại Claude xếp qua lookup_phones (nhịp + trần ngày + khung giờ lô)
+  stops.push(startPhoneLookupLoop({ api, db, env, log, isReadOnly: d.isReadOnly, isListenerConnected: listener.isConnected }));
 
   // Thu hồi tin kho đã gửi + thả cảm xúc khi người dùng yêu cầu (MCP / dashboard chỉ ghi yêu cầu)
   stops.push(startRecallAndReactionLoops({ api, db, log, isReadOnly: d.isReadOnly, isListenerConnected: listener.isConnected }));

@@ -380,6 +380,11 @@ export type SendSettings = {
   batchMaxItems: number;
   /** Tin hẹn giờ / đã duyệt trễ quá bấy nhiêu giờ thì bỏ */
   maxLatenessHours: number;
+  /** Tra số điện thoại (lookup_phones): tối đa mỗi ngày */
+  lookupDailyCap: number;
+  /** Tra số: mỗi lượt cách lượt trước ngẫu nhiên trong khoảng này (giây) */
+  lookupMinGapSeconds: number;
+  lookupMaxGapSeconds: number;
 };
 export type SettingsResponse = {
   settings: SendSettings;

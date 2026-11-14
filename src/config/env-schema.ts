@@ -100,7 +100,7 @@ export const envSchema = z
 
     // Cổng gửi - MẶC ĐỊNH (dashboard sửa được, phần sửa lưu trong DB và đè lên đây).
     // Tin lẻ: chỉ cách nhau tối thiểu vài giây. Lô (gửi nhiều người): nhịp ngẫu nhiên,
-    // chỉ bạn bè, khung giờ + trần ngày riêng.
+    // khung giờ + trần ngày riêng, gửi được tới cả người chưa kết bạn.
     SEND_SINGLE_MIN_GAP_SECONDS: int(3, 0, 3600),
     SEND_BATCH_MIN_GAP_SECONDS: int(45, 1, 7200),
     SEND_BATCH_MAX_GAP_SECONDS: int(180, 1, 7200),
@@ -110,6 +110,11 @@ export const envSchema = z
     SEND_BATCH_MAX_ITEMS: int(50, 1, 500),
     /** Tin hẹn giờ / đã duyệt trễ quá bấy nhiêu giờ so với giờ dự kiến thì bỏ, không gửi nữa */
     SEND_MAX_LATENESS_HOURS: int(12, 1, 720),
+    // Tra số điện thoại trên Zalo (lookup_phones): tối đa mỗi ngày, nhịp ngẫu nhiên giữa hai lượt tra.
+    // Chỉ tra trong khung giờ của lô.
+    PHONE_LOOKUP_DAILY_CAP: int(100, 0, 1000),
+    PHONE_LOOKUP_MIN_GAP_SECONDS: int(5, 1, 3600),
+    PHONE_LOOKUP_MAX_GAP_SECONDS: int(20, 1, 3600),
 
     // Dashboard web (chạy cùng daemon). Mật khẩu tạo trên dashboard ở lần mở đầu tiên.
     DASHBOARD_HOST: z.string().min(1).default("127.0.0.1"),
@@ -120,6 +125,10 @@ export const envSchema = z
   .refine((e) => e.SEND_BATCH_MIN_GAP_SECONDS <= e.SEND_BATCH_MAX_GAP_SECONDS, {
     message: "SEND_BATCH_MIN_GAP_SECONDS phải <= SEND_BATCH_MAX_GAP_SECONDS",
     path: ["SEND_BATCH_MIN_GAP_SECONDS"],
+  })
+  .refine((e) => e.PHONE_LOOKUP_MIN_GAP_SECONDS <= e.PHONE_LOOKUP_MAX_GAP_SECONDS, {
+    message: "PHONE_LOOKUP_MIN_GAP_SECONDS phải <= PHONE_LOOKUP_MAX_GAP_SECONDS",
+    path: ["PHONE_LOOKUP_MIN_GAP_SECONDS"],
   })
   .refine((e) => e.SEND_BATCH_WINDOW_START_HOUR < e.SEND_BATCH_WINDOW_END_HOUR, {
     message: "SEND_BATCH_WINDOW_START_HOUR phải nhỏ hơn SEND_BATCH_WINDOW_END_HOUR",

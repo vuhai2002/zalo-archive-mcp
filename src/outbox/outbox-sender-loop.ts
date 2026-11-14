@@ -14,9 +14,9 @@ import {
   type OutboxReplyQuote,
   type OutboxTextStyle,
 } from "../storage/outbox-store.js";
-import { setKillSwitch } from "../storage/send-control-store.js";
 import { getSendSettings } from "../storage/send-settings-store.js";
 import { blockReasonBeforeSend, gatherSendPolicyInput } from "./gather-send-policy-input.js";
+import { recordSendFailure } from "./non-friend-send-failure-guard.js";
 import { evaluateSendPolicy, randomGapMs } from "./send-policy.js";
 
 /**
@@ -68,7 +68,8 @@ const TYPING_TIMEOUT_MS = 10_000;
 /**
  * Vòng gửi của daemon - nơi DUY NHẤT gọi Zalo để gửi. Nick Chỉ đọc thì không đụng gì. Mỗi lượt lấy MỘT tin đã
  * duyệt tới hạn, kiểm cổng, gửi. Cài đặt đọc lại mỗi lượt (sửa trên dashboard là ăn ngay).
- * Lỗi gửi đầu tiên bật kill switch - nick chính không được thử lại mù quáng.
+ * Lỗi gửi đầu tiên bật kill switch - nick chính không được thử lại mù quáng. Ngoại lệ: tin tới người chưa kết bạn hỏng
+ * chỉ hỏng riêng tin đó, trừ khi nhiều người liền nhau cùng hỏng (`non-friend-send-failure-guard.ts`).
  * Không bao giờ gửi lại một tin đã gọi Zalo (kể cả khi hỏng): gửi hai lần trên
  * nick chính tệ hơn thiếu một tin.
  */
@@ -158,9 +159,12 @@ export class OutboxSender {
       log.info({ id: item.id, threadId: item.threadId, msgId: result.msgId }, "Đã gửi tin trong hàng đợi");
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      markSendFailed(db, item.id, message);
-      setKillSwitch(db, true, `Lỗi khi gửi #${item.id}: ${message}`);
-      log.error({ id: item.id, err }, "Gửi hỏng - đã BẬT kill switch, cần người dùng kiểm tra rồi mở lại");
+      // Người chưa kết bạn không nhận tin chỉ hỏng riêng tin đó; còn lại (và nhiều người lạ hỏng liền) bật kill switch
+      if (recordSendFailure(db, item, message).killed) {
+        log.error({ id: item.id, err }, "Gửi hỏng - đã BẬT kill switch, cần người dùng kiểm tra rồi mở lại");
+      } else {
+        log.warn({ id: item.id, err }, "Gửi tới người chưa kết bạn hỏng - chỉ đánh hỏng tin này");
+      }
     }
   }
 

@@ -7,6 +7,7 @@ import { BTN_PRIMARY, BTN_SECONDARY, SectionCard } from "../../shared/ui-bits";
 import {
   BATCH_FIELDS,
   changedFields,
+  LOOKUP_FIELDS,
   SINGLE_FIELDS,
   toDraft,
   validateDraft,
@@ -112,10 +113,17 @@ export function SendSettingsForm({ saved, onSaved }: { saved: SendSettings; onSa
         </div>
 
         <h3 className="mb-3 mt-6 text-[12px] font-semibold uppercase tracking-wider text-ink-soft/70">
-          Gửi nhiều người (lô) - chỉ tới bạn bè, từng tin một
+          Gửi nhiều người (lô) - từng tin một, mỗi người một nội dung
         </h3>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           {BATCH_FIELDS.map((f) => (
+            <FieldRow key={f.key} field={f} value={draft[f.key]} error={errors[f.key]} onChange={set(f.key)} />
+          ))}
+        </div>
+
+        <h3 className="mb-3 mt-6 text-[12px] font-semibold uppercase tracking-wider text-ink-soft/70">Tra số điện thoại</h3>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          {LOOKUP_FIELDS.map((f) => (
             <FieldRow key={f.key} field={f} value={draft[f.key]} error={errors[f.key]} onChange={set(f.key)} />
           ))}
         </div>

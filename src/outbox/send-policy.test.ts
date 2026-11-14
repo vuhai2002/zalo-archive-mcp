@@ -13,7 +13,7 @@ const base = (o: Partial<SendPolicyInput> = {}): SendPolicyInput => ({
   killed: false,
   killReason: null,
   mode: "single",
-  recipient: { threadType: "user", isFriend: false },
+  recipient: { threadType: "user" },
   lastAttemptAt: null,
   lastBatchAttemptAt: null,
   batchGapMs: 60_000,
@@ -44,11 +44,14 @@ describe("evaluateSendPolicy - tin lẻ (người dùng chốt: thả cửa)", (
 
 describe("evaluateSendPolicy - lô gửi nhiều người", () => {
   const batch = (o: Partial<SendPolicyInput> = {}) =>
-    base({ mode: "batch", recipient: { threadType: "user", isFriend: true }, ...o });
+    base({ mode: "batch", recipient: { threadType: "user" }, ...o });
 
-  it("không phải bạn bè thì từ chối; nhóm cũng từ chối (lô chỉ tới bạn bè)", () => {
-    assert.equal(evaluateSendPolicy(batch({ recipient: { threadType: "user", isFriend: false } })).action, "reject");
-    assert.equal(evaluateSendPolicy(batch({ recipient: { threadType: "group", isFriend: false } })).action, "reject");
+  it("lô tới người chưa kết bạn được gửi", () => {
+    assert.equal(evaluateSendPolicy(batch()).action, "send");
+  });
+
+  it("lô vào nhóm vẫn bị từ chối", () => {
+    assert.equal(evaluateSendPolicy(batch({ recipient: { threadType: "group" } })).action, "reject");
   });
 
   it("ngoài khung giờ / đủ trần ngày / chưa đủ nhịp: chỉ dời riêng tin lô (scope item)", () => {

@@ -201,7 +201,7 @@ dựng cây). Dấu chấm tròn / số do trình duyệt vẽ nên chép tin kh
 MCP cũng gửi được chữ có định dạng: Claude viết kiểu markdown (`**đậm**`, `*nghiêng*`, `~~gạch~~`, dòng `- ` / `1. `, thụt để
 lồng) cộng vài thẻ ngắn cho thứ markdown không có (`<u>`, `<red>` `<orange>` `<yellow>` `<green>`, `<small>` `<big>` `<huge>`);
 `outbox/markdown-to-zalo-styles.ts` đổi thành chữ trơn + mã Zalo trước khi xếp hàng (dùng cho send_message, schedule_message,
-draft_message, chữ của send_file; không cho send_batch). Dấu chỉ có tác dụng khi đứng đúng chỗ như markdown (`2*3*4`,
+draft_message, chữ của send_file và từng tin của send_batch). Dấu chỉ có tác dụng khi đứng đúng chỗ như markdown (`2*3*4`,
 `ten_bien` giữ nguyên), dấu thiếu cặp giữ là chữ. `send_file` có `as_file` để gửi ảnh / video thành thẻ file. Khi đọc,
 `read_thread` / `search_messages` thêm lại "- " / "1. " và thụt lề cho tin có danh sách (`mcp/format-rich-text-for-model.ts`).
 
@@ -221,10 +221,34 @@ duyệt nháp), MCP đọc lại cờ theo nick đang dùng mỗi lần gọi to
 
 Cổng kiểm LÚC GỬI và kiểm lại ngay trước khi gọi Zalo:
 - tin lẻ: kill switch + cách tin trước tối thiểu vài giây;
-- lô: thêm chỉ bạn bè, nhịp ngẫu nhiên, khung giờ, trần ngày (tin lô phải chờ thì dời riêng nó).
+- lô: tới bạn bè lẫn người chưa kết bạn (không nhóm), thêm nhịp ngẫu nhiên, khung giờ, trần ngày (tin lô phải chờ thì
+  dời riêng nó).
 
-Lỗi gửi đầu tiên bật kill switch. Mục `sending` bỏ dở thành `failed`, không tự gửi lại.
-Cài đặt gửi: mặc định `.env`, sửa trên dashboard lưu `meta.send_settings`.
+Lỗi gửi đầu tiên bật kill switch. Ngoại lệ (`outbox/non-friend-send-failure-guard.ts`): tin 1-1 tới người chưa kết bạn hỏng
+(họ không nhận tin người lạ, chặn mình...) chỉ đánh `failed` tin đó; 3 người chưa kết bạn khác nhau hỏng liền nhau (không có
+lần gửi được nào xen giữa) thì bật kill switch vì nhiều khả năng chính nick bị Zalo giới hạn nhắn người lạ. Mục `sending` bỏ dở
+thành `failed`, không tự gửi lại. Cài đặt gửi: mặc định `.env`, sửa trên dashboard lưu `meta.send_settings`.
+
+### Tra số điện thoại (lookup_phones)
+
+Để nhắn người chưa kết bạn từ một danh sách số điện thoại. Lệnh MCP `lookup_phones`
+(`mcp/phone-lookup-tool.ts`) chuẩn hóa số (`phone-lookup/phone-lookup-rules.ts`: chỉ số di động Việt Nam, nhận `0...`, `+84...`,
+`84...`, có dấu chấm / cách, 9 chữ số thiếu số 0 đầu), xếp vào bảng `phone_lookups` (migration 34, khóa `84xxxxxxxxx`) và trả kết
+quả đã có. Vòng `phone-lookup/phone-lookup-loop.ts` trong daemon tra từng số như gõ số vào ô Tìm kiếm của Zalo Web
+(`zalo/zca-phone-lookup-api.ts`: `friend/profile/get` với `reqSrc: 85`; `findUser` của zca-js dùng 40): nhịp ngẫu nhiên, trần
+ngày đếm TỪNG LẦN GỌI Zalo (bảng `phone_lookup_calls`: tra lại, thử lại, số mốc đều tính), chỉ trong khung giờ của lô; Chỉ đọc
+/ kill switch / listener rớt thì không gọi Zalo. Kết quả:
+- có người: lưu tên Zalo + mã, thêm dòng `threads` (chưa có tin nên không hiện trong danh sách hội thoại) + danh bạ để
+  `send_batch` / `send_message` gửi được; tên đã có không bị đè, cờ bạn bè giữ nguyên;
+- mã 216 / 212 / 210 (chưa có Zalo, không cho tìm, tài khoản bị khóa): `no_zalo`;
+- mã lạ (có thể Zalo chặn tra): số đó ghi mã + câu và xuống cuối hàng (để không chặn các số sau; 3 lần thì `failed`), cả vòng
+  tạm dừng tới khung giờ ngày mai (`meta.phone_lookup_pause`, lý do nêu số); không bật kill switch;
+- 10 số liền `no_zalo`: các lượt sau (theo nhịp + trần như mọi lượt, `phone-lookup/phone-lookup-anchor-check.ts`) tra lại tối đa
+  2 số có Zalo gần nhất làm mốc; một mốc vẫn ra là Zalo không chặn (mốc nào vừa ẩn tìm kiếm thì ghi `no_zalo`); mọi mốc đều không
+  ra thì đưa chuỗi về chờ và tạm dừng, để không ghi nhầm "không có Zalo" khi thật ra bị chặn;
+- lỗi mạng: thử lại, 3 lần thì `failed`.
+Mỗi số tra một lần rồi giữ cho mọi đợt gửi sau; `recheck` tra lại số không có / lỗi, `cancel` bỏ số còn chờ. Khi còn số chờ mà
+vòng tra đứng, `lookup_phones` nêu lý do (khóa khẩn cấp, daemon / listener chưa chạy, ngoài khung giờ, đủ trần, tạm dừng).
 
 ## Dashboard
 

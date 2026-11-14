@@ -12,6 +12,7 @@ import {
 } from "./outbox-send-tool-handlers.js";
 import { REACTION_CODES, reactToMessageTool, type ReactionName } from "./message-reaction-tool-handler.js";
 import { recallMessageTool } from "./outbox-recall-tool-handler.js";
+import { registerPhoneLookupTool } from "./phone-lookup-tool.js";
 import { registerSendFileTool } from "./register-send-file-tool.js";
 import { FORMAT_HELP } from "./send-text-format-help.js";
 import { safeToolHandler } from "./tool-result.js";
@@ -66,6 +67,7 @@ export function registerSendTools(server: McpServer, ctx: SendToolContext): void
   );
 
   registerSendFileTool(server, ctx, { threadId, mentions, replyTo, date, time });
+  registerPhoneLookupTool(server, ctx);
 
   server.registerTool(
     "schedule_message",
@@ -83,10 +85,12 @@ export function registerSendTools(server: McpServer, ctx: SendToolContext): void
     "send_batch",
     {
       description:
-        "Gửi cho NHIỀU người, MỖI NGƯỜI MỘT NỘI DUNG RIÊNG, CHỈ tới bạn bè (không nhóm). Daemon gửi từng tin có nhịp ngẫu nhiên, " +
-        "trong khung giờ của lô. Có thể hẹn ngày giờ bắt đầu.",
+        "Gửi cho NHIỀU người, MỖI NGƯỜI MỘT NỘI DUNG RIÊNG (vd điền họ tên, giờ, chi tiết của từng người), tới bạn bè hoặc người " +
+        "CHƯA kết bạn đã có trong kho (vd thread_id lấy từ lookup_phones), không gửi vào nhóm. Daemon gửi từng tin có nhịp ngẫu " +
+        "nhiên, trong khung giờ và trần ngày của lô (Cài đặt). Có thể hẹn ngày giờ bắt đầu. Chữ định dạng được như send_message. " +
+        "Gửi tới người chưa kết bạn hỏng (họ không nhận tin người lạ...) thì chỉ tin đó hỏng; 3 người liền hỏng thì kho tự khóa.",
       inputSchema: {
-        items: z.array(z.object({ thread_id: threadId, text })).min(1).max(500),
+        items: z.array(z.object({ thread_id: threadId, text: formattedText })).min(1).max(500),
         send_date: date.optional(),
         send_time: time.optional(),
         note: z.string().max(500).optional(),

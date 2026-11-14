@@ -79,3 +79,12 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
   `as_file` gửi ảnh / video thành thẻ file; `read_thread` / `search_messages` hiện lại dấu danh sách cho tin có danh sách.
 - Repo chuẩn bị public: gỡ dữ liệu thật khỏi toàn bộ lịch sử; luật "KHÔNG đưa dữ liệu thật vào repo" trong `CLAUDE.md`.
   Nhật ký thay đổi chi tiết chỉ giữ trên máy (`plans/`, không lên git).
+
+## 2026-11-14: tra số điện thoại và nhắn người chưa kết bạn
+
+- MCP `lookup_phones`: tra một danh sách số điện thoại trên Zalo như ô Tìm kiếm (daemon tra dần theo nhịp, trần ngày, khung giờ
+  lô; mỗi số tra một lần rồi giữ kết quả), trả ai có Zalo (tên Zalo + mã hội thoại), ai không có; tự nghỉ khi Zalo trả mã lạ hoặc
+  khi một chuỗi dài "không có Zalo" mà số mốc cũng không ra; `recheck` / `cancel`.
+- `send_batch` gửi được tới người chưa kết bạn và định dạng chữ từng tin; luật cũ "lô chỉ bạn bè" bỏ.
+- Gửi tới người chưa kết bạn hỏng chỉ hỏng tin đó; 3 người liền hỏng mới bật khóa khẩn cấp.
+- Cài đặt: thêm mục Tra số điện thoại (tối đa mỗi ngày, nhịp ngắn nhất / dài nhất).

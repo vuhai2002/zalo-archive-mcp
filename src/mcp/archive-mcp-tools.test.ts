@@ -46,6 +46,7 @@ describe("MCP server kho", () => {
       "list_group_members",
       "list_outbox",
       "list_threads",
+      "lookup_phones",
       "react_to_message",
       "read_thread",
       "recall_message",

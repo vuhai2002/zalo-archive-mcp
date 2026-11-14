@@ -12,6 +12,9 @@ const SAVED: SendSettings = {
   batchDailyCap: 100,
   batchMaxItems: 50,
   maxLatenessHours: 12,
+  lookupDailyCap: 100,
+  lookupMinGapSeconds: 5,
+  lookupMaxGapSeconds: 20,
 };
 
 describe("validateDraft", () => {
@@ -32,6 +35,11 @@ describe("validateDraft", () => {
   it("nhịp ngắn nhất lớn hơn dài nhất là lỗi", () => {
     const r = validateDraft({ ...toDraft(SAVED), batchMinGapSeconds: "200", batchMaxGapSeconds: "100" });
     assert.ok(r.errors.batchMaxGapSeconds);
+  });
+
+  it("nhịp tra số ngắn nhất lớn hơn dài nhất là lỗi", () => {
+    const r = validateDraft({ ...toDraft(SAVED), lookupMinGapSeconds: "30", lookupMaxGapSeconds: "10" });
+    assert.ok(r.errors.lookupMaxGapSeconds);
   });
 
   it("giờ kết thúc khung lô phải sau giờ bắt đầu", () => {

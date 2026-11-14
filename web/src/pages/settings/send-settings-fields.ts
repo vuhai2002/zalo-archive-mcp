@@ -68,7 +68,27 @@ export const BATCH_FIELDS: SettingField[] = [
   { key: "batchMaxItems", label: "Số người tối đa mỗi lô", help: "Một lần gửi nhiều người được tối đa ngần này người.", unit: "người", min: 1, max: 500 },
 ];
 
-export const ALL_FIELDS = [...SINGLE_FIELDS, ...BATCH_FIELDS];
+export const LOOKUP_FIELDS: SettingField[] = [
+  {
+    key: "lookupDailyCap",
+    label: "Tra số mỗi ngày tối đa",
+    help: "Claude nhờ kho tra số điện thoại trên Zalo (lookup_phones): tối đa ngần này số một ngày, chỉ trong khung giờ gửi lô. Đặt 0 là ngừng tra.",
+    unit: "số",
+    min: 0,
+    max: 1000,
+  },
+  {
+    key: "lookupMinGapSeconds",
+    label: "Nhịp tra số - ngắn nhất",
+    help: "Mỗi lượt tra cách lượt trước một khoảng ngẫu nhiên giữa ngắn nhất và dài nhất.",
+    unit: "giây",
+    min: 1,
+    max: 3600,
+  },
+  { key: "lookupMaxGapSeconds", label: "Nhịp tra số - dài nhất", help: "Phải lớn hơn hoặc bằng nhịp ngắn nhất.", unit: "giây", min: 1, max: 3600 },
+];
+
+export const ALL_FIELDS: SettingField[] = [...SINGLE_FIELDS, ...BATCH_FIELDS, ...LOOKUP_FIELDS];
 
 export type SettingsDraft = Record<SettingKey, string>;
 
@@ -89,6 +109,9 @@ export function validateDraft(draft: SettingsDraft): { errors: Partial<Record<Se
   }
   if (!errors.batchMinGapSeconds && !errors.batchMaxGapSeconds && values.batchMinGapSeconds > values.batchMaxGapSeconds) {
     errors.batchMaxGapSeconds = "Phải lớn hơn hoặc bằng nhịp ngắn nhất.";
+  }
+  if (!errors.lookupMinGapSeconds && !errors.lookupMaxGapSeconds && values.lookupMinGapSeconds > values.lookupMaxGapSeconds) {
+    errors.lookupMaxGapSeconds = "Phải lớn hơn hoặc bằng nhịp ngắn nhất.";
   }
   if (!errors.batchWindowStartHour && !errors.batchWindowEndHour && values.batchWindowStartHour >= values.batchWindowEndHour) {
     errors.batchWindowEndHour = "Giờ kết thúc phải sau giờ bắt đầu.";

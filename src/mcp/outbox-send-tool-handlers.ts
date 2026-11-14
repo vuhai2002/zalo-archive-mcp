@@ -72,7 +72,7 @@ export function sendBatchTool(
 ): ToolResult {
   const scheduled = Boolean(args.send_date || args.send_time);
   const r = enqueueBatch(ctx, {
-    items: args.items.map((i) => ({ threadId: i.thread_id, text: i.text })),
+    items: args.items.map((i) => ({ threadId: i.thread_id, ...formattedText(i.text) })),
     when: scheduled ? "schedule" : "now",
     sendDate: args.send_date,
     sendTime: args.send_time,

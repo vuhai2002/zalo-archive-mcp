@@ -87,20 +87,17 @@ describe("OutboxSender", () => {
     assert.deepEqual(sent, [["u-nguoi-la", "Một"], ["u-nguoi-la", "Hai"]]);
   });
 
-  it("lô: người không phải bạn bè bị đánh failed; tin lô đang chờ nhịp không chặn tin lẻ", async () => {
+  it("lô: gửi được tới người chưa kết bạn; tin lô đang chờ nhịp không chặn tin lẻ", async () => {
     const { db, sender, sent, queue, advance } = setup();
-    const stranger = queue("u-nguoi-la", "lô tới người lạ", "batch");
+    const stranger = queue("u-nguoi-la", "lô tới người chưa kết bạn", "batch");
     queue("u-lan", "lô 1", "batch");
-    queue("u-binh", "lô 2", "batch");
-    await sender.tick(); // người lạ -> failed
-    assert.equal(getOutboxItem(db, stranger)!.status, "failed");
-    advance(5_000);
-    await sender.tick(); // lô 1 đi (chưa có tin lô nào trước đó)
+    await sender.tick(); // người chưa kết bạn -> gửi (chưa có tin lô nào trước đó)
+    assert.equal(getOutboxItem(db, stranger)!.status, "sent");
     queue("u-lan", "tin lẻ chen ngang");
     advance(5_000);
-    await sender.tick(); // lô 2 chưa đủ nhịp 45 giây -> bị dời riêng
+    await sender.tick(); // lô 1 chưa đủ nhịp 45 giây -> bị dời riêng
     await sender.tick(); // tin lẻ đi ngay
-    assert.deepEqual(sent.map((s) => s[1]), ["lô 1", "tin lẻ chen ngang"]);
+    assert.deepEqual(sent.map((s) => s[1]), ["lô tới người chưa kết bạn", "tin lẻ chen ngang"]);
   });
 
   it("người dùng khóa trong lúc 'đang soạn': không gửi, trả tin về approved, không tính là lần thử", async () => {

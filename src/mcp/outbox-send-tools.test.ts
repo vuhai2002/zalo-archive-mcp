@@ -38,7 +38,7 @@ describe("send_message", () => {
       claimForSending(db, item.id);
       markSent(db, item.id, "99");
     };
-    const r = await sendMessageTool({ ...ctx, sleep: fakeDaemon, waitTimeoutMs: 5_000 }, { thread_id: "u-la", text: "Chào bạn" });
+    const r = await sendMessageTool({ ...ctx, sleep: fakeDaemon, waitTimeoutMs: 5_000 }, { thread_id: "u-la", text: "Tin thử tới người lạ" });
     assert.ok(r.ok, r.ok ? "" : r.error);
     assert.match(r.ok ? r.text : "", /Đã gửi/);
     assert.deepEqual(listOutbox(db, { limit: 5 }).map((i) => [i.mode, i.status, i.createdBy]), [["single", "sent", "mcp"]]);
@@ -84,19 +84,35 @@ describe("schedule_message, send_batch, draft_message", () => {
     assert.equal(listOutbox(db, { limit: 1 })[0]!.notBefore, "2026-10-28T04:00:00.000Z");
   });
 
-  it("lô: chỉ bạn bè, mỗi người một nội dung riêng, tất cả hoặc không có gì", () => {
+  it("lô: mỗi người một nội dung riêng, chỉ hội thoại đã có, tất cả hoặc không có gì", () => {
     const { db, ctx } = setup();
     const items = (a: string, b: string, third?: string) => [
       { thread_id: "u-lan", text: a },
       { thread_id: third ?? "u-binh", text: b },
     ];
     assert.equal(sendBatchTool(ctx, { items: items("Chúc mừng", "Chúc mừng") }).ok, false);
-    assert.equal(sendBatchTool(ctx, { items: items("A", "B", "u-la") }).ok, false, "người lạ không vào lô");
+    assert.equal(sendBatchTool(ctx, { items: items("A", "B", "u-khong-co-trong-kho") }).ok, false, "chưa có trong kho thì không vào lô");
     assert.equal(listOutbox(db, { limit: 10 }).length, 0);
     assert.ok(sendBatchTool(ctx, { items: items("Chào Lan", "Chào Bình") }).ok);
     const rows = listOutbox(db, { limit: 10 });
     assert.deepEqual(rows.map((i) => [i.mode, i.status]), [["batch", "approved"], ["batch", "approved"]]);
     assert.equal(new Set(rows.map((i) => i.batchId)).size, 1);
+  });
+
+  it("lô gửi được tới người chưa kết bạn đã có trong kho", () => {
+    const { db, ctx } = setup();
+    const r = sendBatchTool(ctx, { items: [{ thread_id: "u-la", text: "Xin chào người lạ" }, { thread_id: "u-lan", text: "Chào Lan" }] });
+    assert.ok(r.ok, r.ok ? "" : r.error);
+    assert.deepEqual(listOutbox(db, { limit: 10 }).map((i) => [i.threadId, i.mode]).sort(), [["u-la", "batch"], ["u-lan", "batch"]]);
+  });
+
+  it("lô giữ định dạng chữ của từng tin", () => {
+    const { db, ctx } = setup();
+    assert.ok(sendBatchTool(ctx, { items: [{ thread_id: "u-lan", text: "**Giờ:** 9h" }, { thread_id: "u-binh", text: "Chào Bình" }] }).ok);
+    const lan = listOutbox(db, { limit: 10 }).find((i) => i.threadId === "u-lan")!;
+    assert.equal(lan.text, "Giờ: 9h");
+    assert.deepEqual(lan.styles, [{ start: 0, len: 4, st: "b" }]);
+    assert.equal(listOutbox(db, { limit: 10 }).find((i) => i.threadId === "u-binh")!.styles.length, 0);
   });
 
   it("nháp nằm ở draft, không bao giờ tự gửi", () => {

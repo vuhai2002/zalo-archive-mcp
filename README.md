@@ -148,7 +148,8 @@ Lưu ý:
 | Đọc | `list_threads` với `unreplied_only` | hội thoại đang chờ bạn trả lời ("có tin nào tôi chưa rep"): 1-1 có tin cuối của người kia, nhóm có tin nhắc tên / trả lời bạn mà bạn chưa đáp; mặc định 14 ngày qua, đổi bằng `from_date`. Kho không biết bạn đã đọc tin trên điện thoại chưa, nên nhắn lại, nghe máy hoặc thả cảm xúc mới tính là đã trả lời |
 | Gửi | `send_message` | gửi ngay một tin, chờ tới khi gửi xong rồi báo kết quả; trong nhóm nhắc tên (@) được bằng `mentions`; trả lời (trích dẫn) một tin bằng `reply_to` = số tin #N ở `read_thread`; chữ định dạng được như thanh của Zalo bằng `**đậm**`, `*nghiêng*`, `~~gạch~~`, `<u>gạch chân</u>`, `<red>` / `<orange>` / `<yellow>` / `<green>`, `<small>` / `<big>` / `<huge>`, dòng `- ` / `1. ` (cũng dùng được cho `schedule_message`, `draft_message`, chữ của `send_file`) |
 | Gửi | `schedule_message` | hẹn giờ một tin chữ (hẹn kèm ảnh / file: `send_file` có `send_date` + `send_time`) |
-| Gửi | `send_batch` | gửi nhiều người, mỗi người một nội dung, chỉ bạn bè, có nhịp |
+| Gửi | `lookup_phones` | tra danh sách số điện thoại trên Zalo (như ô Tìm kiếm) để nhắn người chưa kết bạn: kho tra dần theo nhịp, tối đa 100 số/ngày; gọi lại để xem ai có Zalo (tên Zalo + `thread_id`), ai không có; `recheck` tra lại, `cancel` bỏ số đang chờ |
+| Gửi | `send_batch` | gửi nhiều người, mỗi người một nội dung riêng (định dạng được), tới bạn bè lẫn người chưa kết bạn đã có trong kho, có nhịp |
 | Gửi | `draft_message`, `list_outbox`, `cancel_outbox` | nháp để duyệt trên dashboard, xem / hủy hàng đợi |
 | Gửi | `send_file` | gửi file / ảnh / video (kèm chữ) - chỉ khi bạn bảo; nhiều ảnh một lần thành một chùm như Zalo, `as_file: true` thì mọi file (kể cả ảnh / video) đi thành thẻ file như nút Đính kèm File; chữ luôn gửi SAU ảnh / file; Claude liệt kê người nhận + file + chữ, ứng dụng hỏi bạn duyệt mỗi lần; thêm `send_date` + `send_time` là hẹn giờ (kho chép file vào `outbox-files/` của nick ngay lúc hẹn, daemon tự gửi đúng giờ); file bí mật (.env, khóa, mật khẩu) và dữ liệu nội bộ của kho bị chặn |
 | Gửi | `react_to_message` | thả cảm xúc (👍 ❤️ 😆 😮 😭 😡) vào một tin, số tin #N ở `read_thread` - chỉ khi bạn bảo |
@@ -161,10 +162,14 @@ chạy và đã đăng nhập: MCP ghi vào hàng đợi, daemon là nơi duy nh
 ## Giới hạn gửi (sửa trên dashboard -> Cài đặt)
 
 - **Tin lẻ** (gửi cho một người): không trần, không khung giờ, chỉ cách tin trước tối thiểu 3 giây.
-- **Lô** (gửi nhiều người một lúc): từng tin cách nhau ngẫu nhiên 45-180 giây, chỉ tới bạn bè (không
-  nhóm), chỉ 7h-22h, tối đa 100 tin lô/ngày. Để Zalo không coi là bắn hàng loạt.
+- **Lô** (gửi nhiều người một lúc): từng tin cách nhau ngẫu nhiên 45-180 giây, tới bạn bè lẫn người
+  chưa kết bạn (không nhóm), chỉ 7h-22h, tối đa 100 tin lô/ngày. Để Zalo không coi là bắn hàng loạt.
+- **Tra số** (`lookup_phones`): tối đa 100 số/ngày, mỗi lượt cách 5-20 giây, chỉ trong khung giờ của lô.
+  Zalo trả mã lạ thì kho tự nghỉ tra tới hôm sau.
 - **Khóa khẩn cấp**: một nút trên dashboard (hoặc `pnpm outbox kill`). Lỗi gửi đầu tiên tự khóa để
-  không thử lại mù trên nick chính; kiểm tra xong thì mở khóa trên dashboard.
+  không thử lại mù trên nick chính; kiểm tra xong thì mở khóa trên dashboard. Riêng tin tới người chưa
+  kết bạn hỏng (họ không nhận tin người lạ) thì chỉ hỏng tin đó; 3 người liền hỏng mới tự khóa.
+- **Nên dùng nick phụ** khi nhắn nhiều người chưa kết bạn: Zalo có thể giới hạn hoặc khóa nick nhắn người lạ nhiều.
 - Tin hẹn giờ / đang chờ mà trễ quá 12 giờ (vd daemon tắt lâu) thì bỏ, không gửi muộn.
 
 ## Lưu ý bảo mật

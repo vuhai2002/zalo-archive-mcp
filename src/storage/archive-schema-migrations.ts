@@ -466,4 +466,28 @@ export const ARCHIVE_MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE outbox ADD COLUMN styles_json TEXT;
   `,
+  // 34: tra số điện thoại trên Zalo (lookup_phones) - hàng đợi + kết quả, khóa là số đã chuẩn hóa 84xxxxxxxxx.
+  // Tra một lần rồi giữ kết quả cho mọi đợt gửi sau; daemon tra dần theo nhịp + trần ngày
+  `
+  CREATE TABLE phone_lookups (
+    phone           TEXT PRIMARY KEY,
+    status          TEXT NOT NULL CHECK (status IN ('pending', 'found', 'no_zalo', 'failed')),
+    user_id         TEXT,
+    zalo_name       TEXT,
+    result_code     INTEGER,
+    result_message  TEXT,
+    attempts        INTEGER NOT NULL DEFAULT 0,
+    requested_at    TEXT NOT NULL,
+    last_attempt_at TEXT,
+    checked_at      TEXT
+  );
+  CREATE INDEX phone_lookups_queue ON phone_lookups (status, requested_at);
+  CREATE INDEX phone_lookups_checked ON phone_lookups (checked_at);
+  -- Mỗi lần gọi Zalo tra số một dòng: trần ngày đếm số LẦN GỌI (tra lại, thử lại, số mốc đều tính), không đếm số điện thoại
+  CREATE TABLE phone_lookup_calls (
+    at    TEXT NOT NULL,
+    phone TEXT NOT NULL
+  );
+  CREATE INDEX phone_lookup_calls_at ON phone_lookup_calls (at);
+  `,
 ];

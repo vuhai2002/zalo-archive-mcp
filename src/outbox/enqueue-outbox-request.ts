@@ -5,7 +5,7 @@ import { inTransaction } from "../shared/db-transaction.js";
 import { localWallClockToUtc } from "../shared/local-date-range.js";
 import { containsUnsafeControlChars } from "../shared/terminal-safe-text.js";
 import { findThread, type ThreadSummary } from "../storage/message-read-queries.js";
-import { enqueueOutboxItem, type OutboxCreator, type OutboxFile } from "../storage/outbox-store.js";
+import { enqueueOutboxItem, type OutboxCreator, type OutboxFile, type OutboxTextStyle } from "../storage/outbox-store.js";
 import { getSendSettings } from "../storage/send-settings-store.js";
 import { buildReplyQuote } from "./build-reply-quote.js";
 import { checkOutboxStyles } from "./outbox-text-styles.js";
@@ -112,12 +112,12 @@ export function enqueueSingle(
 }
 
 /**
- * Lô gửi nhiều người: mỗi người MỘT nội dung riêng, CHỈ bạn bè (không nhóm),
- * tất cả hoặc không có gì. Daemon gửi từng tin theo nhịp + khung giờ của lô.
+ * Lô gửi nhiều người: mỗi người MỘT nội dung riêng (có thể kèm định dạng), tới bạn bè lẫn người chưa kết bạn đã có trong
+ * kho (vd tra ra bằng lookup_phones), không nhóm; tất cả hoặc không có gì. Daemon gửi từng tin theo nhịp + khung giờ của lô.
  */
 export function enqueueBatch(
   ctx: EnqueueContext,
-  req: Common & { items: Array<{ threadId: string; text: string }> },
+  req: Common & { items: Array<{ threadId: string; text: string; styles?: unknown }> },
 ): EnqueueResult {
   if (ctx.readOnly) return { ok: false, error: READ_ONLY_ERROR };
   const settings = getSendSettings(ctx.db, ctx.env);
@@ -133,31 +133,33 @@ export function enqueueBatch(
   const schedule = resolveSchedule(ctx, req);
   if ("error" in schedule) return { ok: false, ...schedule };
 
-  const checked: Array<{ thread: ThreadSummary; text: string }> = [];
+  const checked: Array<{ thread: ThreadSummary; text: string; styles: OutboxTextStyle[] }> = [];
   for (const item of req.items) {
     const text = checkText(item.text);
     const thread = checkThread(ctx.db, item.threadId);
+    const styles = checkOutboxStyles(item.styles, item.text);
     const problem =
       typeof text !== "string"
         ? text.error
         : "error" in thread
           ? thread.error
           : thread.threadType === "group"
-            ? "là nhóm - lô chỉ gửi tới bạn bè (gửi vào nhóm thì dùng tin lẻ)"
-            : !thread.isFriend
-              ? "không phải bạn bè - lô chỉ gửi tới bạn bè"
+            ? "là nhóm - lô không gửi vào nhóm (gửi vào nhóm thì dùng tin lẻ)"
+            : "error" in styles
+              ? styles.error
               : null;
     if (problem) return { ok: false, error: `thread_id=${item.threadId}: ${problem} Không tạo tin nào.` };
-    checked.push({ thread: thread as ThreadSummary, text: text as string });
+    checked.push({ thread: thread as ThreadSummary, text: text as string, styles: "styles" in styles ? styles.styles : [] });
   }
 
   const batchId = randomUUID();
   const ids = inTransaction(ctx.db, () =>
-    checked.map(({ thread, text }) =>
+    checked.map(({ thread, text, styles }) =>
       enqueueOutboxItem(ctx.db, {
         threadId: thread.threadId,
         threadType: thread.threadType,
         text,
+        styles,
         mode: "batch",
         notBefore: schedule.notBefore,
         batchId,

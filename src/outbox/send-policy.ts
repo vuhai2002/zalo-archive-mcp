@@ -6,10 +6,10 @@ import type { SendSettings } from "../storage/send-settings-store.js";
  * Cổng gửi: quyết định một tin ĐÃ DUYỆT có được gửi NGAY BÂY GIỜ không. Kiểm ở
  * LÚC GỬI, không tin trạng thái lúc soạn. Module thuần - caller đọc sẵn dữ kiện.
  *
- * Người dùng chốt (2026-10-28):
+ * Người dùng chốt (2026-10-28, bỏ luật "lô chỉ bạn bè" 2026-11-14):
  * - Tin lẻ (`single`): thả cửa - chỉ kill switch + cách tin trước tối thiểu vài giây.
- * - Lô gửi nhiều người (`batch`): chỉ tới bạn bè, nhịp ngẫu nhiên giữa các tin của lô,
- *   khung giờ + trần ngày riêng của lô.
+ * - Lô gửi nhiều người (`batch`): tới bạn bè lẫn người chưa kết bạn (không nhóm), nhịp ngẫu nhiên giữa các tin
+ *   của lô, khung giờ + trần ngày riêng của lô.
  *
  * Kết quả "wait":
  * - `global`: mọi tin đều phải chờ (kill switch, nhịp tối thiểu giữa hai tin bất kỳ).
@@ -21,7 +21,7 @@ export type SendPolicyInput = {
   killed: boolean;
   killReason: string | null;
   mode: OutboxMode;
-  recipient: { threadType: ThreadKind; isFriend: boolean };
+  recipient: { threadType: ThreadKind };
   /** Lần thử gửi gần nhất của MỌI kiểu, và riêng của lô */
   lastAttemptAt: Date | null;
   lastBatchAttemptAt: Date | null;
@@ -49,8 +49,8 @@ export function evaluateSendPolicy(i: SendPolicyInput): SendDecision {
   }
 
   if (i.mode === "batch") {
-    if (i.recipient.threadType === "group" || !i.recipient.isFriend) {
-      return { action: "reject", reason: "Gửi theo lô chỉ tới bạn bè (không nhóm); người nhận này không phải bạn bè (theo danh bạ gần nhất)." };
+    if (i.recipient.threadType === "group") {
+      return { action: "reject", reason: "Gửi theo lô không gửi vào nhóm (gửi vào nhóm thì dùng tin lẻ)." };
     }
     const s = i.settings;
     if (i.localHour < s.batchWindowStartHour || i.localHour >= s.batchWindowEndHour) {
