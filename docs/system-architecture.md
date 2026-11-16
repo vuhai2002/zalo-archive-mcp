@@ -66,9 +66,15 @@ tin cũ (đồng bộ điện thoại) thường không còn file. Zalo PC trên
 `%LOCALAPPDATA%\ZaloPC\<UID>\ZaloDownloads` dưới dạng file thường: ảnh / video ở
 `resource\<g<mã nhóm> | mã người>\<picture | Cache | video | file | fileNoise | voice>\<cliMsgId>_<người gửi>_<hội thoại>...`
 (video gửi dạng file cũng ở `video`), file đính kèm theo checksum ở `file\<md5>` / `fileNoise\<md5>`; video / tin thoại kiểu
-cũ (Zalo PC trước khoảng 07/2026) ở `video\<mã tin>` / `voice\<mã tin>` (thêm `group\`), phần lớn trùng bản trong
-`resource`. Zalo PC bản cũ còn lưu file nhận được, giữ tên thật, ở `Zalo Received Files` (cạnh thư mục dữ liệu thật
-của Zalo PC, vd `X:\Du-lieu` khi `%LOCALAPPDATA%\ZaloPC` là liên kết trỏ sang đó, hoặc `Documents`) - dò theo tên + cỡ.
+cũ (Zalo PC trước khoảng 07/2026) ở `video\<mã tin>` / `voice\<mã tin>` (thêm `group\`; video gửi dạng file cũng dò ở đây),
+phần lớn trùng bản trong `resource`. File người dùng tải / mở được Zalo PC lưu, giữ tên thật, ở `Zalo Received Files` - dò theo
+tên + cỡ, theo thứ tự: thư mục người dùng chọn trên dashboard (Cài đặt > Đồng bộ và sao lưu, lưu theo nick trong `meta`,
+`media/zalo-pc-received-files-dir-setting.ts`), cạnh thư mục dữ liệu thật của Zalo PC (vd `X:\Du-lieu` khi
+`%LOCALAPPDATA%\ZaloPC` là liên kết trỏ sang đó), rồi `Documents`. Kho không tự đọc chỗ đặt trong Zalo PC (nằm trong
+LevelDB của Zalo PC, bị khóa khi Zalo PC chạy) nên mới có nút chọn. Trình duyệt không cho trang web biết đường dẫn thật
+của thư mục chọn, nên nút gọi `POST /api/zalo-pc-media/received-files-dir/pick`: daemon mở hộp thoại chọn thư mục kiểu
+mới của Windows (`shared/windows-folder-picker-dialog.ps1`, IFileOpenDialog, cửa sổ chủ vô hình luôn-nằm-trên để hiện
+trước trình duyệt) rồi trả đường dẫn về; yêu cầu chờ tới khi người dùng chọn / Hủy.
 `media/zalo-pc-media-index.ts` dò theo tên file, `media/find-zalo-pc-copy-for-attachment.ts` chọn các bản có thể dùng,
 `media/import-media-from-zalo-pc.ts` chép sang kho (CHỈ ĐỌC thư mục Zalo PC), kiểm chữ ký ảnh / MP4 / AAC, file đính kèm
 phải đúng MD5 Zalo ghi trong tin (thử lần lượt từng bản). File trong `fileNoise` bị Zalo PC "làm nhiễu": 100 byte đầu XOR

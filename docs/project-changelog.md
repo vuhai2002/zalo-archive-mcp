@@ -94,3 +94,11 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
 - Máy thức mà kết nối không đứt thì kho vẫn chủ động xin Zalo gửi bù, để khoảng ngủ ngắn cũng có kết quả; lượt lấy bù dừng dở
   thì lần kết nối sau xin lại ngay. Đồng bộ từ điện thoại phủ trọn một khoảng thì khoảng đó hiện "Đã đồng bộ từ điện thoại";
   nhãn "Chưa rõ" chỉ cách làm cho chắc (đồng bộ điện thoại ngày đó).
+
+## 2026-11-16: lấy lại video gửi dạng file từ thư mục Zalo PC kiểu cũ
+
+- Lấy lại media từ Zalo PC: file đính kèm (cả video gửi dạng file) giờ dò thêm bản ở thư mục video kiểu cũ (`video/<mã tin>`,
+  `video/group/<mã tin>`), trước đây chỉ dò thư mục `resource` của hội thoại; bản tìm thấy vẫn phải khớp MD5 ghi trong tin.
+- Cài đặt > Đồng bộ và sao lưu: nút chọn thư mục Zalo PC lưu file (`Zalo Received Files`) theo từng nick, bấm là mở hộp thoại
+  chọn thư mục của Windows (daemon mở trên chính máy này, mở sẵn ở thư mục đang chọn); kho dò thư mục này trước các chỗ tự
+  đoán khi lấy lại file. Bỏ chọn được; mỗi lúc chỉ một hộp thoại.

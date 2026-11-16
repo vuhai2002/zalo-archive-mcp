@@ -122,6 +122,8 @@ export const api = {
   mobileSyncDismissSuggestion: () => post<MobileSyncResponse>("/api/mobile-sync/suggestion/dismiss"),
   zaloPcMedia: () => request<ZaloPcMediaImportStatus>("/api/zalo-pc-media"),
   zaloPcMediaStart: () => post<ZaloPcMediaImportStatus>("/api/zalo-pc-media/start"),
+  zaloPcReceivedFilesDir: (dir: string | null) => post<ZaloPcMediaImportStatus>("/api/zalo-pc-media/received-files-dir", { dir }),
+  zaloPcReceivedFilesDirPick: () => post<ZaloPcMediaImportStatus>("/api/zalo-pc-media/received-files-dir/pick"),
   attachmentRetry: (id: number) => post<{ ok: true }>(`/api/attachments/${id}/retry`),
 
   overview: (days: number) => request<OverviewResponse>(withQuery("/api/overview", { days })),

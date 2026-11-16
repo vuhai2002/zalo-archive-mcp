@@ -9,6 +9,7 @@ import { parseEnv } from "../config/env-schema.js";
 import { UnknownAccountError } from "../daemon/zalo-account-manager.js";
 import { LoginCooldownError } from "../daemon/zalo-login-cooldown.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
+import type { FolderPicker } from "../shared/windows-folder-picker-dialog.js";
 import { createDashboardApp } from "./create-dashboard-app.js";
 import type { SessionStatus } from "./dashboard-api-contract.js";
 import { createDashboardAuth } from "./dashboard-auth.js";
@@ -19,7 +20,7 @@ import { dashboardPasswordFile } from "./dashboard-password-store.js";
 export const TEST_HOST = "127.0.0.1:3210";
 export const TEST_PASSWORD = "mat-khau-dai";
 
-export async function createDashboardHarness(opts: { passwordSet?: boolean; accountIds?: string[] } = {}) {
+export async function createDashboardHarness(opts: { passwordSet?: boolean; accountIds?: string[]; pickFolder?: FolderPicker } = {}) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "zam-dash-"));
   const env = parseEnv({ DATA_DIR: dataDir });
   const auth = createDashboardAuth({ passwordFile: dashboardPasswordFile(dataDir), sessionSecretHex: crypto.randomBytes(32).toString("hex") });
@@ -73,7 +74,10 @@ export async function createDashboardHarness(opts: { passwordSet?: boolean; acco
     },
   };
 
-  const app = createDashboardApp({ env, auth, accounts, version: "0.0.0" }, { webDistDir: path.join(dataDir, "no-dist"), allowedHosts: [TEST_HOST] });
+  const app = createDashboardApp(
+    { env, auth, accounts, version: "0.0.0" },
+    { webDistDir: path.join(dataDir, "no-dist"), allowedHosts: [TEST_HOST], pickFolder: opts.pickFolder },
+  );
   const call = (url: string, init: RequestInit & { cookie?: string; host?: string } = {}) =>
     app.request(url, {
       ...init,

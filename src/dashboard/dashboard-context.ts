@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { Logger } from "pino";
 import type { AccountPaths } from "../config/account-paths.js";
 import type { AppEnv } from "../config/env-schema.js";
+import type { FolderPicker } from "../shared/windows-folder-picker-dialog.js";
 import type { DashboardAuth } from "./dashboard-auth.js";
 import type { AccountSummary, MobileSyncStatus, SessionStatus } from "./dashboard-api-contract.js";
 
@@ -51,4 +52,6 @@ export type DashboardContext = {
   readOnly: () => boolean;
   /** Log của dashboard (việc chạy nền như lấy media từ Zalo PC ghi vào đây) */
   log?: Logger;
+  /** Hộp thoại chọn thư mục trên máy chạy daemon; test thay bằng bản giả. Bỏ trống = hộp thoại Windows thật */
+  pickFolder?: FolderPicker;
 };

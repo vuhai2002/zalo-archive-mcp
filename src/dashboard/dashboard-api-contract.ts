@@ -411,4 +411,10 @@ export type ZaloPcMediaImportStatus = {
   finishedAt: string | null;
   progress: ZaloPcImportProgress | null;
   error: string | null;
+  /** Thư mục Zalo PC lưu file (Zalo Received Files) người dùng chọn cho nick này; null = chưa chọn */
+  receivedFilesDir: string | null;
+  /** Các thư mục Zalo Received Files kho sẽ dò (đã chọn trước, rồi chỗ tự tìm), chỉ những thư mục có trên máy */
+  receivedFilesDirs: string[];
 };
+// POST /api/zalo-pc-media/received-files-dir       { dir: string | null } -> ZaloPcMediaImportStatus | 400 { error }
+// POST /api/zalo-pc-media/received-files-dir/pick  {} (mở hộp thoại Windows, chờ chọn / Hủy) -> ZaloPcMediaImportStatus | 409 | 500

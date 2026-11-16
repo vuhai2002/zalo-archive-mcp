@@ -11,7 +11,8 @@ import { getMeta } from "../storage/thread-directory-store.js";
  * Không cần phiên Zalo: chỉ đọc thư mục Zalo PC đã tải về máy rồi chép sang kho (ghép vào đúng tin). File Zalo PC không
  * ghép được vào tin nào thì bỏ (người dùng chốt 2026-11-08).
  */
-export type ZaloPcImportStatus = ZaloPcMediaImportStatus;
+/** Trạng thái lượt chạy; thư mục Zalo Received Files do route ghép thêm (cài đặt theo nick) */
+export type ZaloPcImportStatus = Omit<ZaloPcMediaImportStatus, "receivedFilesDir" | "receivedFilesDirs">;
 
 export class ZaloPcMediaImportJob {
   private running = false;

@@ -19,6 +19,7 @@ import { storageManagementRoutes } from "./routes/storage-management-routes.js";
 import { outboxAndSettingsRoutes } from "./routes/outbox-and-settings-routes.js";
 import { outboxUploadRoute } from "./routes/outbox-upload-route.js";
 import type { Logger } from "pino";
+import type { FolderPicker } from "../shared/windows-folder-picker-dialog.js";
 import { zaloPcMediaRoutes } from "./routes/zalo-pc-media-routes.js";
 import { pollDetailRoute } from "./routes/poll-detail-route.js";
 import { zaloLabelRoute } from "./routes/zalo-label-route.js";
@@ -65,7 +66,10 @@ function accountScopedApi(ctx: DashboardContext): Hono {
  * Route theo nick (kho, gửi, cài đặt, media) chạy trên DB của nick ĐANG DÙNG: mỗi
  * nick một bộ route dựng một lần, đổi nick thì yêu cầu kế tiếp đi sang bộ của nick mới.
  */
-export function createDashboardApp(ctx: DashboardAppContext, opts: { webDistDir: string; allowedHosts: string[]; log?: Logger }): Hono {
+export function createDashboardApp(
+  ctx: DashboardAppContext,
+  opts: { webDistDir: string; allowedHosts: string[]; log?: Logger; pickFolder?: FolderPicker },
+): Hono {
   const app = new Hono();
   app.use("*", hostGuard(opts.allowedHosts));
   app.use("*", async (c, next) => {
@@ -89,7 +93,14 @@ export function createDashboardApp(ctx: DashboardAppContext, opts: { webDistDir:
     let scoped = perAccount.get(active.account.id);
     if (!scoped) {
       const id = active.account.id;
-      scoped = accountScopedApi({ db: active.db, env: ctx.env, paths: active.paths, readOnly: () => ctx.accounts.isReadOnly(id), log: opts.log });
+      scoped = accountScopedApi({
+        db: active.db,
+        env: ctx.env,
+        paths: active.paths,
+        readOnly: () => ctx.accounts.isReadOnly(id),
+        log: opts.log,
+        pickFolder: opts.pickFolder,
+      });
       perAccount.set(active.account.id, scoped);
     }
     return scoped.fetch(c.req.raw);

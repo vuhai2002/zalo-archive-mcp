@@ -5,6 +5,7 @@ import type { ConfirmOptions } from "../../shared/confirm-dialog";
 import { formatDateTime } from "../../shared/format-archive-time";
 import { useArchiveTimeZone } from "../../layout/dashboard-shell-context";
 import { BTN_PRIMARY, ErrorNote, SectionCard } from "../../shared/ui-bits";
+import { ZaloPcReceivedFilesDirField } from "./zalo-pc-received-files-dir-field";
 
 /**
  * Ảnh / video / file / tin thoại Zalo đã xóa khỏi máy chủ (tin cũ, thường từ đồng bộ điện thoại) nhưng Zalo PC trên
@@ -91,6 +92,7 @@ export function ZaloPcMediaImportCard({ confirm }: { confirm: (o: ConfirmOptions
           )}
         </div>
       )}
+      {data && <ZaloPcReceivedFilesDirField data={data} disabled={running} onSaved={setData} />}
     </SectionCard>
   );
 }

@@ -54,11 +54,12 @@ const zaloPcRoot = (env: AppEnv) => env.ZALO_PC_DATA_DIR ?? (env.LOCALAPPDATA ? 
 const RECEIVED_FILES = "Zalo Received Files";
 
 /**
- * Các thư mục `Zalo Received Files` có trên máy - Zalo PC bản cũ lưu file nhận được ở đây, giữ tên thật: cạnh thư
- * mục dữ liệu THẬT của Zalo PC (vd `%LOCALAPPDATA%\ZaloPC` là liên kết trỏ sang `X:\Du-lieu\ZaloPC` thì là
+ * Các thư mục `Zalo Received Files` có trên máy - Zalo PC lưu file người dùng tải / mở ở đây, giữ tên thật. Dò theo thứ tự:
+ * thư mục người dùng chọn trên dashboard (`chosen`, đúng chỗ đặt trong Zalo PC > Cài đặt > Tin nhắn), cạnh thư mục dữ liệu
+ * THẬT của Zalo PC (vd `%LOCALAPPDATA%\ZaloPC` là liên kết trỏ sang `X:\Du-lieu\ZaloPC` thì là
  * `X:\Du-lieu\Zalo Received Files`) và `Documents\Zalo Received Files` (chỗ mặc định cũ). Kho CHỈ ĐỌC các thư mục này.
  */
-export function zaloPcReceivedFilesDirs(env: AppEnv): string[] {
+export function zaloPcReceivedFilesDirs(env: AppEnv, chosen: string | null = null): string[] {
   const root = zaloPcRoot(env);
   const candidates = [path.join(os.homedir(), "Documents", RECEIVED_FILES)];
   if (root) {
@@ -68,6 +69,7 @@ export function zaloPcReceivedFilesDirs(env: AppEnv): string[] {
       // chưa có Zalo PC trên máy
     }
   }
+  if (chosen) candidates.unshift(chosen);
   const found = new Map<string, string>();
   for (const dir of candidates) {
     try {
