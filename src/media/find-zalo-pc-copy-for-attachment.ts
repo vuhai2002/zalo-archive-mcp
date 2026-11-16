@@ -41,11 +41,14 @@ export function findZaloPcMedia(index: ZaloPcMediaIndex, owner: ZaloPcMediaOwner
     const sum = owner.checksum?.toLowerCase() ?? "";
     const md5 = MD5.test(sum) ? sum : null;
     const received = owner.fileName && owner.size ? index.receivedFiles.get(receivedFileKey(owner.fileName, owner.size)) : undefined;
-    // Bản thường trước, bản bị làm nhiễu sau cùng; video gửi dạng file Zalo PC cất ở thư mục video của hội thoại
+    // Bản thường trước, bản bị làm nhiễu sau cùng; video gửi dạng file Zalo PC cất ở thư mục video của hội thoại,
+    // hoặc (kiểu cũ) ở `video/<mã tin>`
+    const oldVideo = index.videosByMsgId.get(owner.msgId);
     const sources: Array<ZaloPcFileSource | null> = [
       md5 && index.plainFiles.has(md5) ? { file: index.plainFiles.get(md5)!, noise: false, sure: false } : null,
       media?.file ? { file: media.file, noise: false, sure: true } : null,
       media?.video ? { file: media.video, noise: false, sure: true } : null,
+      oldVideo ? { file: oldVideo, noise: false, sure: true } : null,
       md5 && received ? { file: received, noise: false, sure: false } : null,
       md5 && index.noiseFiles.has(md5) ? { file: index.noiseFiles.get(md5)!, noise: true, sure: false } : null,
       media?.fileNoise ? { file: media.fileNoise, noise: true, sure: true } : null,

@@ -98,4 +98,27 @@ describe("lấy từ Zalo PC: file bị làm nhiễu, video gửi dạng file, t
     assert.deepEqual([row("m505").status, row("m707").status, row("m808").status], ["failed", "failed", "failed"]);
     assert.deepEqual([snapshot(dl), snapshot(received)], before, "thư mục Zalo PC không bị đổi gì");
   });
+
+  it("video gửi dạng file chỉ còn ở thư mục video kiểu cũ (tên = mã tin): lấy được, vẫn kiểm MD5", async () => {
+    const clip = Buffer.concat([MP4, Buffer.from(" bản chỉ còn ở thư mục cũ")]);
+    const dl = tree({
+      "video/9901": clip, // 1-1
+      "video/group/9902": clip, // nhóm
+      "video/9903": Buffer.from("cùng mã tin nhưng sai nội dung"),
+    });
+    const before = snapshot(dl);
+    const db = openArchiveDatabase(":memory:");
+    failed(db, { msgId: "9901", cliMsgId: "901", kind: "file", checksum: md5(clip), fileName: "clip.mp4" });
+    failed(db, { msgId: "9902", cliMsgId: "902", kind: "file", checksum: md5(clip), fileName: "clip.mp4" });
+    failed(db, { msgId: "9903", cliMsgId: "903", kind: "file", checksum: md5(clip), fileName: "clip.mp4" });
+
+    const mediaDir = fs.mkdtempSync(path.join(os.tmpdir(), "zam-media-"));
+    const result = await importMediaFromZaloPc({ db, mediaDir, downloadsDir: dl, selfUid: SELF, log: createSilentLogger() });
+
+    assert.deepEqual(result, { total: 3, processed: 3, recovered: 2, notFound: 0, rejected: 1, failed: 0 });
+    const row = (id: string) => db.prepare("SELECT status, local_path FROM attachments WHERE msg_id = ?").get(id) as Record<string, string>;
+    for (const id of ["9901", "9902"]) assert.deepEqual(fs.readFileSync(path.join(mediaDir, row(id).local_path!)), clip);
+    assert.equal(row("9903").status, "failed", "sai MD5 thì không nhận");
+    assert.deepEqual(snapshot(dl), before, "thư mục Zalo PC không bị đổi gì");
+  });
 });
