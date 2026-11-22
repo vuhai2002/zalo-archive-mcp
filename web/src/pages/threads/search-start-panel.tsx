@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { SearchFilter, SearchResult } from "../../archive-api-types";
 import { api } from "../../dashboard-api-client";
+import { useActiveAccountId } from "../../layout/dashboard-shell-context";
 import { IconArrowLeft, IconClose } from "../../shared/dashboard-icons";
 import { ErrorNote, LoadingText } from "../../shared/ui-bits";
 import {
@@ -32,17 +33,18 @@ export function SearchStartPanel({
   onOpenThread: (r: RecentThread) => void;
   onOpenMessage: (m: SearchResult) => void;
 }) {
-  const [recent, setRecent] = useState(loadRecentThreads);
+  const accountId = useActiveAccountId();
+  const [recent, setRecent] = useState(() => loadRecentThreads(accountId));
   const [filter, setFilter] = useState<SearchFilter | null>(null);
 
   // Mục nhóm không có ảnh riêng lưu từ bản cũ: lấy lại thành viên để ghép avatar như danh sách hội thoại (lỗi thì để lần sau)
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      for (const r of loadRecentThreads().filter(needsMemberAvatars)) {
+      for (const r of loadRecentThreads(accountId).filter(needsMemberAvatars)) {
         try {
           const t = (await api.threads({ query: r.threadId, limit: 1, offset: 0 })).threads.find((x) => x.threadId === r.threadId);
-          if (t && !cancelled) setRecent(updateRecentThread(recentThreadOf(t)));
+          if (t && !cancelled) setRecent(updateRecentThread(accountId, recentThreadOf(t)));
         } catch {
           // Mạng / kho lỗi: giữ chữ viết tắt, lần mở bảng sau thử lại
         }
@@ -51,7 +53,7 @@ export function SearchStartPanel({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [accountId]);
   const list = usePagedMessageSearch(filter ? { filter } : null, 30);
   const active = FILTERS.find((f) => f.id === filter);
 
@@ -86,7 +88,7 @@ export function SearchStartPanel({
             trailing={
               <button
                 type="button"
-                onClick={() => setRecent(forgetRecentThread(r.threadId))}
+                onClick={() => setRecent(forgetRecentThread(accountId, r.threadId))}
                 aria-label="Xóa khỏi tìm gần đây"
                 title="Xóa khỏi tìm gần đây"
                 className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-full p-1 text-ink-soft hover:bg-line hover:text-ink group-hover:block"

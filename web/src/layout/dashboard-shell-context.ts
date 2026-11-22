@@ -30,6 +30,11 @@ export function useDashboardShell(): DashboardShellValue {
   return value;
 }
 
+/** Mã nick đang dùng ("" khi chưa có nick) - khóa cho mọi thứ trình duyệt nhớ riêng theo nick */
+export function useActiveAccountId(): string {
+  return useDashboardShell().session?.account?.id ?? "";
+}
+
 /** Múi giờ của kho - mọi chỗ hiển thị giờ đều đi qua đây */
 export function useArchiveTimeZone(): string {
   return useDashboardShell().me.timeZone;

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SearchResult, ThreadListItem } from "../../archive-api-types";
 import { api, errorText } from "../../dashboard-api-client";
-import { useArchiveTimeZone } from "../../layout/dashboard-shell-context";
+import { useActiveAccountId, useArchiveTimeZone } from "../../layout/dashboard-shell-context";
 import { IconSearch } from "../../shared/dashboard-icons";
 import { EmptyState, ErrorNote, formatNumber, LoadingText } from "../../shared/ui-bits";
 import { useDebouncedValue } from "../../shared/use-debounced-value";
@@ -33,6 +33,7 @@ export function ThreadListPanel({
   onOpenMessage: (threadId: string, messageId: number) => void;
 }) {
   const tz = useArchiveTimeZone();
+  const accountId = useActiveAccountId();
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [tab, setTab] = useState<SearchTab>("all");
@@ -90,11 +91,11 @@ export function ThreadListPanel({
   };
   // Mở từ kết quả tìm: nhớ vào "Tìm gần đây"
   const openFromSearch = (r: RecentThread) => {
-    rememberRecentThread(recentThreadOf(r));
+    rememberRecentThread(accountId, recentThreadOf(r));
     onSelect(r.threadId);
   };
   const openMessage = (m: SearchResult) => {
-    rememberRecentThread(recentThreadOfHit(m));
+    rememberRecentThread(accountId, recentThreadOfHit(m));
     onOpenMessage(m.threadId, m.id);
   };
   const scrollRef = useRef<HTMLDivElement>(null);

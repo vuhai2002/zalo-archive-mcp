@@ -102,3 +102,9 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
 - Cài đặt > Đồng bộ và sao lưu: nút chọn thư mục Zalo PC lưu file (`Zalo Received Files`) theo từng nick, bấm là mở hộp thoại
   chọn thư mục của Windows (daemon mở trên chính máy này, mở sẵn ở thư mục đang chọn); kho dò thư mục này trước các chỗ tự
   đoán khi lấy lại file. Bỏ chọn được; mỗi lúc chỉ một hộp thoại.
+
+## 2026-11-22: đổi nick không còn sót dữ liệu nick cũ
+
+- "Tìm gần đây" ở ô tìm kiếm lưu riêng cho từng nick (trước đây trình duyệt nhớ chung một danh sách, đổi nick vẫn hiện hội thoại
+  của nick kia); danh sách chung kiểu cũ bị bỏ vì không biết thuộc nick nào.
+- Đổi nick lúc đang mở một hội thoại thì về danh sách hội thoại, không mở lại mã hội thoại của nick cũ (nick mới không có).

@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import type { MeResponse, SessionStatus } from "../archive-api-types";
 import { api, ApiError, errorText, loginPath } from "../dashboard-api-client";
@@ -6,6 +6,7 @@ import { ErrorNote, LoadingText } from "../shared/ui-bits";
 import { SettingsModal } from "../pages/settings/settings-modal";
 import { DashboardShellContext, type DashboardShellValue, type SettingsSection } from "./dashboard-shell-context";
 import { PresentationSetupHost } from "../pages/threads/presentation-setup-dialog";
+import { pathAfterNickSwitch } from "./path-after-nick-switch";
 import { PresentationModeProvider } from "./presentation-mode-context";
 import { SidebarNav } from "./sidebar-nav";
 import { useShellStatusPolling } from "./use-shell-status-polling";
@@ -13,13 +14,22 @@ import { useShellStatusPolling } from "./use-shell-status-polling";
 /**
  * Nội dung các trang theo NICK ĐANG DÙNG:
  * - chưa có nick nào thì đưa thẳng tới trang Tài khoản Zalo để quét QR (đã có nick thì Tài khoản là mục của cửa sổ Cài đặt);
- * - đổi nick thì dựng lại trang (key theo nick) để không còn dữ liệu nick cũ trên màn hình.
+ * - đổi nick thì dựng lại trang (key theo nick) để không còn dữ liệu nick cũ trên màn hình; đang mở một hội thoại của nick cũ
+ *   thì về danh sách hội thoại (nick mới không có hội thoại đó).
  */
 function AccountGate({ session, children }: { session: SessionStatus | null; children: ReactNode }) {
   const location = useLocation();
+  const accountId = session?.account?.id ?? null;
+  const shownFor = useRef(accountId);
+  const switched = shownFor.current !== null && accountId !== null && shownFor.current !== accountId;
+  useEffect(() => {
+    shownFor.current = accountId;
+  });
   if (!session) return <LoadingText />;
   if (!session.account && location.pathname !== "/zalo") return <Navigate to="/zalo" replace />;
-  return <Fragment key={session.account?.id ?? "no-account"}>{children}</Fragment>;
+  const leaveTo = switched ? pathAfterNickSwitch(location.pathname) : null;
+  if (leaveTo) return <Navigate to={leaveTo} replace />;
+  return <Fragment key={accountId ?? "no-account"}>{children}</Fragment>;
 }
 
 /**
