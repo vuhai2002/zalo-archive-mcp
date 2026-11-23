@@ -38,15 +38,12 @@ Dùng Claude Code (dòng lệnh `claude` hoặc tab Code của ứng dụng Clau
 nguyên đoạn dưới đây.
 
 ```text
-Clone https://github.com/vuhai2002/zalo-archive-mcp về thư mục hiện tại và cài theo đúng hướng dẫn trong README.md
-của repo đó (mục "Cài đặt" và "Gắn vào Claude").
-- Đăng ký MCP "zalo-archive" ở phạm vi user (global) cho Claude Code, dùng đường dẫn thật của repo vừa clone,
-  rồi kiểm tra bằng `claude mcp get zalo-archive`.
-- Bật tự chạy daemon khi khởi động máy: `pnpm autostart install`.
-- Thiếu gì (Git, Node >= 22.13, pnpm qua `corepack enable`...) thì tự cài thêm.
-- Không tự đặt mật khẩu dashboard và không đăng nhập Zalo thay tôi.
-Cài xong thì hướng dẫn tôi ngắn gọn từng bước tôi cần tự làm (theo mục "Việc bạn tự làm sau khi cài").
+https://github.com/vuhai2002/zalo-archive-mcp
+Clone project này về folder hiện tại và cài theo đúng hướng dẫn cho tôi đi. Đăng ký MCP global vào Claude và auto start khi khởi động máy tính. Nếu có thiếu gì thì bạn sẽ tự cài thêm cho tôi luôn. Không tự đặt mật khẩu dashboard và không đăng nhập Zalo thay tôi. Khi nào cài xong thì hướng dẫn nhanh từng bước tôi cần phải làm.
 ```
+
+Agent sẽ làm theo mục [Cài đặt](#cài-đặt) và [Gắn vào Claude](#gắn-vào-claude-dùng-ở-mọi-phiên): `pnpm install`,
+`pnpm build:web`, `pnpm autostart install` (tự chạy ẩn mỗi lần đăng nhập Windows), `claude mcp add --scope user ...`.
 
 ### Việc bạn tự làm sau khi cài
 
