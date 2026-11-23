@@ -53,6 +53,17 @@ Agent sẽ làm theo mục [Cài đặt](#cài-đặt) và [Gắn vào Claude](#
 4. Có Zalo PC trên máy: cùng mục đó, bấm nút thư mục để chọn thư mục Zalo PC lưu file, rồi bấm **Lấy từ Zalo PC**.
 5. Mở phiên Claude mới, hỏi thử: "Có tin nào tôi chưa trả lời không?".
 
+<details>
+<summary><strong>Xem ảnh từng bước</strong> (chụp từ kho demo, dữ liệu giả)</summary>
+
+![Bước 1: tạo mật khẩu dashboard](docs/images/setup-step-1-create-password.webp)
+![Bước 2: đăng nhập Zalo bằng QR](docs/images/setup-step-2-login-qr.webp)
+![Bước 3: lấy tin cũ từ điện thoại](docs/images/setup-step-3-sync-phone.webp)
+![Bước 4: lấy ảnh, video, file cũ từ Zalo PC](docs/images/setup-step-4-zalo-pc.webp)
+![Bước 5: xong, kho tự lưu mọi tin](docs/images/setup-step-5-done.webp)
+
+</details>
+
 ## Cài đặt
 
 Cần Git, Node >= 22.13 và pnpm 11 (`corepack enable`).
