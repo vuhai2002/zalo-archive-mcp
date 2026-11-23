@@ -1,15 +1,72 @@
-# zalo-archive-mcp
+<p align="center">
+  <img src="web/public/app-logo.png" alt="Zalo Archive MCP" width="160" />
+</p>
 
-Kho lưu trữ toàn bộ tin nhắn + file của MỘT tài khoản Zalo cá nhân (gửi và nhận, 1-1 và nhóm),
-có dashboard web để xem/tìm/gửi, và mở cho Claude đọc + gửi tin qua MCP. Không phải chatbot tự
-trả lời người khác.
+<h1 align="center">Zalo Archive MCP</h1>
 
-Chạy trên máy ở nhà. Dữ liệu nằm hết trong `data/` (mỗi nick một thư mục `data/accounts/<nick>/`) và
-không bao giờ được commit.
+<p align="center">
+Kho lưu trữ <strong>toàn bộ tin nhắn + file</strong> của tài khoản Zalo <strong>cá nhân</strong> (gửi và nhận, 1-1 và nhóm),<br/>
+có dashboard web như Zalo PC để xem, tìm, gửi, và mở cho <strong>Claude</strong> đọc + gửi tin qua <strong>MCP</strong>.<br/>
+Chạy trên máy của bạn, dữ liệu không rời khỏi máy. Không phải chatbot tự trả lời người khác.
+</p>
+
+<p align="center">
+  <a href="#cài-bằng-ai-agent">Cài bằng AI agent</a> •
+  <a href="#cài-đặt">Cài đặt</a> •
+  <a href="#gắn-vào-claude-dùng-ở-mọi-phiên">Gắn vào Claude</a> •
+  <a href="#lưu-ý-bảo-mật">Bảo mật</a> •
+  <a href="docs/system-architecture.md">Kiến trúc</a> •
+  <a href="#tác-giả">Tác giả</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Node-22.13+-339933?style=flat-square&logo=nodedotjs&logoColor=white" alt="Node" />
+  <img src="https://img.shields.io/badge/SQLite-node:sqlite-003B57?style=flat-square&logo=sqlite&logoColor=white" alt="SQLite" />
+  <img src="https://img.shields.io/badge/MCP-Claude-D97757?style=flat-square&logo=anthropic&logoColor=white" alt="MCP" />
+  <img src="https://img.shields.io/badge/tests-669%20xanh-brightgreen?style=flat-square" alt="tests" />
+</p>
+
+---
+
+Dữ liệu nằm hết trong `data/` (mỗi nick một thư mục `data/accounts/<nick>/`) và không bao giờ được commit.
+
+## Cài bằng AI agent
+
+Dùng Claude Code (dòng lệnh `claude` hoặc tab Code của ứng dụng Claude) trên Windows: mở ở thư mục muốn đặt repo, dán
+nguyên đoạn dưới đây.
+
+```text
+Clone https://github.com/vuhai2002/zalo-archive-mcp về thư mục hiện tại và cài theo đúng hướng dẫn trong README.md
+của repo đó (mục "Cài đặt" và "Gắn vào Claude").
+- Đăng ký MCP "zalo-archive" ở phạm vi user (global) cho Claude Code, dùng đường dẫn thật của repo vừa clone,
+  rồi kiểm tra bằng `claude mcp get zalo-archive`.
+- Bật tự chạy daemon khi khởi động máy: `pnpm autostart install`.
+- Thiếu gì (Git, Node >= 22.13, pnpm qua `corepack enable`...) thì tự cài thêm.
+- Không tự đặt mật khẩu dashboard và không đăng nhập Zalo thay tôi.
+Cài xong thì hướng dẫn tôi ngắn gọn từng bước tôi cần tự làm (theo mục "Việc bạn tự làm sau khi cài").
+```
+
+### Việc bạn tự làm sau khi cài
+
+1. Mở http://127.0.0.1:3210, tạo mật khẩu dashboard (nhập hai lần).
+2. Bấm **Đăng nhập bằng QR**, quét bằng app Zalo trên điện thoại. Từ đây kho tự lưu mọi tin mới.
+3. Muốn có tin cũ: Cài đặt > **Đồng bộ và sao lưu** > **Đồng bộ từ điện thoại**, rồi xác nhận trên điện thoại.
+4. Có Zalo PC trên máy: cùng mục đó, bấm nút thư mục để chọn thư mục Zalo PC lưu file, rồi bấm **Lấy từ Zalo PC**.
+5. Mở phiên Claude mới, hỏi thử: "Có tin nào tôi chưa trả lời không?".
 
 ## Cài đặt
 
-Cần Node >= 22.13 và pnpm 11 (`corepack enable`).
+Cần Git, Node >= 22.13 và pnpm 11 (`corepack enable`).
+
+```bash
+git clone https://github.com/vuhai2002/zalo-archive-mcp.git
+```
+
+```bash
+cd zalo-archive-mcp
+```
 
 ```bash
 pnpm install
@@ -201,10 +258,20 @@ chạy và đã đăng nhập: MCP ghi vào hàng đợi, daemon là nơi duy nh
 | `pnpm build:web`, `pnpm dev:web` | build / chạy dev giao diện |
 | `pnpm test`, `pnpm typecheck` | kiểm tra |
 
-## Còn là khung (chờ số đo trên nick phụ)
+## Còn đang thử
 
-- Lấy bù tin lỡ (`OFFLINE_REPLAY_ENABLED`, bật mặc định): mới lấy TRANG ĐẦU, chưa phân trang.
-- `ZALO_KEEPALIVE_MINUTES`: gọi keepAlive định kỳ.
-- Làm mới URL media hết hạn (renewlink).
-- Đồng bộ lịch sử cũ từ điện thoại: `plans/261028-2253-xay-kho-truoc-chinh-sau/phase-dong-bo-tu-dien-thoai.md`.
-- Reaction, sự kiện nhóm: đã ghi vào nhật ký thô, chưa đưa vào DB.
+- `ZALO_KEEPALIVE_MINUTES` (mặc định 0 = tắt): gọi keepAlive định kỳ, chờ số đo trên nick phụ.
+
+Các phần trước đây còn là khung (lấy bù nhiều trang, xin lại link media hết hạn, đồng bộ từ điện thoại, cảm xúc và sự kiện
+nhóm) đã làm xong - xem [changelog](docs/project-changelog.md).
+
+## Tác giả
+
+**Vũ Văn Hải (haivv)** - [github.com/vuhai2002](https://github.com/vuhai2002)
+
+Xây trên [zca-js](https://github.com/RFS-ADRENO/zca-js) (MIT) và
+[MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) (MIT).
+
+## License
+
+[MIT](LICENSE) © 2026 Vũ Văn Hải (haivv)
