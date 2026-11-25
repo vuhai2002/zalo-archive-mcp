@@ -41,4 +41,4 @@ run("git", ["push", "origin", "main"]);
 run("git", ["push", "origin", tag]);
 const url = run("gh", ["release", "create", tag, "--title", tag, "--generate-notes", "--verify-tag"]);
 console.log(`Đã phát hành ${tag}: ${url}`);
-console.log("Người dùng sẽ thấy nút \"Có bản mới\" trên dashboard trong vòng vài giờ (theo UPDATE_CHECK_INTERVAL_HOURS).");
+console.log("Người dùng sẽ thấy nút \"Có bản mới\" trên dashboard trong vòng một giờ (mặc định; chỉnh bằng UPDATE_CHECK_INTERVAL_HOURS), hoặc ngay khi bấm \"Kiểm tra cập nhật\" ở Cài đặt > Giới thiệu.");
