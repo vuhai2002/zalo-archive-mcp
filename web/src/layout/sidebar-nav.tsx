@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
+import { AppUpdateDialog, IconArrowUpCircle, useAppUpdateInfo } from "./app-update-dialog";
 import type { SessionStatus } from "../archive-api-types";
 import { ContactAvatar } from "../shared/contact-avatar";
 import { IconChat, IconGear, IconGrid, IconInbox, IconPresentation, IconWarning, type IconFn } from "../shared/dashboard-icons";
@@ -91,6 +93,9 @@ export function SidebarNav({
   const tone = sessionTone(session);
   const nickName = session?.account?.displayName ?? session?.displayName ?? session?.account?.id ?? "Chưa có nick";
   const statusText = `${nickName} - ${sessionShortText(session)} - v${__APP_VERSION__}`;
+  const update = useAppUpdateInfo();
+  const [showUpdate, setShowUpdate] = useState(false);
+  const updateTitle = update ? `Có bản mới v${update.latest} - bấm để xem cách cập nhật` : "";
 
   return (
     <>
@@ -112,6 +117,12 @@ export function SidebarNav({
             <IconWarning size={20} />
           </button>
         )}
+        {update && !presenting && (
+          <button type="button" onClick={() => setShowUpdate(true)} title={updateTitle} aria-label={updateTitle} className={`${RAIL_BTN} mb-1`}>
+            <IconArrowUpCircle size={26} strokeWidth={1.9} />
+            <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-[#005ae0] dark:ring-[#0b2a5c]" />
+          </button>
+        )}
         {!presenting && (
           <div className="mb-1">
             <RailLink item={OVERVIEW} />
@@ -127,6 +138,12 @@ export function SidebarNav({
         {(presenting ? topItems : [...TOP_ITEMS, OVERVIEW]).map((item) => (
           <TabLink key={item.to} item={item} />
         ))}
+        {update && !presenting && (
+          <button type="button" onClick={() => setShowUpdate(true)} aria-label={updateTitle} className="relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10.5px] text-emerald-600">
+            <IconArrowUpCircle size={20} />
+            <span className="truncate">Bản mới</span>
+          </button>
+        )}
         <SidebarSettingsMenu variant="tab" onLogout={onLogout}>
           <IconGear size={20} />
           <span className="truncate">Cài đặt</span>
@@ -134,6 +151,7 @@ export function SidebarNav({
           <span className={`absolute right-[30%] top-2 h-2 w-2 rounded-full ${killSwitch?.killed ? "bg-red-500" : TONE_DOT_CLASS[tone]}`} />
         </SidebarSettingsMenu>
       </nav>
+      {showUpdate && update && <AppUpdateDialog info={update} onClose={() => setShowUpdate(false)} />}
     </>
   );
 }

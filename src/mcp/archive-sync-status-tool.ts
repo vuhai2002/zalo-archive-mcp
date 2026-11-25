@@ -1,3 +1,4 @@
+import type { UpdateInfo } from "../shared/github-release-update-check.js";
 import { getKillSwitch } from "../storage/send-control-store.js";
 import { attachmentStatusCounts } from "../storage/attachment-queue-store.js";
 import { listenerGaps, recentConnectionEvents } from "../storage/connection-event-store.js";
@@ -16,7 +17,7 @@ const GAP_LOOKBACK_DAYS = 7;
  * gửi bù đủ hay có thể thiếu), media chưa tải, trạng thái cổng gửi. Khoảng có thể thiếu
  * thì model phải nói "có thể thiếu tin" thay vì khẳng định "không có tin nào".
  */
-export function syncStatusTool(ctx: ReadToolContext & { readonly readOnly: boolean }): ToolResult {
+export function syncStatusTool(ctx: ReadToolContext & { readonly readOnly: boolean }, update: UpdateInfo | null = null): ToolResult {
   const { db, env } = ctx;
   const tz = env.ARCHIVE_TIMEZONE;
   const t = (iso: string | null) => formatLocalTime(iso, tz);
@@ -62,5 +63,11 @@ export function syncStatusTool(ctx: ReadToolContext & { readonly readOnly: boole
       : `Daemon: ${sessionState ?? "chưa từng chạy"} (running = đang gửi được); kill switch ${kill.killed ? `ĐANG KHÓA (${kill.reason})` : "mở"}.`,
     "Lưu ý: kho chỉ có tin từ lúc bắt đầu chạy listener; tin cũ hơn chưa có.",
   ];
+  if (update?.updateAvailable && update.latest) {
+    lines.push(
+      `Có bản mới v${update.latest} của Zalo Archive MCP (đang chạy v${update.current}). Người dùng muốn cập nhật thì làm theo ` +
+        'mục "Cập nhật" trong README.md của repo (không tự cập nhật khi người dùng chưa bảo).',
+    );
+  }
   return toolOk(lines.join("\n"));
 }

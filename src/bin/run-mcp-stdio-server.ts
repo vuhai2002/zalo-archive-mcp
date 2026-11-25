@@ -4,6 +4,7 @@
 // Luôn theo nick đang dùng trên dashboard (đổi nick không cần khởi động lại MCP).
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { resolveDataDir } from "../config/account-paths.js";
+import { appVersion, createAppUpdateChecker } from "../config/app-version-and-update-checker.js";
 import { getEnv } from "../config/env.js";
 import { createActiveAccountToolContext } from "../mcp/active-account-tool-context.js";
 import { createArchiveMcpServer } from "../mcp/create-archive-mcp-server.js";
@@ -13,7 +14,10 @@ const env = getEnv();
 const log = createLogger({ name: "mcp", level: env.LOG_LEVEL });
 const ctx = createActiveAccountToolContext(env, resolveDataDir(env));
 
-const server = createArchiveMcpServer(ctx);
+const updates = createAppUpdateChecker(env);
+// Hỏi GitHub một lần ở nền ngay khi chạy, để sync_status sớm biết có bản mới (lỗi mạng thì bỏ qua)
+void updates.check().catch(() => undefined);
+const server = createArchiveMcpServer(ctx, { version: appVersion(), updates });
 await server.connect(new StdioServerTransport());
 log.info("MCP server kho Zalo đã sẵn sàng (stdio)");
 

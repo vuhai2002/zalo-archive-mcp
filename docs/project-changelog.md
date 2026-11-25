@@ -108,3 +108,12 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
 - "Tìm gần đây" ở ô tìm kiếm lưu riêng cho từng nick (trước đây trình duyệt nhớ chung một danh sách, đổi nick vẫn hiện hội thoại
   của nick kia); danh sách chung kiểu cũ bị bỏ vì không biết thuộc nick nào.
 - Đổi nick lúc đang mở một hội thoại thì về danh sách hội thoại, không mở lại mã hội thoại của nick cũ (nick mới không có).
+
+## 2026-11-24: báo có bản mới, cập nhật bằng agent
+
+- Daemon hỏi GitHub Release (mặc định 6 giờ một lần, lỗi mạng thì bỏ qua): có bản mới hơn thì thanh bên dashboard hiện nút
+  "Có bản mới"; bấm mở hộp có prompt soạn sẵn (nút Sao chép) để dán cho agent tự cập nhật, kèm ghi chú phát hành và link
+  GitHub. `sync_status` của MCP cũng ghi một dòng có bản mới. Tắt bằng `UPDATE_CHECK_ENABLED=false`.
+- README có mục "Cập nhật": các bước agent làm theo (dừng khi có file sửa tay, không đụng `data/`, dừng daemon, `git pull
+  --ff-only`, cài lại thư viện, build giao diện, bật lại daemon, nối lại MCP).
+- `pnpm release X.Y.Z` cho người phát triển: đổi version, commit, tag, đẩy lên GitHub và tạo Release.

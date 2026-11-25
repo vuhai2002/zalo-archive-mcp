@@ -9,6 +9,7 @@ import type {
   ForwardRequestBody,
   ForwardResult,
   MeResponse,
+  UpdateInfo,
   MessageDeletePreview,
   MessageDeleteResult,
   MobileSyncResponse,
@@ -106,6 +107,7 @@ export const api = {
   login: (password: string) => post<MeResponse>("/api/auth/login", { password }),
   logout: () => post<{ ok: true }>("/api/auth/logout"),
   me: () => request<MeResponse>("/api/auth/me"),
+  version: () => request<UpdateInfo>("/api/version"),
 
   session: () => request<SessionStatus>("/api/session"),
   sessionLoginQr: () => post<SessionStatus>("/api/session/login-qr"),

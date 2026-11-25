@@ -14,6 +14,7 @@ Chạy trên máy của bạn, dữ liệu không rời khỏi máy. Không ph�
   <a href="#cài-bằng-ai-agent">Cài bằng AI agent</a> •
   <a href="#cài-đặt">Cài đặt</a> •
   <a href="#gắn-vào-claude-dùng-ở-mọi-phiên">Gắn vào Claude</a> •
+  <a href="#cập-nhật">Cập nhật</a> •
   <a href="#lưu-ý-bảo-mật">Bảo mật</a> •
   <a href="docs/system-architecture.md">Kiến trúc</a> •
   <a href="#tác-giả">Tác giả</a>
@@ -224,6 +225,53 @@ Claude gửi ngay khi được bảo, không hỏi lại (người dùng chọn)
 chạy và đã đăng nhập: MCP ghi vào hàng đợi, daemon là nơi duy nhất gọi Zalo. MCP luôn theo nick
 đang dùng trên dashboard, đổi nick không cần khởi động lại.
 
+## Cập nhật
+
+Có bản mới trên GitHub Release thì dashboard hiện nút **Có bản mới** (mũi tên lên, chấm xanh ở thanh bên): bấm vào, chép
+prompt dán cho agent để nó tự cập nhật theo đúng các bước dưới đây. Tắt việc kiểm tra: `UPDATE_CHECK_ENABLED=false`.
+
+Các bước (agent làm theo đúng thứ tự; tự làm tay cũng vậy):
+
+1. Vào thư mục repo. Không rõ ở đâu thì xem `claude mcp get zalo-archive` - đường dẫn nằm trong lệnh chạy MCP.
+2. `git status --porcelain`: có file code bị sửa tay thì **dừng, hỏi người dùng**, không ghi đè, không `git stash` /
+   `git reset`. Thư mục `data/` và `.env` không do git quản lý, không bao giờ bị cập nhật đụng tới - không xóa, không sửa gì
+   trong `data/`.
+3. Ghi lại bản đang chạy: trường `version` trong `package.json`.
+4. Dừng daemon:
+
+   ```bash
+   pnpm stop
+   ```
+
+5. Lấy bản mới (không nhảy thẳng được, vd lịch sử lệch, thì dừng hỏi người dùng):
+
+   ```bash
+   git pull --ff-only
+   ```
+
+6. Cài thư viện và build lại giao diện:
+
+   ```bash
+   pnpm install --frozen-lockfile
+   ```
+
+   ```bash
+   pnpm build:web
+   ```
+
+   `pnpm install` báo file đang bị dùng (EBUSY / EPERM) thường do MCP `zalo-archive` đang chạy trong một ứng dụng Claude khác:
+   đóng các ứng dụng / phiên Claude đó rồi chạy lại.
+7. Bật lại daemon (đã cài tự chạy thì lệnh này chỉ chạy lại daemon; DB tự chuyển lên bản mới lúc khởi động):
+
+   ```bash
+   pnpm autostart install
+   ```
+
+8. Nối lại MCP `zalo-archive` để Claude dùng code mới: Claude Code gõ `/mcp` -> chọn `zalo-archive` -> Reconnect (hoặc mở
+   phiên mới); Claude Desktop thì thoát hẳn và mở lại.
+9. Báo người dùng: bản cũ -> bản mới (`version` trong `package.json`), có gì mới (ghi chú của Release trên GitHub hoặc
+   `docs/project-changelog.md`).
+
 ## Giới hạn gửi (sửa trên dashboard -> Cài đặt)
 
 - **Tin lẻ** (gửi cho một người): không trần, không khung giờ, chỉ cách tin trước tối thiểu 3 giây.
@@ -263,6 +311,7 @@ chạy và đã đăng nhập: MCP ghi vào hàng đợi, daemon là nơi duy nh
 | `pnpm outbox` | hàng đợi ở terminal: list, approve, cancel, kill, unkill, status |
 | `pnpm replay-journal` | dựng lại kho từ nhật ký thô sau khi sửa parser |
 | `pnpm seed-demo` | tạo kho demo dữ liệu giả |
+| `pnpm release X.Y.Z` | (người phát triển) phát hành bản mới: đổi version, tag, đẩy lên GitHub Release |
 | `pnpm build:web`, `pnpm dev:web` | build / chạy dev giao diện |
 | `pnpm test`, `pnpm typecheck` | kiểm tra |
 

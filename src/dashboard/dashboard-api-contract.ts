@@ -416,5 +416,7 @@ export type ZaloPcMediaImportStatus = {
   /** Các thư mục Zalo Received Files kho sẽ dò (đã chọn trước, rồi chỗ tự tìm), chỉ những thư mục có trên máy */
   receivedFilesDirs: string[];
 };
+// GET /api/version -> UpdateInfo (bản đang chạy + có bản mới trên GitHub Release không)
+export type { UpdateInfo } from "../shared/github-release-update-check.js";
 // POST /api/zalo-pc-media/received-files-dir       { dir: string | null } -> ZaloPcMediaImportStatus | 400 { error }
 // POST /api/zalo-pc-media/received-files-dir/pick  {} (mở hộp thoại Windows, chờ chọn / Hủy) -> ZaloPcMediaImportStatus | 409 | 500

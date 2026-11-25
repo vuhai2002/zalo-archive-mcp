@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import type { DashboardAppContext, DashboardContext } from "./dashboard-context.js";
 import { hostGuard, requireJsonBody, requireSession } from "./dashboard-security-middleware.js";
 import { accountAndSessionRoutes } from "./routes/account-and-session-routes.js";
+import { appVersionRoute } from "./routes/app-version-route.js";
 import { archiveBrowseRoutes } from "./routes/archive-browse-routes.js";
 import { messageSearchRoutes } from "./routes/message-search-routes.js";
 import { attachmentRetryRoute } from "./routes/attachment-retry-route.js";
@@ -84,6 +85,7 @@ export function createDashboardApp(
   api.route("/", dashboardPasswordRoutes(ctx));
   api.route("/", accountAndSessionRoutes(ctx));
   api.route("/", mobileSyncRoutes(ctx));
+  api.route("/", appVersionRoute(ctx));
   const perAccount = new Map<string, Hono>();
   api.all("*", (c) => {
     const active = ctx.accounts.active();

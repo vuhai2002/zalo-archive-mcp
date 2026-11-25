@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { Logger } from "pino";
 import type { AccountPaths } from "../config/account-paths.js";
 import type { AppEnv } from "../config/env-schema.js";
+import type { UpdateChecker } from "../shared/github-release-update-check.js";
 import type { FolderPicker } from "../shared/windows-folder-picker-dialog.js";
 import type { DashboardAuth } from "./dashboard-auth.js";
 import type { AccountSummary, MobileSyncStatus, SessionStatus } from "./dashboard-api-contract.js";
@@ -38,6 +39,8 @@ export type DashboardAppContext = {
   auth: DashboardAuth;
   accounts: AccountControl;
   version: string;
+  /** Kiểm tra bản mới trên GitHub Release; bỏ trống = không kiểm tra */
+  updates?: UpdateChecker;
 };
 
 /**

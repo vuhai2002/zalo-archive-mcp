@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getAttachmentTool, listThreadsTool, readThreadTool, searchMessagesTool, type ReadToolContext } from "./archive-read-tool-handlers.js";
+import type { UpdateChecker } from "../shared/github-release-update-check.js";
 import { syncStatusTool } from "./archive-sync-status-tool.js";
 import { listGroupMembersTool } from "./group-members-tool.js";
 import { registerSendTools } from "./register-send-tools.js";
@@ -15,8 +16,11 @@ const dateField = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Ngày YYYY-M
  * Không có tool nào chạm kill switch hay cài đặt gửi - việc đó chỉ người dùng
  * làm trên dashboard.
  */
-export function createArchiveMcpServer(ctx: ReadToolContext & { readonly readOnly: boolean; readonly outboxFilesDir?: string }): McpServer {
-  const server = new McpServer({ name: "zalo-archive", version: "0.3.0" });
+export function createArchiveMcpServer(
+  ctx: ReadToolContext & { readonly readOnly: boolean; readonly outboxFilesDir?: string },
+  opts: { version?: string; updates?: UpdateChecker } = {},
+): McpServer {
+  const server = new McpServer({ name: "zalo-archive", version: opts.version ?? "0.0.0" });
 
   server.registerTool(
     "list_threads",
@@ -109,7 +113,11 @@ export function createArchiveMcpServer(ctx: ReadToolContext & { readonly readOnl
       inputSchema: {},
       annotations: READ_ONLY,
     },
-    safeToolHandler(() => syncStatusTool(ctx)),
+    safeToolHandler(() => {
+      // Không chờ mạng: dùng kết quả đã có, hỏi lại GitHub ở nền (có cache) cho lần gọi sau
+      void opts.updates?.check().catch(() => undefined);
+      return syncStatusTool(ctx, opts.updates?.peek() ?? null);
+    }),
   );
 
   // Truyền nguyên ngữ cảnh (không chép `db` ra): bản chạy thật đọc nick đang dùng mỗi lần gọi
