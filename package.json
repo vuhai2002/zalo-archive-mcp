@@ -1,6 +1,6 @@
 {
   "name": "zalo-archive-mcp",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Kho lưu trữ toàn bộ tin nhắn + file của một tài khoản Zalo cá nhân, có dashboard web; Claude đọc và gửi tin qua MCP, mọi tin đi qua hàng đợi và cổng gửi ở daemon.",
   "license": "MIT",
