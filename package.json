@@ -4,7 +4,7 @@
   "private": true,
   "description": "Kho lưu trữ toàn bộ tin nhắn + file của một tài khoản Zalo cá nhân, có dashboard web; Claude đọc và gửi tin qua MCP, mọi tin đi qua hàng đợi và cổng gửi ở daemon.",
   "license": "MIT",
-  "author": "Vũ Văn Hải (haivv) (https://github.com/vuhai2002)",
+  "author": "Vũ Văn Hải (https://github.com/vuhai2002)",
   "repository": "github:vuhai2002/zalo-archive-mcp",
   "type": "module",
   "engines": {

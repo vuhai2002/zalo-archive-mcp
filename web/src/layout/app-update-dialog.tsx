@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import type { UpdateInfo } from "../archive-api-types";
-import { api } from "../dashboard-api-client";
 import { useChotNen } from "../shared/backdrop-close-guard";
 import { IconClose } from "../shared/dashboard-icons";
-import { APP_UPDATE_AGENT_PROMPT, APP_UPDATE_POLL_MS } from "./app-update-agent-prompt";
+import { APP_UPDATE_AGENT_PROMPT } from "./app-update-agent-prompt";
 import { IconArrowRightThin, IconArrowUpCircle, IconCheckSmall, IconCopy, IconGithubMark } from "./app-update-icons";
+import { useAppUpdateState } from "./app-update-store";
 import { ReleaseNotesView } from "./release-notes-view";
 
 export { IconArrowUpCircle } from "./app-update-icons";
@@ -14,15 +14,9 @@ export { IconArrowUpCircle } from "./app-update-icons";
  * (ai dùng kho cũng đã cắm nó vào agent). Không tự cập nhật gì.
  */
 
-/** Hỏi /api/version lúc mở dashboard rồi định kỳ; lỗi thì coi như không có bản mới */
+/** Chỉ trả kết quả khi CÓ bản mới (cho nút ở thanh bên) */
 export function useAppUpdateInfo(): UpdateInfo | null {
-  const [info, setInfo] = useState<UpdateInfo | null>(null);
-  useEffect(() => {
-    const load = () => api.version().then(setInfo, () => undefined);
-    load();
-    const t = setInterval(load, APP_UPDATE_POLL_MS);
-    return () => clearInterval(t);
-  }, []);
+  const info = useAppUpdateState();
   return info?.updateAvailable ? info : null;
 }
 

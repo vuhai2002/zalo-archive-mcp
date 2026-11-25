@@ -123,7 +123,7 @@ export const envSchema = z
     DASHBOARD_LIVE_CHECK_MS: int(1000, 200, 60_000),
     // Hỏi GitHub Release xem có bản mới không (dashboard hiện nút "Có bản mới", sync_status của MCP nhắc). Tắt = không hỏi
     UPDATE_CHECK_ENABLED: flag(true),
-    UPDATE_CHECK_INTERVAL_HOURS: int(6, 1, 168),
+    UPDATE_CHECK_INTERVAL_HOURS: int(1, 1, 168),
   })
   .refine((e) => e.SEND_BATCH_MIN_GAP_SECONDS <= e.SEND_BATCH_MAX_GAP_SECONDS, {
     message: "SEND_BATCH_MIN_GAP_SECONDS phải <= SEND_BATCH_MAX_GAP_SECONDS",

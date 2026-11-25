@@ -6,7 +6,7 @@ import path from "node:path";
 import { loadOrImportAccountRegistry } from "../accounts/load-or-import-account-registry.js";
 import { resolveDataDir } from "../config/account-paths.js";
 import { loadOrCreateAppSecrets } from "../config/app-secrets-store.js";
-import { appVersion, createAppUpdateChecker } from "../config/app-version-and-update-checker.js";
+import { appAbout, appVersion, createAppUpdateChecker } from "../config/app-version-and-update-checker.js";
 import { getEnv } from "../config/env.js";
 import { openAccountDatabaseForDaemon } from "../daemon/prepare-account-database.js";
 import { ZaloAccountManager } from "../daemon/zalo-account-manager.js";
@@ -38,7 +38,7 @@ const accounts = new ZaloAccountManager({
   openDb: (file, id) => openAccountDatabaseForDaemon(file, env, log.child({ account: id })),
 });
 const auth = createDashboardAuth({ passwordFile: dashboardPasswordFile(dataDir), sessionSecretHex: secrets.sessionSecretHex });
-const closeDashboard = startDashboardServer({ env, auth, accounts, version, updates: createAppUpdateChecker(env) }, log.child({ part: "dashboard" }));
+const closeDashboard = startDashboardServer({ env, auth, accounts, version, updates: createAppUpdateChecker(env), about: appAbout() }, log.child({ part: "dashboard" }));
 if (!auth.isPasswordSet()) log.info("Chưa có mật khẩu dashboard - mở dashboard để tạo mật khẩu lần đầu");
 
 let shuttingDown = false;

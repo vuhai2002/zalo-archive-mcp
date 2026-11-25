@@ -111,9 +111,12 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
 
 ## 2026-11-24: báo có bản mới, cập nhật bằng agent
 
-- Daemon hỏi GitHub Release (mặc định 6 giờ một lần, lỗi mạng thì bỏ qua): có bản mới hơn thì thanh bên dashboard hiện nút
+- Daemon hỏi GitHub Release (mặc định mỗi giờ một lần, lỗi mạng thì bỏ qua): có bản mới hơn thì thanh bên dashboard hiện nút
   "Có bản mới"; bấm mở hộp có prompt soạn sẵn (nút Sao chép) để dán cho agent tự cập nhật, kèm ghi chú phát hành và link
   GitHub. `sync_status` của MCP cũng ghi một dòng có bản mới. Tắt bằng `UPDATE_CHECK_ENABLED=false`.
 - README có mục "Cập nhật": các bước agent làm theo (dừng khi có file sửa tay, không đụng `data/`, dừng daemon, `git pull
   --ff-only`, cài lại thư viện, build giao diện, bật lại daemon, nối lại MCP).
 - `pnpm release X.Y.Z` cho người phát triển: đổi version, commit, tag, đẩy lên GitHub và tạo Release.
+- Cài đặt > Giới thiệu: phiên bản đang chạy, nút "Kiểm tra cập nhật" (hỏi GitHub ngay, tối đa một lần thật mỗi phút), kết quả
+  bản mới nhất / có bản mới / chưa kiểm tra được, link mã nguồn, changelog, giấy phép và tác giả. Hỏi GitHub kèm ETag để lần
+  hỏi lại khi Release chưa đổi không tốn lượt.

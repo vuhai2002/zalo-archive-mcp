@@ -8,6 +8,26 @@ export const IconArrowUpCircle = (p: IconProps) => (
   </svg>
 );
 
+export const IconInfoCircle = (p: IconProps) => (
+  <svg {...iconBase(p)}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 11v5M12 8h.01" />
+  </svg>
+);
+
+export const IconRefreshArrows = (p: IconProps) => (
+  <svg {...iconBase(p)}>
+    <path d="M19.5 12a7.5 7.5 0 0 1-13.3 4.8M4.5 12a7.5 7.5 0 0 1 13.3-4.8M18 4v3.5h-3.5M6 20v-3.5h3.5" />
+  </svg>
+);
+
+export const IconCircleCheck = (p: IconProps) => (
+  <svg {...iconBase(p)}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="m8.5 12.2 2.4 2.4 4.6-4.8" />
+  </svg>
+);
+
 export const IconArrowRightThin = (p: IconProps) => (
   <svg {...iconBase(p)}>
     <path d="M5 12h14M13 6l6 6-6 6" />

@@ -6,7 +6,13 @@ import { useDashboardShell, type SettingsSection } from "../../layout/dashboard-
 export function SettingsRouteOpener() {
   const { openSettings } = useDashboardShell();
   const path = useLocation().pathname;
-  const section: SettingsSection = path.startsWith("/settings/kill-switch") ? "kill-switch" : path.startsWith("/settings/data") ? "data" : "send";
+  const section: SettingsSection = path.startsWith("/settings/kill-switch")
+    ? "kill-switch"
+    : path.startsWith("/settings/data")
+      ? "data"
+      : path.startsWith("/settings/about")
+        ? "about"
+        : "send";
   useEffect(() => openSettings(section), [openSettings, section]);
   return <Navigate to="/threads" replace />;
 }

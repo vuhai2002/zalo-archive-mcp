@@ -417,6 +417,9 @@ export type ZaloPcMediaImportStatus = {
   receivedFilesDirs: string[];
 };
 // GET /api/version -> UpdateInfo (bản đang chạy + có bản mới trên GitHub Release không)
+// POST /api/version/check {} -> UpdateInfo (nút "Kiểm tra cập nhật": hỏi ngay, tối đa 1 lần thật mỗi phút)
 export type { UpdateInfo } from "../shared/github-release-update-check.js";
+// GET /api/about -> AppAbout (mục Giới thiệu)
+export type AppAbout = { version: string; authorName: string | null; authorUrl: string | null; repoUrl: string | null };
 // POST /api/zalo-pc-media/received-files-dir       { dir: string | null } -> ZaloPcMediaImportStatus | 400 { error }
 // POST /api/zalo-pc-media/received-files-dir/pick  {} (mở hộp thoại Windows, chờ chọn / Hủy) -> ZaloPcMediaImportStatus | 409 | 500

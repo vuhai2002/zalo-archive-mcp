@@ -7,7 +7,7 @@ import type { UpdateChecker, UpdateInfo } from "../shared/github-release-update-
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { createArchiveMcpServer } from "./create-archive-mcp-server.js";
 
-const base: UpdateInfo = { enabled: true, current: "0.4.0", latest: null, updateAvailable: false, releaseUrl: null, notes: null };
+const base: UpdateInfo = { enabled: true, current: "0.4.0", latest: null, updateAvailable: false, releaseUrl: null, notes: null, checkedAt: null };
 
 async function syncStatus(updates?: UpdateChecker) {
   const db = openArchiveDatabase(":memory:");

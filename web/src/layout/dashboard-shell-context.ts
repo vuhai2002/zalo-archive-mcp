@@ -3,7 +3,7 @@ import type { MeResponse, SessionStatus, SettingsResponse } from "../archive-api
 
 export type KillSwitchState = SettingsResponse["killSwitch"];
 /** Mục của cửa sổ Cài đặt (menu trái), như Zalo PC */
-export type SettingsSection = "account" | "send" | "kill-switch" | "sync" | "data" | "appearance";
+export type SettingsSection = "account" | "send" | "kill-switch" | "sync" | "data" | "appearance" | "about";
 
 /**
  * Trạng thái dùng chung sau đăng nhập: múi giờ kho, phiên Zalo, khóa khẩn cấp.

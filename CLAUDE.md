@@ -73,9 +73,10 @@ Cách làm đúng:
 - Trước khi báo người dùng repo "sạch": nhờ một subagent rà ĐỘC LẬP toàn bộ (file hiện tại, lời commit, mọi phiên bản cũ),
   đối chiếu với DB kể cả nội dung tin; chỉ đưa repo + tiêu chí, không đưa kết luận của mình.
 - Tác giả commit (tên + email trong git config) là thông tin thật của người dùng, đó là CHỦ ĐÍCH - không đề xuất đổi.
-- Ngoại lệ có chủ đích (người dùng chốt 2026-11-23, vì là tác giả): credit tác giả (tên thật + tên gọn + link GitHub của
+- Ngoại lệ có chủ đích (người dùng chốt 2026-11-23, vì là tác giả): credit tác giả (tên thật + link GitHub của
   người dùng) ở mục Tác giả / License của `README.md`, trong `LICENSE` và trường `author` / `repository` của `package.json`;
-  link repo GitHub (để clone) ở phần cài đặt của `README.md`. Chỉ những chỗ
+  link repo GitHub (để clone) ở phần cài đặt của `README.md`. Mục Cài đặt > Giới thiệu của dashboard hiện tên + link tác giả
+  bằng cách ĐỌC `package.json` lúc chạy (không chép tên vào code). Chỉ những chỗ
   đó; không gỡ đi, không lan sang code, test, tài liệu khác (kể cả file này).
 
 ## Repo tham khảo (chỉ đọc, KHÔNG sửa)

@@ -7,5 +7,5 @@ export const APP_UPDATE_AGENT_PROMPT =
   "tay thì dừng lại hỏi tôi, không ghi đè. Không xóa hay sửa gì trong thư mục data/. Xong thì nối lại MCP zalo-archive và " +
   "báo tôi đã lên bản nào, có gì mới.";
 
-/** Dashboard hỏi lại bản mới mỗi chừng này (máy chủ đã cache theo nhịp của nó, hỏi dày cũng không gọi GitHub thêm) */
-export const APP_UPDATE_POLL_MS = 60 * 60_000;
+/** Dashboard hỏi lại bản mới mỗi chừng này và mỗi khi quay lại tab (máy chủ đã cache theo nhịp của nó, hỏi dày cũng không gọi GitHub thêm) */
+export const APP_UPDATE_POLL_MS = 15 * 60_000;

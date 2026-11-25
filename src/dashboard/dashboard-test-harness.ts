@@ -12,7 +12,7 @@ import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import type { UpdateChecker } from "../shared/github-release-update-check.js";
 import type { FolderPicker } from "../shared/windows-folder-picker-dialog.js";
 import { createDashboardApp } from "./create-dashboard-app.js";
-import type { SessionStatus } from "./dashboard-api-contract.js";
+import type { AppAbout, SessionStatus } from "./dashboard-api-contract.js";
 import { createDashboardAuth } from "./dashboard-auth.js";
 import type { AccountControl, MobileSyncControl } from "./dashboard-context.js";
 import { dashboardPasswordFile } from "./dashboard-password-store.js";
@@ -22,7 +22,7 @@ export const TEST_HOST = "127.0.0.1:3210";
 export const TEST_PASSWORD = "mat-khau-dai";
 
 export async function createDashboardHarness(
-  opts: { passwordSet?: boolean; accountIds?: string[]; pickFolder?: FolderPicker; updates?: UpdateChecker } = {},
+  opts: { passwordSet?: boolean; accountIds?: string[]; pickFolder?: FolderPicker; updates?: UpdateChecker; about?: AppAbout } = {},
 ) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "zam-dash-"));
   const env = parseEnv({ DATA_DIR: dataDir });
@@ -78,7 +78,7 @@ export async function createDashboardHarness(
   };
 
   const app = createDashboardApp(
-    { env, auth, accounts, version: "0.0.0", updates: opts.updates },
+    { env, auth, accounts, version: "0.0.0", updates: opts.updates, about: opts.about },
     { webDistDir: path.join(dataDir, "no-dist"), allowedHosts: [TEST_HOST], pickFolder: opts.pickFolder },
   );
   const call = (url: string, init: RequestInit & { cookie?: string; host?: string } = {}) =>

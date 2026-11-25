@@ -47,6 +47,29 @@ describe("kiểm tra bản mới trên GitHub Release", () => {
     assert.equal(calls.length, 2, "hết nhịp thì hỏi lại");
   });
 
+  it("bấm kiểm tra ngay: bỏ qua nhịp thường nhưng mỗi phút tối đa một lần hỏi thật; hỏi lại kèm ETag, 304 thì dùng kết quả cũ", async () => {
+    const sent: Array<string | null> = [];
+    let now = 1_000;
+    let status = 200;
+    const fetchFn = (async (_url: string | URL | Request, init?: RequestInit) => {
+      sent.push(new Headers(init?.headers).get("if-none-match"));
+      return status === 304
+        ? new Response(null, { status: 304 })
+        : new Response(JSON.stringify({ tag_name: "v0.5.0" }), { status: 200, headers: { etag: 'W/"mau-1"' } });
+    }) as typeof fetch;
+    const check = createUpdateChecker({ currentVersion: "0.4.0", repo: REPO, intervalMs: 3_600_000, now: () => now, fetchFn });
+    const first = await check.check();
+    assert.equal(first.checkedAt, new Date(1_000).toISOString());
+    now += 30_000;
+    await check.check({ force: true });
+    assert.equal(sent.length, 1, "chưa đủ 1 phút thì dùng kết quả vừa có");
+    now += 31_000;
+    status = 304;
+    const again = await check.check({ force: true });
+    assert.deepEqual(sent, [null, 'W/"mau-1"'], "lần sau gửi kèm ETag");
+    assert.deepEqual([again.latest, again.updateAvailable, again.checkedAt], ["0.5.0", true, new Date(now).toISOString()]);
+  });
+
   it("đang chạy bản bằng hoặc mới hơn: không báo", async () => {
     const check = createUpdateChecker({ currentVersion: "0.5.0", repo: REPO, intervalMs: 60_000, fetchFn: okFetch({ tag_name: "v0.5.0" }) });
     const r = await check.check();

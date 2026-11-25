@@ -228,7 +228,8 @@ chạy và đã đăng nhập: MCP ghi vào hàng đợi, daemon là nơi duy nh
 ## Cập nhật
 
 Có bản mới trên GitHub Release thì dashboard hiện nút **Có bản mới** (mũi tên lên, chấm xanh ở thanh bên): bấm vào, chép
-prompt dán cho agent để nó tự cập nhật theo đúng các bước dưới đây. Tắt việc kiểm tra: `UPDATE_CHECK_ENABLED=false`.
+prompt dán cho agent để nó tự cập nhật theo đúng các bước dưới đây. Xem bản đang chạy và kiểm tra ngay: Cài đặt >
+**Giới thiệu** > **Kiểm tra cập nhật**. Kho hỏi GitHub mỗi giờ một lần; tắt hẳn: `UPDATE_CHECK_ENABLED=false`.
 
 Các bước (agent làm theo đúng thứ tự; tự làm tay cũng vậy):
 
@@ -324,11 +325,11 @@ nhóm) đã làm xong - xem [changelog](docs/project-changelog.md).
 
 ## Tác giả
 
-**Vũ Văn Hải (haivv)** - [github.com/vuhai2002](https://github.com/vuhai2002)
+**Vũ Văn Hải** - [github.com/vuhai2002](https://github.com/vuhai2002)
 
 Xây trên [zca-js](https://github.com/RFS-ADRENO/zca-js) (MIT) và
 [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) (MIT).
 
 ## License
 
-[MIT](LICENSE) © 2026 Vũ Văn Hải (haivv)
+[MIT](LICENSE) © 2026 Vũ Văn Hải

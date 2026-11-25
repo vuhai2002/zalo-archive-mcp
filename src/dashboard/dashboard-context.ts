@@ -5,7 +5,7 @@ import type { AppEnv } from "../config/env-schema.js";
 import type { UpdateChecker } from "../shared/github-release-update-check.js";
 import type { FolderPicker } from "../shared/windows-folder-picker-dialog.js";
 import type { DashboardAuth } from "./dashboard-auth.js";
-import type { AccountSummary, MobileSyncStatus, SessionStatus } from "./dashboard-api-contract.js";
+import type { AccountSummary, AppAbout, MobileSyncStatus, SessionStatus } from "./dashboard-api-contract.js";
 
 /** Phần quản lý nick + phiên Zalo mà dashboard cần - interface để test thay bằng bản giả */
 export type AccountControl = {
@@ -41,6 +41,8 @@ export type DashboardAppContext = {
   version: string;
   /** Kiểm tra bản mới trên GitHub Release; bỏ trống = không kiểm tra */
   updates?: UpdateChecker;
+  /** Mục Giới thiệu (đọc từ package.json) */
+  about?: AppAbout;
 };
 
 /**

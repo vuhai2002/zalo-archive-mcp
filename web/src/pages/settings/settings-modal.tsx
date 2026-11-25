@@ -4,6 +4,9 @@ import type { SettingsSection } from "../../layout/dashboard-shell-context";
 import { IconDatabase, IconLock, IconRefresh, IconSend } from "../../shared/action-and-media-icons";
 import { useChotNen } from "../../shared/backdrop-close-guard";
 import { IconClose, IconSun, IconUsers, type IconFn } from "../../shared/dashboard-icons";
+import { IconInfoCircle } from "../../layout/app-update-icons";
+import { useAppUpdateState } from "../../layout/app-update-store";
+import { AboutSection } from "./settings-about-section";
 import { AccountSection, SyncSection } from "./settings-account-sections";
 import { AppearanceSection } from "./settings-appearance-section";
 import { KillSwitchSection, SendSection } from "./settings-send-sections";
@@ -20,6 +23,7 @@ const MENU: Array<{ section: SettingsSection; label: string; icon: IconFn }> = [
   { section: "sync", label: "Đồng bộ và sao lưu", icon: IconRefresh },
   { section: "data", label: "Quản lý dữ liệu", icon: IconDatabase },
   { section: "appearance", label: "Giao diện", icon: IconSun },
+  { section: "about", label: "Giới thiệu", icon: IconInfoCircle },
 ];
 
 /**
@@ -30,6 +34,7 @@ export function SettingsModal({ initial, onClose }: { initial: SettingsSection; 
   const navigate = useNavigate();
   const [view, setView] = useState<SettingsView>({ section: initial });
   const nen = useChotNen(onClose);
+  const hasUpdate = useAppUpdateState()?.updateAvailable ?? false;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -66,6 +71,7 @@ export function SettingsModal({ initial, onClose }: { initial: SettingsSection; 
               >
                 <m.icon size={20} />
                 {m.label}
+                {m.section === "about" && hasUpdate && <span className="ml-auto h-2 w-2 rounded-full bg-emerald-500" aria-label="Có bản mới" />}
               </button>
             );
           })}
@@ -92,6 +98,7 @@ function SectionBody({ view }: { view: SettingsView }) {
   if (view.section === "send") return <SendSection />;
   if (view.section === "kill-switch") return <KillSwitchSection />;
   if (view.section === "appearance") return <AppearanceSection />;
+  if (view.section === "about") return <AboutSection />;
   if (view.page === "threads") return <StorageThreadListSection />;
   if (view.page === "files") return <StorageFileGridSection />;
   return <StorageOverviewSection />;

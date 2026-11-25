@@ -8,6 +8,7 @@ import type {
   AuthStatusResponse,
   ForwardRequestBody,
   ForwardResult,
+  AppAbout,
   MeResponse,
   UpdateInfo,
   MessageDeletePreview,
@@ -108,6 +109,8 @@ export const api = {
   logout: () => post<{ ok: true }>("/api/auth/logout"),
   me: () => request<MeResponse>("/api/auth/me"),
   version: () => request<UpdateInfo>("/api/version"),
+  versionCheck: () => post<UpdateInfo>("/api/version/check"),
+  about: () => request<AppAbout>("/api/about"),
 
   session: () => request<SessionStatus>("/api/session"),
   sessionLoginQr: () => post<SessionStatus>("/api/session/login-qr"),
