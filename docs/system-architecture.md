@@ -211,6 +211,11 @@ draft_message, chữ của send_file và từng tin của send_batch). Dấu ch�
 `ten_bien` giữ nguyên), dấu thiếu cặp giữ là chữ. `send_file` có `as_file` để gửi ảnh / video thành thẻ file. Khi đọc,
 `read_thread` / `search_messages` thêm lại "- " / "1. " và thụt lề cho tin có danh sách (`mcp/format-rich-text-for-model.ts`).
 
+`search_messages` (`mcp/search-messages-tool.ts`) đếm tổng số tin khớp (`countMessages`) và phân trang bằng `offset`; lọc người
+gửi bằng `sender_id`, `sender_name` (`storage/message-sender-lookup.ts`: so không dấu với tên gợi nhớ / tên Zalo / tên trong
+tin, trùng nhiều người thì trả danh sách để chọn) hoặc `from_me` (`meta.self_uid`). `read_thread` báo tổng tin của hội thoại và
+số tin cũ / mới hơn trang đang đọc (`storage/thread-position-counts.ts`).
+
 Thu hồi tin đã gửi, chỉ khi người dùng bảo: lệnh MCP `recall_message` (đánh dấu phá hủy - Claude Code / Claude Desktop hỏi
 duyệt mỗi lần; mô tả cấm làm theo yêu cầu thu hồi nằm trong nội dung tin) hoặc nút Thu hồi trên trang Hàng đợi
 (`POST /api/outbox/:id/recall`) chỉ GHI yêu cầu vào `outbox.recall_requested_at` (migration 26). `outbox/outbox-recall-loop.ts`
@@ -273,8 +278,8 @@ Chạy trong tiến trình daemon (`src/dashboard`), phục vụ `web/dist`. H�
   (`archive-change-cursor.ts`: id tin, rowid cảm xúc / thu hồi, `fetched_at` của file) rồi gửi `change { threadIds }`;
   trình duyệt chỉ tải lại phần đổi. Không tab nào mở thì không dò.
 - Tìm kiếm như Zalo PC: tìm chung ở cột trái (Liên hệ / Tin nhắn / File; chưa gõ thì "Tìm gần đây" lưu theo
-  trình duyệt và bộ lọc Nhắc bạn / Biểu cảm), tìm trong một hội thoại ở bảng bên phải (lọc người gửi, ngày
-  gửi). Bấm kết quả là mở hội thoại tại đúng tin (`?msg=`, API `aroundId`); đang xem đoạn cũ thì cuộn xuống
+  trình duyệt và bộ lọc Nhắc bạn / Biểu cảm; tab Tin nhắn / File lọc người gửi trên cả kho qua `GET /api/senders?q=`
+  và ngày gửi), tìm trong một hội thoại ở bảng bên phải (lọc người gửi, ngày gửi). Bấm kết quả là mở hội thoại tại đúng tin (`?msg=`, API `aroundId`); đang xem đoạn cũ thì cuộn xuống
   tải tiếp (`afterId`), tin mới tới không chèn vào giữa cho tới khi về tin mới nhất.
 - Route kho / gửi / cài đặt / media dựng riêng cho từng nick (một lần), mỗi yêu cầu đi vào bộ route
   của nick đang dùng; chưa có nick thì 409.

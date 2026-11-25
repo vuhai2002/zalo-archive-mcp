@@ -120,3 +120,13 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
 - Cài đặt > Giới thiệu: phiên bản đang chạy, nút "Kiểm tra cập nhật" (hỏi GitHub ngay, tối đa một lần thật mỗi phút), kết quả
   bản mới nhất / có bản mới / chưa kiểm tra được, link mã nguồn, changelog, giấy phép và tác giả. Hỏi GitHub kèm ETag để lần
   hỏi lại khi Release chưa đổi không tốn lượt.
+
+## 2026-11-25: tìm và đọc tin qua MCP có phân trang, lọc người gửi ở ô tìm chung
+
+- `search_messages` báo tổng số tin khớp và đang ở tin thứ mấy; `offset` để lấy trang tiếp, hết thì nói "Đã hết kết quả".
+- `search_messages` lọc người gửi bằng `sender_id`, `sender_name` (tên gợi nhớ / tên Zalo, không dấu; trùng nhiều người thì
+  liệt kê để chọn lại bằng `sender_id`) hoặc `from_me` (tin của chính mình); mỗi lần chỉ dùng một kiểu.
+- `read_thread` báo hội thoại có bao nhiêu tin, trang đang đọc còn bao nhiêu tin cũ hơn / mới hơn kèm mốc `before_id` /
+  `after_id` để đọc tiếp.
+- Dashboard, ô tìm chung: tab Tin nhắn và File có "Lọc theo: Người gửi / Ngày gửi" như Zalo PC. Người gửi có "Bạn" ở đầu, gõ
+  tên để tìm người khác trong cả kho (`GET /api/senders?q=`), kèm số tin mỗi người.

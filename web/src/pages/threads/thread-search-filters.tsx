@@ -11,7 +11,7 @@ import { customRange, DATE_PRESETS, presetRange, type DateRange } from "./search
 export type SenderPick = { senderId: string; name: string };
 
 /** Nút lọc kiểu Zalo ("Người gửi ▾") bung một khung nhỏ bên dưới; bấm ra ngoài hay Esc là đóng */
-function FilterDropdown({ icon, label, active, children }: { icon: ReactNode; label: string; active: boolean; children: (close: () => void) => ReactNode }) {
+export function FilterDropdown({ icon, label, active, children }: { icon: ReactNode; label: string; active: boolean; children: (close: () => void) => ReactNode }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -46,7 +46,7 @@ function FilterDropdown({ icon, label, active, children }: { icon: ReactNode; la
   );
 }
 
-const OPTION = "flex w-full items-center gap-2.5 px-3 py-2 text-left text-[14px] text-ink hover:bg-tile";
+export const OPTION = "flex w-full items-center gap-2.5 px-3 py-2 text-left text-[14px] text-ink hover:bg-tile";
 
 /** Lọc theo người gửi: danh sách người đã nhắn trong hội thoại (nhiều tin nhất trước), có ô tìm tên */
 export function SenderFilter({ threadId, value, onChange }: { threadId: string; value: SenderPick | null; onChange: (v: SenderPick | null) => void }) {

@@ -1,10 +1,10 @@
 import path from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import type { AppEnv } from "../config/env-schema.js";
-import { startOfLocalDayUtc, startOfNextLocalDayUtc } from "../shared/local-date-range.js";
 import { getAttachment } from "../storage/attachment-queue-store.js";
-import { findThread, listThreads, readThread, searchMessages } from "../storage/message-read-queries.js";
+import { findThread, listThreads, readThread } from "../storage/message-read-queries.js";
 import { readThreadAfter, readThreadAround } from "../storage/message-window-queries.js";
+import { threadPosition } from "../storage/thread-position-counts.js";
 import { formatLocalTime, formatMessages, formatThread } from "./format-messages-for-model.js";
 import { toolError, toolOk, type ToolResult } from "./tool-result.js";
 import { wrapUntrustedContent } from "./wrap-untrusted-content.js";
@@ -17,7 +17,7 @@ export type ReadToolContext = { db: DatabaseSync; env: AppEnv; mediaRoot: string
  * Nhắc cách trả lời (trích dẫn) ngay trong KẾT QUẢ đọc: phiên Claude chạy nhiều ngày giữ mô tả lệnh gửi nạp từ trước khi có
  * `reply_to` (và cả kết luận cũ "không trả lời được"); kết quả đọc thì luôn mới nên phiên cũ vẫn thấy.
  */
-const REPLY_HINT = "Trả lời (trích dẫn) một tin như bấm Trả lời trên Zalo: send_message hoặc send_file với reply_to = số # của tin đó.";
+export const REPLY_HINT = "Trả lời (trích dẫn) một tin như bấm Trả lời trên Zalo: send_message hoặc send_file với reply_to = số # của tin đó.";
 
 export function listThreadsTool(ctx: ReadToolContext, args: { query?: string; limit?: number }): ToolResult {
   const threads = listThreads(ctx.db, { query: args.query, limit: args.limit ?? 30 });
@@ -55,34 +55,14 @@ export function readThreadTool(
   const header = `Hội thoại thread_id=${thread.threadId} (${thread.threadType}), ${messages.length} tin, giờ ${tz}.`;
   // Tên hội thoại do người khác đặt nên nằm TRONG khối bọc, cùng nội dung tin
   const body = `Tên hội thoại: ${thread.name ?? "(chưa rõ tên)"}\n${formatMessages(messages, tz)}`;
-  const more = `Tin cũ hơn: before_id=${messages[0]!.id}. Tin mới hơn: after_id=${messages.at(-1)!.id}.`;
+  // Còn bao nhiêu tin hai phía: agent biết còn phải đọc tiếp hay đã đủ, không dừng ở trang đầu rồi sót
+  const first = messages[0]!;
+  const last = messages.at(-1)!;
+  const pos = threadPosition(ctx.db, thread, first, last);
+  const older = pos.older > 0 ? `Còn ${pos.older} tin cũ hơn (before_id=${first.id})` : "Không còn tin cũ hơn";
+  const newer = pos.newer > 0 ? `còn ${pos.newer} tin mới hơn (after_id=${last.id}).` : "không còn tin mới hơn.";
+  const more = `Hội thoại có ${pos.total} tin; trang này ${messages.length} tin. ${older}, ${newer}`;
   return toolOk([header, wrapUntrustedContent(body, `hội thoại ${args.thread_id}`), more, REPLY_HINT].join("\n"));
-}
-
-/** Tìm tin: theo chữ (không dấu), người gửi, chỉ tin có file (tìm theo tên file), hội thoại, khoảng ngày - cần ít nhất một điều kiện */
-export function searchMessagesTool(
-  ctx: ReadToolContext,
-  args: { query?: string; thread_id?: string; sender_id?: string; files_only?: boolean; from_date?: string; to_date?: string; limit?: number },
-): ToolResult {
-  const tz = ctx.env.ARCHIVE_TIMEZONE;
-  const fromIso = args.from_date ? startOfLocalDayUtc(args.from_date, tz) : undefined;
-  const toIso = args.to_date ? startOfNextLocalDayUtc(args.to_date, tz) : undefined;
-  if (fromIso === null || toIso === null) return toolError("from_date/to_date phải dạng YYYY-MM-DD.");
-  if (!args.query?.trim() && !args.sender_id && !fromIso && !toIso) {
-    return toolError("Cần ít nhất một điều kiện: query, sender_id, hoặc from_date / to_date.");
-  }
-  const results = searchMessages(ctx.db, {
-    query: args.query,
-    threadId: args.thread_id,
-    senderId: args.sender_id,
-    files: args.files_only ? "only" : undefined,
-    fromIso,
-    toIso,
-    limit: args.limit ?? 20,
-  });
-  if (results.length === 0) return toolOk(`Không tìm thấy tin nào khớp${args.query ? ` "${args.query}"` : ""} (tìm không phân biệt dấu).`);
-  const lines = results.map((m) => `(thread_id=${m.threadId})\n${formatMessages([m], tz)}`).join("\n");
-  return toolOk(`${results.length} tin khớp, mới nhất trước:\n${wrapUntrustedContent(lines, `tìm "${args.query ?? ""}"`)}\n${REPLY_HINT}`);
 }
 
 export function getAttachmentTool(ctx: ReadToolContext, args: { attachment_id: number }): ToolResult {

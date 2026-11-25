@@ -24,14 +24,30 @@ const PAGE = "ORDER BY m.sent_at DESC, m.id DESC LIMIT :limit OFFSET :offset";
  * hay không. Không từ khóa mà cũng không lọc người gửi / ngày thì trả rỗng (không liệt kê cả kho).
  */
 export function searchMessages(db: DatabaseSync, opts: MessageSearchOptions): MessageRow[] {
+  const c = searchClauses(opts);
+  if (!c) return [];
+  const rows = db
+    .prepare(`SELECT ${MESSAGE_COLUMNS} FROM ${c.from} ${SENDER_JOIN} WHERE ${c.where} ${PAGE}`)
+    .all({ ...c.params, limit: opts.limit, offset: opts.offset ?? 0 }) as Array<Record<string, unknown>>;
+  return withAttachments(db, rows.map(toMessageRow));
+}
+
+/** Tổng số tin khớp cùng điều kiện với `searchMessages` (để báo "trang 1/15" và còn kết quả hay không) */
+export function countMessages(db: DatabaseSync, opts: Omit<MessageSearchOptions, "limit" | "offset">): number {
+  const c = searchClauses({ ...opts, limit: 0 });
+  if (!c) return 0;
+  return (db.prepare(`SELECT COUNT(*) AS n FROM ${c.from} WHERE ${c.where}`).get(c.params) as { n: number }).n;
+}
+
+function searchClauses(opts: MessageSearchOptions): { from: string; where: string; params: Record<string, SQLInputValue> } | null {
   const raw = opts.query?.trim() ?? "";
   const match = raw ? buildFtsMatchExpression(raw) : null;
-  if (raw && !match) return [];
-  if (!match && !opts.senderId && !opts.fromIso && !opts.toIso) return [];
+  if (raw && !match) return null;
+  if (!match && !opts.senderId && !opts.fromIso && !opts.toIso) return null;
 
   // node:sqlite từ chối tham số đặt tên thừa: chỉ thêm tham số khi SQL thật sự dùng nó
   const where: string[] = [];
-  const params: Record<string, SQLInputValue> = { limit: opts.limit, offset: opts.offset ?? 0 };
+  const params: Record<string, SQLInputValue> = {};
   const add = (cond: string, name?: string, value?: SQLInputValue) => {
     where.push(cond);
     if (name !== undefined) params[name] = value ?? null;
@@ -47,10 +63,7 @@ export function searchMessages(db: DatabaseSync, opts: MessageSearchOptions): Me
   if (!match) add("m.msg_type != 'group_event'");
 
   const from = match ? `messages_fts f JOIN messages m ON m.id = f.rowid` : "messages m";
-  const rows = db
-    .prepare(`SELECT ${MESSAGE_COLUMNS} FROM ${from} ${SENDER_JOIN} WHERE ${where.join(" AND ")} ${PAGE}`)
-    .all(params) as Array<Record<string, unknown>>;
-  return withAttachments(db, rows.map(toMessageRow));
+  return { from, where: where.join(" AND "), params };
 }
 
 /** Tin người khác nhắc tới mình (@tên mình, hoặc @Tất cả trong nhóm), mới nhất trước */

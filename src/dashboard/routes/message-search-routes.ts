@@ -10,7 +10,8 @@ import {
 } from "../../storage/message-search-queries.js";
 import { getMeta, threadLabel } from "../../storage/thread-directory-store.js";
 import { groupMosaicIfNoAvatar } from "../../storage/thread-list-extras.js";
-import type { SearchResponse, SearchResult, ThreadSendersResponse } from "../dashboard-api-contract.js";
+import { findSendersByName } from "../../storage/message-sender-lookup.js";
+import type { SearchResponse, SearchResult, ThreadSender, ThreadSendersResponse } from "../dashboard-api-contract.js";
 import type { DashboardContext } from "../dashboard-context.js";
 import { toArchivedMessage } from "../dashboard-dto-mappers.js";
 
@@ -84,6 +85,19 @@ export function messageSearchRoutes(ctx: DashboardContext): Hono {
       offset,
     });
     return c.json(withThreadInfo(messages));
+  });
+
+  // Ô tìm chung: chọn người gửi trên toàn kho. "Bạn" luôn ở đầu; gõ tên thì thêm người khớp (không dấu), nhiều tin trước
+  app.get("/senders", (c) => {
+    const senders: ThreadSender[] = [];
+    const self = getMeta(db, "self_uid");
+    if (self) {
+      const n = (db.prepare("SELECT COUNT(*) AS n FROM messages WHERE sender_id = ?").get(self) as { n: number }).n;
+      senders.push({ senderId: self, name: getMeta(db, "self_display_name"), avatarUrl: null, isSelf: true, count: n });
+    }
+    const q = (c.req.query("q") ?? "").trim().slice(0, 100);
+    if (q) senders.push(...findSendersByName(db, q, { limit: 30 }).filter((s) => s.senderId !== self));
+    return c.json({ senders } satisfies ThreadSendersResponse);
   });
 
   app.get("/threads/:threadId/senders", (c) => {

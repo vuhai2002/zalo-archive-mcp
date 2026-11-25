@@ -1,6 +1,9 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { SearchResult, ThreadListItem } from "../../archive-api-types";
 import { EmptyState, ErrorNote, LoadingText } from "../../shared/ui-bits";
+import { GlobalSenderFilter } from "./global-sender-filter";
+import type { DateRange } from "./search-date-presets";
+import { DateFilter, type SenderPick } from "./thread-search-filters";
 import type { RecentThread } from "./recent-search-threads";
 import { ContactHitRow, FileHitRow, MessageHitRow, WideButton } from "./search-hit-rows";
 import { SearchStartPanel } from "./search-start-panel";
@@ -42,8 +45,13 @@ export function ThreadSearchResults({
   onOpenMessage: (m: SearchResult) => void;
 }) {
   const all = tab === "all";
-  const messages = usePagedMessageSearch(query && (all || tab === "messages") ? { q: query, files: "exclude" } : null, all ? ALL_PAGE : TAB_PAGE);
-  const files = usePagedMessageSearch(query && (all || tab === "files") ? { q: query, files: "only" } : null, all ? ALL_PAGE : TAB_PAGE);
+  // Lọc theo người gửi / ngày gửi như Zalo PC: chỉ ở tab Tin nhắn và File (tab Tất cả xem gọn, không lọc)
+  const [sender, setSender] = useState<SenderPick | null>(null);
+  const [range, setRange] = useState<DateRange | null>(null);
+  const filtered = tab === "messages" || tab === "files";
+  const extra = filtered ? { senderId: sender?.senderId, fromDate: range?.from, toDate: range?.to } : {};
+  const messages = usePagedMessageSearch(query && (all || tab === "messages") ? { q: query, files: "exclude", ...extra } : null, all ? ALL_PAGE : TAB_PAGE);
+  const files = usePagedMessageSearch(query && (all || tab === "files") ? { q: query, files: "only", ...extra } : null, all ? ALL_PAGE : TAB_PAGE);
 
   if (!query) return <SearchStartPanel timeZone={timeZone} onOpenThread={onOpenThread} onOpenMessage={onOpenMessage} />;
 
@@ -73,6 +81,15 @@ export function ThreadSearchResults({
 
   return (
     <div>
+      {filtered && (
+        <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
+          <span className="shrink-0 text-[13px] text-ink-soft">Lọc theo:</span>
+          <GlobalSenderFilter value={sender} onChange={setSender} />
+          <div className="min-w-0 flex-1">
+            <DateFilter timeZone={timeZone} value={range} onChange={setRange} />
+          </div>
+        </div>
+      )}
       {showContacts &&
         section(
           "Liên hệ",

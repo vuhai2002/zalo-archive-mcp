@@ -210,7 +210,7 @@ Lưu ý:
 
 | Nhóm | Tool | Việc |
 |---|---|---|
-| Đọc | `list_threads`, `read_thread`, `search_messages`, `get_attachment`, `list_group_members`, `sync_status` | đọc (lùi / tới / quanh một tin), tìm (chữ, người gửi, tên file, ngày), xem file, thành viên nhóm, kho phủ tới đâu; tin có danh sách hiện lại "- " / "1. " và thụt lề để Claude đọc đúng cấu trúc |
+| Đọc | `list_threads`, `read_thread`, `search_messages`, `get_attachment`, `list_group_members`, `sync_status` | đọc (lùi / tới / quanh một tin, báo còn bao nhiêu tin cũ / mới hơn), tìm (chữ, người gửi theo tên hoặc tin của mình, tên file, ngày; báo tổng số kết quả, lấy trang tiếp bằng `offset`), xem file, thành viên nhóm, kho phủ tới đâu; tin có danh sách hiện lại "- " / "1. " và thụt lề để Claude đọc đúng cấu trúc |
 | Đọc | `list_threads` với `unreplied_only` | hội thoại đang chờ bạn trả lời ("có tin nào tôi chưa rep"): 1-1 có tin cuối của người kia, nhóm có tin nhắc tên / trả lời bạn mà bạn chưa đáp; mặc định 14 ngày qua, đổi bằng `from_date`. Kho không biết bạn đã đọc tin trên điện thoại chưa, nên nhắn lại, nghe máy hoặc thả cảm xúc mới tính là đã trả lời |
 | Gửi | `send_message` | gửi ngay một tin, chờ tới khi gửi xong rồi báo kết quả; trong nhóm nhắc tên (@) được bằng `mentions`; trả lời (trích dẫn) một tin bằng `reply_to` = số tin #N ở `read_thread`; chữ định dạng được như thanh của Zalo bằng `**đậm**`, `*nghiêng*`, `~~gạch~~`, `<u>gạch chân</u>`, `<red>` / `<orange>` / `<yellow>` / `<green>`, `<small>` / `<big>` / `<huge>`, dòng `- ` / `1. ` (cũng dùng được cho `schedule_message`, `draft_message`, chữ của `send_file`) |
 | Gửi | `schedule_message` | hẹn giờ một tin chữ (hẹn kèm ảnh / file: `send_file` có `send_date` + `send_time`) |

@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getAttachmentTool, listThreadsTool, readThreadTool, searchMessagesTool, type ReadToolContext } from "./archive-read-tool-handlers.js";
+import { getAttachmentTool, listThreadsTool, readThreadTool, type ReadToolContext } from "./archive-read-tool-handlers.js";
+import { searchMessagesTool } from "./search-messages-tool.js";
 import type { UpdateChecker } from "../shared/github-release-update-check.js";
 import { syncStatusTool } from "./archive-sync-status-tool.js";
 import { listGroupMembersTool } from "./group-members-tool.js";
@@ -45,8 +46,10 @@ export function createArchiveMcpServer(
     "read_thread",
     {
       description:
-        "Đọc tin của một hội thoại theo thời gian (mặc định trang mới nhất). Mỗi tin có số #N (dùng cho reply_to, react_to_message, " +
-        "around_id). Dùng MỘT trong: before_id (tin cũ hơn), after_id (tin mới hơn), around_id (đoạn quanh một tin, vd tin vừa tìm ra).",
+        "Đọc tin của một hội thoại theo thời gian (mặc định trang mới nhất, 50 tin). Mỗi tin có số #N (dùng cho reply_to, " +
+        "react_to_message, around_id). Dùng MỘT trong: before_id (tin cũ hơn), after_id (tin mới hơn), around_id (đoạn quanh một " +
+        "tin, vd tin vừa tìm ra). Cuối kết quả ghi hội thoại có tổng bao nhiêu tin và còn bao nhiêu tin cũ / mới hơn: cần đủ thì " +
+        "đọc tiếp tới khi hết, đừng kết luận chỉ từ trang đầu. Lọc tin theo người gửi / từ khóa thì dùng search_messages.",
       inputSchema: {
         thread_id: z.string().min(1).max(64),
         before_id: z.number().int().positive().optional(),
@@ -63,17 +66,24 @@ export function createArchiveMcpServer(
     "search_messages",
     {
       description:
-        "Tìm trong kho (không phân biệt dấu, mọi từ phải có; từ có dấu nối như email, link, số điện thoại, ngày 13/10 thì các " +
-        "phần phải liền nhau). Lọc theo hội thoại, người gửi (sender_id = số trong ngoặc sau tên ở " +
-        "read_thread), khoảng ngày, chỉ tin có file (files_only - tìm theo tên file). Cần ít nhất query, sender_id hoặc ngày.",
+        "Tìm tin trên TOÀN KHO (mọi nhóm, mọi hội thoại) hoặc một hội thoại (thread_id): theo từ khóa (không phân biệt dấu, mọi " +
+        "từ phải có; email, link, số điện thoại, ngày 13/10 thì các phần phải liền nhau), người gửi, khoảng ngày, chỉ tin có file " +
+        "(files_only - tìm theo tên file). Người gửi dùng MỘT trong: sender_id (số trong ngoặc sau tên ở read_thread), " +
+        "sender_name (tên, không dấu, khớp một phần - trùng nhiều người thì tool liệt kê để chọn sender_id), from_me (tin của " +
+        "chính người dùng). Không cần từ khóa: chỉ người gửi hoặc ngày là lấy được mọi tin của người đó. Kết quả mới nhất trước, " +
+        "mỗi trang limit tin (mặc định 20); dòng đầu ghi TỔNG số tin khớp, cuối ghi offset để lấy trang tiếp - cần đủ thì lấy " +
+        "tiếp tới khi 'Đã hết kết quả', đừng coi trang đầu là tất cả.",
       inputSchema: {
         query: z.string().min(1).max(200).optional(),
         thread_id: z.string().max(64).optional(),
-        sender_id: z.string().regex(/^\d+$/).max(32).optional(),
+        sender_id: z.string().regex(/^[\w-]+$/).max(64).optional(),
+        sender_name: z.string().min(1).max(100).optional(),
+        from_me: z.boolean().optional(),
         files_only: z.boolean().optional(),
         from_date: dateField.optional(),
         to_date: dateField.optional(),
         limit: z.number().int().min(1).max(100).optional(),
+        offset: z.number().int().min(0).max(100_000).optional().describe("Bỏ qua chừng này tin đầu (lấy trang tiếp theo)"),
       },
       annotations: READ_ONLY,
     },

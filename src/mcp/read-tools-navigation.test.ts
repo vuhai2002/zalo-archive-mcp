@@ -6,7 +6,8 @@ import { replaceGroupMembers } from "../storage/group-member-store.js";
 import { upsertMessage } from "../storage/message-write-store.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { upsertContacts } from "../storage/contact-store.js";
-import { getAttachmentTool, readThreadTool, searchMessagesTool } from "./archive-read-tool-handlers.js";
+import { getAttachmentTool, readThreadTool } from "./archive-read-tool-handlers.js";
+import { searchMessagesTool } from "./search-messages-tool.js";
 import { listGroupMembersTool } from "./group-members-tool.js";
 
 const env = parseEnv({});

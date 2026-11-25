@@ -159,6 +159,8 @@ export const api = {
     limit: number;
   }) => request<SearchResponse>(withQuery("/api/search", p)),
   threadSenders: (threadId: string) => request<ThreadSendersResponse>(`/api/threads/${enc(threadId)}/senders`),
+  /** Người gửi trên toàn kho cho ô tìm chung: Bạn ở đầu, gõ tên thì thêm người khớp */
+  globalSenders: (q: string) => request<ThreadSendersResponse>(withQuery("/api/senders", { q })),
 
   /** Mảng trạng thái rỗng = mọi trạng thái; kèm số mục mỗi trạng thái của cả hàng đợi */
   outboxList: (statuses: OutboxStatus[], limit: number) =>
