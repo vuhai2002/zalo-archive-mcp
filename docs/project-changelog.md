@@ -142,3 +142,12 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
 - `pnpm release` tự viết ghi chú phát hành từ các commit kể từ bản trước (Tính năng mới / Sửa lỗi / Khác) thay cho ghi chú
   GitHub tự sinh, vốn chỉ liệt kê pull request nên repo commit thẳng lên main chỉ còn dòng "Full Changelog". Hộp "Đã có
   bản mới" ẩn mục "Có gì mới" khi ghi chú không có dòng nào để hiện.
+
+## 2026-11-26: mở thư mục chứa file
+
+- Thẻ file trong khung chat và mục File của bảng thông tin hội thoại có nút thư mục: bấm là Explorer mở thư mục
+  "File đã mở" của kho và chọn sẵn đúng file với tên thật. Kho lưu file theo mã nên tạo bản tên thật bằng hard link (cùng ổ,
+  không tốn thêm dung lượng, tức thì kể cả file lớn), đặt chỉ đọc để lỡ lưu đè từ app khác không sửa bản trong kho; xóa file
+  khỏi kho thì xóa luôn bản này.
+- Xóa file media dùng unlink thay vì `fs.rmSync`: trên Windows, Node 24 `rmSync` gặp đường dẫn có chữ có dấu thì lặng lẽ
+  không xóa.

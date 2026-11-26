@@ -130,6 +130,8 @@ export const api = {
   zaloPcReceivedFilesDir: (dir: string | null) => post<ZaloPcMediaImportStatus>("/api/zalo-pc-media/received-files-dir", { dir }),
   zaloPcReceivedFilesDirPick: () => post<ZaloPcMediaImportStatus>("/api/zalo-pc-media/received-files-dir/pick"),
   attachmentRetry: (id: number) => post<{ ok: true }>(`/api/attachments/${id}/retry`),
+  /** Mở Explorer chọn sẵn file (bản tên thật trong thư mục "File đã mở" của kho) trên máy chạy daemon */
+  attachmentReveal: (id: number) => post<{ ok: true; fileName: string; realName: boolean }>(`/api/attachments/${id}/reveal`),
 
   overview: (days: number) => request<OverviewResponse>(withQuery("/api/overview", { days })),
 

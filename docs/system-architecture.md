@@ -137,6 +137,14 @@ lượng và lưới file (tính dung lượng mỗi file một lần). `archive
 (không chặn daemon), nhớ trong `meta`. Route `/api/storage*` (`storage-management-routes.ts`);
 `/api/media/:id?download=1` cho Lưu về máy. Thư mục web là `pages/settings/storage/` (tên `data/` trùng luật `.gitignore`).
 
+Mở thư mục chứa file (nút thư mục ở thẻ file trong chat và mục File của bảng thông tin): `POST /api/attachments/:id/reveal`
+(`dashboard/routes/attachment-reveal-route.ts`). File trong kho mang tên mã sha, nên `media/real-name-file-links.ts` tạo bản
+tên thật bằng hard link trong `<nick>/File đã mở/` (cùng ổ với `media/`, không tốn chỗ; trùng tên thêm (2), (3); đặt chỉ đọc -
+cờ nằm chung với file gốc nên lỡ lưu đè từ app khác không sửa được bản trong kho), rồi `shared/windows-reveal-file-in-explorer.ts`
+chạy `explorer /select,"..."` trên máy chạy daemon. Ổ không cho hard link thì mở thẳng file gốc. Xóa file media
+(`remove-orphan-media-files.ts`) xóa luôn các link trỏ cùng file (so ổ + số hiệu file), bằng unlink sau khi bỏ cờ chỉ đọc
+(`fs.rmSync` của Node 24 trên Windows lặng lẽ không xóa đường dẫn có chữ có dấu).
+
 Cài đặt trên web là cửa sổ (modal) như Zalo PC, không phải trang: shell giữ `openSettings(section)` trong context
 (`layout/dashboard-shell-context.ts`), menu bánh răng `layout/sidebar-settings-menu.tsx` và nút khóa khẩn cấp gọi nó.
 Điều hướng bên trong cửa sổ (mục, danh sách hội thoại, lưới file) là state `SettingsView` (`pages/settings/settings-view-context.ts`),

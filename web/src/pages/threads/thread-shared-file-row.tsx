@@ -7,14 +7,15 @@ import { DocxViewerDialog } from "../../shared/docx-viewer-dialog";
 import { formatDateTime } from "../../shared/format-archive-time";
 import { FileTypeBadge } from "../../shared/file-type-badge";
 import { formatFileSize } from "../../shared/format-file-size";
+import { RevealInFolderButton } from "../../shared/reveal-in-folder-button";
 import { downloadUrlOf, opensInBrowser, sameOriginUrl } from "../../shared/same-origin-media-url";
 
-const ROW = "flex items-center gap-3 rounded-md px-1 py-1.5 hover:bg-tile";
+const ROW = "flex min-w-0 flex-1 items-center gap-3 rounded-md px-1 py-1.5 hover:bg-tile";
 
 /**
  * Một file trong mục File của bảng thông tin hội thoại: PDF / ảnh / nhạc / video bấm là mở tab mới bằng trình xem của trình
  * duyệt, file Word (.docx) mở cửa sổ đọc ngay trong kho, loại khác tải về; file không xem được (Zalo đã xóa: "Đã hết hạn")
- * báo ngay và làm mờ.
+ * báo ngay và làm mờ. File đã tải có nút thư mục: mở Explorer chọn sẵn file (tên thật) trên máy.
  */
 export function SharedFileRow({ a, timeZone }: { a: SharedAttachment; timeZone: string }) {
   const [docxOpen, setDocxOpen] = useState(false);
@@ -37,7 +38,7 @@ export function SharedFileRow({ a, timeZone }: { a: SharedAttachment; timeZone: 
     </>
   );
   return (
-    <li>
+    <li className="flex items-center gap-1">
       {url && docx ? (
         <>
           <button type="button" onClick={() => setDocxOpen(true)} title="Xem file ngay trong kho" className={`${ROW} w-full text-left`}>
@@ -54,8 +55,9 @@ export function SharedFileRow({ a, timeZone }: { a: SharedAttachment; timeZone: 
           {inner}
         </a>
       ) : (
-        <div className="flex items-center gap-3 px-1 py-1.5">{inner}</div>
+        <div className="flex min-w-0 flex-1 items-center gap-3 px-1 py-1.5">{inner}</div>
       )}
+      {url && <RevealInFolderButton attachmentId={a.id} />}
     </li>
   );
 }

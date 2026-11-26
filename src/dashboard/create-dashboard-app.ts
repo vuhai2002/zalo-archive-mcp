@@ -11,6 +11,7 @@ import { attachmentRetryRoute } from "./routes/attachment-retry-route.js";
 import { dashboardPasswordRoutes } from "./routes/dashboard-password-routes.js";
 import { mobileSyncRoutes } from "./routes/mobile-sync-routes.js";
 import { mediaFileRoute } from "./routes/media-file-route.js";
+import { attachmentRevealRoute } from "./routes/attachment-reveal-route.js";
 import { threadSharedMediaRoute } from "./routes/thread-shared-media-route.js";
 import { archiveLiveEventsRoute } from "./routes/archive-live-events-route.js";
 import { messageDeleteRoutes } from "./routes/message-delete-routes.js";
@@ -21,6 +22,7 @@ import { outboxAndSettingsRoutes } from "./routes/outbox-and-settings-routes.js"
 import { outboxUploadRoute } from "./routes/outbox-upload-route.js";
 import type { Logger } from "pino";
 import type { FolderPicker } from "../shared/windows-folder-picker-dialog.js";
+import type { RevealFileInFolder } from "../shared/windows-reveal-file-in-explorer.js";
 import { zaloPcMediaRoutes } from "./routes/zalo-pc-media-routes.js";
 import { pollDetailRoute } from "./routes/poll-detail-route.js";
 import { zaloLabelRoute } from "./routes/zalo-label-route.js";
@@ -49,6 +51,7 @@ function accountScopedApi(ctx: DashboardContext): Hono {
   api.route("/", messageReactionRoute(ctx));
   api.route("/", storageManagementRoutes(ctx));
   api.route("/", mediaFileRoute(ctx));
+  api.route("/", attachmentRevealRoute(ctx));
   api.route("/", threadSharedMediaRoute(ctx));
   api.route("/", archiveLiveEventsRoute(ctx));
   api.route("/", attachmentRetryRoute(ctx));
@@ -69,7 +72,7 @@ function accountScopedApi(ctx: DashboardContext): Hono {
  */
 export function createDashboardApp(
   ctx: DashboardAppContext,
-  opts: { webDistDir: string; allowedHosts: string[]; log?: Logger; pickFolder?: FolderPicker },
+  opts: { webDistDir: string; allowedHosts: string[]; log?: Logger; pickFolder?: FolderPicker; revealFile?: RevealFileInFolder },
 ): Hono {
   const app = new Hono();
   app.use("*", hostGuard(opts.allowedHosts));
@@ -102,6 +105,7 @@ export function createDashboardApp(
         readOnly: () => ctx.accounts.isReadOnly(id),
         log: opts.log,
         pickFolder: opts.pickFolder,
+        revealFile: opts.revealFile,
       });
       perAccount.set(active.account.id, scoped);
     }

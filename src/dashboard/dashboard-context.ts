@@ -4,6 +4,7 @@ import type { AccountPaths } from "../config/account-paths.js";
 import type { AppEnv } from "../config/env-schema.js";
 import type { UpdateChecker } from "../shared/github-release-update-check.js";
 import type { FolderPicker } from "../shared/windows-folder-picker-dialog.js";
+import type { RevealFileInFolder } from "../shared/windows-reveal-file-in-explorer.js";
 import type { DashboardAuth } from "./dashboard-auth.js";
 import type { AccountSummary, AppAbout, MobileSyncStatus, SessionStatus } from "./dashboard-api-contract.js";
 
@@ -59,4 +60,6 @@ export type DashboardContext = {
   log?: Logger;
   /** Hộp thoại chọn thư mục trên máy chạy daemon; test thay bằng bản giả. Bỏ trống = hộp thoại Windows thật */
   pickFolder?: FolderPicker;
+  /** Mở Explorer chọn sẵn một file trên máy chạy daemon; test thay bằng bản giả. Bỏ trống = Explorer thật */
+  revealFile?: RevealFileInFolder;
 };
