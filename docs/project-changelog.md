@@ -139,3 +139,6 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
 - Còn nhiều trang thì lấy theo đợt (30 trang, nghỉ 1 phút) tới khi hết ngay trong lần nối đó, không bỏ dở chờ lần nối sau.
 - Nhãn "Khoảng mất kết nối" ở Tổng quan / `sync_status`: lượt lấy bù đủ đến sau (tới 7 ngày, vd lần nối sau mới lấy hết)
   cũng tính cho khoảng trước, khoảng đó chuyển "Đã lấy bù đủ"; trước đây chỉ xét 30 phút sau lúc nối lại.
+- `pnpm release` tự viết ghi chú phát hành từ các commit kể từ bản trước (Tính năng mới / Sửa lỗi / Khác) thay cho ghi chú
+  GitHub tự sinh, vốn chỉ liệt kê pull request nên repo commit thẳng lên main chỉ còn dòng "Full Changelog". Hộp "Đã có
+  bản mới" ẩn mục "Có gì mới" khi ghi chú không có dòng nào để hiện.

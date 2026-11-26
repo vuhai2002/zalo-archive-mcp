@@ -5,6 +5,7 @@ import { IconClose } from "../shared/dashboard-icons";
 import { APP_UPDATE_AGENT_PROMPT } from "./app-update-agent-prompt";
 import { IconArrowRightThin, IconArrowUpCircle, IconCheckSmall, IconCopy, IconGithubMark } from "./app-update-icons";
 import { useAppUpdateState } from "./app-update-store";
+import { visibleReleaseNoteLines } from "./release-notes-lines";
 import { ReleaseNotesView } from "./release-notes-view";
 
 export { IconArrowUpCircle } from "./app-update-icons";
@@ -25,6 +26,7 @@ const STEPS = ["Sao chép prompt bên dưới", "Dán vào Claude Code (hoặc a
 export function AppUpdateDialog({ info, onClose }: { info: UpdateInfo; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
   const nen = useChotNen(onClose);
+  const noteLines = visibleReleaseNoteLines(info.notes);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -91,11 +93,11 @@ export function AppUpdateDialog({ info, onClose }: { info: UpdateInfo; onClose: 
             <p className="select-all whitespace-pre-wrap px-3.5 py-3 text-[13.5px] leading-relaxed text-ink">{APP_UPDATE_AGENT_PROMPT}</p>
           </div>
 
-          {info.notes && (
+          {noteLines.length > 0 && (
             <div>
               <div className="mb-2 text-[13.5px] font-semibold text-ink">Có gì mới trong v{info.latest}</div>
               <div className="max-h-44 overflow-y-auto rounded-xl bg-tile/50 px-4 py-3">
-                <ReleaseNotesView notes={info.notes} />
+                <ReleaseNotesView lines={noteLines} />
               </div>
             </div>
           )}

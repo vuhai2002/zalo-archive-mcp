@@ -1,5 +1,5 @@
 /**
- * Ghi chú phát hành (markdown của GitHub Release) hiện gọn: dòng `#` thành tiêu đề nhỏ, `-` / `*` thành gạch đầu dòng, link
+ * Ghi chú phát hành (markdown của GitHub Release, đã lọc dòng bằng `visibleReleaseNoteLines`) hiện gọn: dòng `#` thành tiêu đề nhỏ, `-` / `*` thành gạch đầu dòng, link
  * `[chữ](url)` chỉ giữ chữ, `**đậm**` bỏ dấu sao. Chỉ dựng chữ thường (không HTML), nên nội dung lạ cũng không chèn được gì.
  */
 const plain = (s: string) =>
@@ -11,11 +11,7 @@ const plain = (s: string) =>
     .replace(/`([^`]+)`/g, "$1")
     .trim();
 
-export function ReleaseNotesView({ notes }: { notes: string }) {
-  const lines = notes
-    .split(/\r?\n/)
-    .map((l) => l.trimEnd())
-    .filter((l) => l.trim() && !/^<!--.*-->$/.test(l.trim()) && !/^\**Full Changelog/i.test(l.trim()));
+export function ReleaseNotesView({ lines }: { lines: string[] }) {
   return (
     <div className="space-y-1 text-[13px] leading-relaxed text-ink">
       {lines.map((line, i) => {
