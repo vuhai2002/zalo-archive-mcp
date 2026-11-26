@@ -22,9 +22,14 @@ export type GapBackfill = { status: GapBackfillStatus; items: number; detail: st
 
 /** Chỉ hai hàng chờ TIN quyết định khoảng có thiếu tin không (cảm xúc / sự kiện nhóm không tính) */
 const MESSAGE_QUEUES = ["user_messages", "group_messages"] as const;
-/** Lượt lấy bù của một khoảng là lượt chạy quanh lúc nối lại: hơi sớm hơn (mốc sự kiện lệch vài giây) tới nửa tiếng sau */
+/**
+ * Lượt lấy bù tính cho một khoảng: từ hơi sớm hơn lúc nối lại (mốc sự kiện lệch vài giây) tới 7 ngày sau. Mốc lấy bù chỉ
+ * tiến qua những gì đã về kho, nên lượt đủ đến SAU (mạng yếu lúc nối, lần nối sau mới lấy hết) vẫn phủ khoảng này; 7 ngày
+ * nằm trong khoảng 2 tuần Zalo giữ hàng chờ.
+ */
 const WINDOW_BEFORE_MS = 2 * 60_000;
-const WINDOW_AFTER_MS = 30 * 60_000;
+const WINDOW_AFTER_MS = 7 * 24 * 60 * 60_000;
+const EVICTED = /bỏ bớt/;
 const NEW_SESSION_DETAIL = "Nick vừa đăng nhập lại bằng QR - Zalo không gửi bù tin cho phiên mới, cần đồng bộ từ điện thoại";
 
 export function recordBackfillRun(db: DatabaseSync, r: BackfillRun): void {
@@ -41,31 +46,36 @@ export function recordNewSessionBackfill(db: DatabaseSync, atIso: string): void 
 }
 
 /**
- * Khoảng không nghe kết thúc (nối lại) lúc `gapEndIso` đã được lấy bù đủ chưa:
- * - có lượt `new_session` quanh lúc đó: có thể thiếu;
- * - cả hai hàng chờ tin có lượt xong trong cửa sổ: đủ (cộng số tin Zalo gửi lại);
- * - có lượt dừng dở mà chưa lượt nào xong: có thể thiếu, kèm lý do;
- * - còn lại (không có lượt nào - khoảng trước khi có bảng này, hay nối lại liền bị bỏ qua): chưa rõ.
+ * Khoảng không nghe kết thúc (nối lại) lúc `gapEndIso` đã được lấy bù đủ chưa, xét các lượt từ lúc nối lại trở đi:
+ * - mỗi hàng chờ tin lấy lượt XONG đầu tiên; cả hai có thì đủ (cộng số tin Zalo gửi lại ở hai lượt đó), kể cả khi lượt
+ *   ngay lúc nối dừng dở vì mạng yếu;
+ * - trước khi xong mà nick đăng nhập lại bằng QR (`new_session`), hay Zalo báo hàng chờ đầy bỏ bớt phần cũ: có thể thiếu;
+ * - chưa xong mà có lượt dừng dở: có thể thiếu, kèm lý do gần nhất;
+ * - còn lại (không có lượt nào - khoảng trước khi có bảng này): chưa rõ.
  */
 export function backfillForGap(db: DatabaseSync, gapEndIso: string): GapBackfill {
   const end = Date.parse(gapEndIso);
   const rows = db
     .prepare(
-      `SELECT queue, items, outcome, detail FROM backfill_runs
+      `SELECT queue, started_at AS startedAt, items, outcome, detail FROM backfill_runs
        WHERE started_at >= ? AND started_at <= ? AND queue IN ('user_messages', 'group_messages')
        ORDER BY started_at, id`,
     )
     .all(new Date(end - WINDOW_BEFORE_MS).toISOString(), new Date(end + WINDOW_AFTER_MS).toISOString()) as Array<{
     queue: string;
+    startedAt: string;
     items: number;
     outcome: BackfillOutcome;
     detail: string | null;
   }>;
-  const newSession = rows.find((r) => r.outcome === "new_session");
-  if (newSession) return { status: "incomplete", items: 0, detail: newSession.detail };
   const complete = MESSAGE_QUEUES.map((q) => rows.find((r) => r.queue === q && r.outcome === "complete"));
-  if (complete.every(Boolean)) return { status: "filled", items: complete.reduce((n, r) => n + Number(r!.items), 0), detail: null };
-  const stopped = rows.find((r) => r.outcome === "incomplete");
+  // Chỉ những gì xảy ra trước khi cả hai hàng chờ xong mới ảnh hưởng khoảng này
+  const doneAt = complete.every(Boolean) ? complete.reduce((m, r) => (r!.startedAt > m ? r!.startedAt : m), "") : null;
+  const before = doneAt === null ? rows : rows.filter((r) => r.startedAt <= doneAt);
+  const lost = before.find((r) => r.outcome === "new_session" || (r.outcome === "incomplete" && EVICTED.test(r.detail ?? "")));
+  if (lost) return { status: "incomplete", items: 0, detail: lost.detail };
+  if (doneAt !== null) return { status: "filled", items: complete.reduce((n, r) => n + Number(r!.items), 0), detail: null };
+  const stopped = [...rows].reverse().find((r) => r.outcome === "incomplete");
   if (stopped) return { status: "incomplete", items: 0, detail: stopped.detail };
   return { status: "unknown", items: 0, detail: null };
 }

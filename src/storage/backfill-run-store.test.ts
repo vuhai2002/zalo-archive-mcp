@@ -51,9 +51,37 @@ describe("backfillForGap", () => {
     assert.match(r.detail ?? "", /QR/);
   });
 
-  it("không có lượt lấy bù nào quanh lúc nối lại (khoảng cũ, hoặc nối lại liền bị bỏ qua): chưa rõ", () => {
-    recordBackfillRun(db, run({ queue: "user_messages", startedAt: at(120) }));
+  it("không có lượt lấy bù nào từ lúc nối lại (khoảng trước khi có bảng này): chưa rõ", () => {
+    recordBackfillRun(db, run({ queue: "user_messages", startedAt: at(-60) }));
+    recordBackfillRun(db, run({ queue: "group_messages", startedAt: at(-60) }));
     assert.equal(backfillForGap(db, GAP_END).status, "unknown");
+  });
+
+  it("lúc nối mạng yếu nên dừng dở, lần nối sau (vài giờ sau) mới lấy hết: tính là đã lấy bù đủ", () => {
+    recordBackfillRun(db, run({ queue: "user_messages", outcome: "incomplete", detail: "Zalo không trả trang 1" }));
+    recordBackfillRun(db, run({ queue: "group_messages" }));
+    assert.equal(backfillForGap(db, GAP_END).status, "incomplete", "chưa có lượt nào xong cho tin 1-1");
+    recordBackfillRun(db, run({ queue: "user_messages", startedAt: at(5 * 60), items: 120 }));
+    assert.deepEqual(backfillForGap(db, GAP_END), { status: "filled", items: 120, detail: null });
+  });
+
+  it("lượt xong quá 7 ngày sau không tính", () => {
+    recordBackfillRun(db, run({ queue: "group_messages" }));
+    recordBackfillRun(db, run({ queue: "user_messages", startedAt: at(8 * 24 * 60) }));
+    assert.equal(backfillForGap(db, GAP_END).status, "unknown");
+  });
+
+  it("trước khi lấy hết mà Zalo bỏ bớt phần cũ hay nick đăng nhập lại bằng QR: có thể thiếu; xảy ra sau đó thì không ảnh hưởng", () => {
+    recordBackfillRun(db, run({ queue: "group_messages" }));
+    recordBackfillRun(db, run({ queue: "user_messages", outcome: "incomplete", detail: "Zalo báo hàng chờ đã đầy và bỏ bớt phần cũ" }));
+    recordBackfillRun(db, run({ queue: "user_messages", startedAt: at(60) }));
+    assert.match(backfillForGap(db, GAP_END).detail ?? "", /bỏ bớt/);
+
+    db = openArchiveDatabase(":memory:");
+    recordBackfillRun(db, run({ queue: "group_messages" }));
+    recordBackfillRun(db, run({ queue: "user_messages" }));
+    recordNewSessionBackfill(db, at(60));
+    assert.equal(backfillForGap(db, GAP_END).status, "filled", "đăng nhập lại sau khi đã lấy đủ");
   });
 
   it("chỉ có một hàng chờ tin: chưa rõ", () => {

@@ -137,3 +137,5 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
   dần, trang về trễ vẫn nhận; hết lần hỏi thì giữ mốc, lần nối sau xin tiếp. Trước đây trang đầu không về trong 8 giây là
   bỏ mốc, lần sau xin lại từ đầu hàng chờ (khoảng 2 tuần) và tin 1-1 mới bị kẹt phía sau, thành "Có thể thiếu tin".
 - Còn nhiều trang thì lấy theo đợt (30 trang, nghỉ 1 phút) tới khi hết ngay trong lần nối đó, không bỏ dở chờ lần nối sau.
+- Nhãn "Khoảng mất kết nối" ở Tổng quan / `sync_status`: lượt lấy bù đủ đến sau (tới 7 ngày, vd lần nối sau mới lấy hết)
+  cũng tính cho khoảng trước, khoảng đó chuyển "Đã lấy bù đủ"; trước đây chỉ xét 30 phút sau lúc nối lại.

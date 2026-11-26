@@ -344,10 +344,11 @@ heartbeat (mỗi phút) thấy hai nhịp cách nhau quá 3 phút theo giờ má
 Mỗi lượt lấy bù ghi kết quả theo hàng chờ vào `backfill_runs` (migration 35): `complete` khi Zalo báo hết trang và không
 báo bỏ bớt phần cũ; `incomplete` kèm lý do khi dừng dở (chạm trần trang, trang không về, mất kết nối giữa chừng, Zalo bỏ
 bớt phần cũ, gửi lệnh lỗi); đăng nhập lại bằng QR sau một quãng không nghe ghi `new_session` (phiên mới không được gửi
-bù). `listener-gap-backfill.ts` gắn cho mỗi khoảng đã nối lại: lượt lấy bù quanh lúc nối lại (2 phút trước tới 30 phút
-sau) của hai hàng chờ TIN đều xong là "đã lấy bù đủ" (kèm số tin Zalo gửi lại), có `new_session` hay chỉ có lượt dừng dở
-là "có thể thiếu" (kèm lý do, cách lấy lại: đồng bộ từ điện thoại), không có lượt nào là "chưa rõ" (khoảng trước khi có
-bảng này, hay nối lại liền không xin bù); cộng số tin kho đang có trong khoảng. `sync_status` và thẻ "Khoảng mất kết nối"
+bù). `listener-gap-backfill.ts` gắn cho mỗi khoảng đã nối lại, xét các lượt từ lúc nối lại (2 phút trước) tới 7 ngày
+sau: hai hàng chờ TIN đều có lượt xong là "đã lấy bù đủ" (kèm số tin Zalo gửi lại) - kể cả khi lượt ngay lúc nối dừng dở
+vì mạng yếu và lần nối sau mới lấy hết, vì mốc chỉ tiến qua những gì đã về kho; trước khi xong mà có `new_session` hay Zalo
+bỏ bớt phần cũ, hoặc chưa xong mà chỉ có lượt dừng dở, là "có thể thiếu" (kèm lý do, cách lấy lại: đồng bộ từ điện thoại);
+không có lượt nào là "chưa rõ" (khoảng trước khi có bảng này); cộng số tin kho đang có trong khoảng. `sync_status` và thẻ "Khoảng mất kết nối"
 ở Tổng quan hiện các nhãn này, không còn gọi chung mọi khoảng là "có thể thiếu".
 
 Hai đường để khoảng không nghe không bị "chưa rõ":
