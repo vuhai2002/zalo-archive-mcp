@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { removePathSync } from "./remove-path-sync.js";
 
 /**
  * Đọc / ghi file JSON nhỏ trong `data/` (khóa, mật khẩu băm, danh sách nick).
@@ -36,7 +37,7 @@ export function writeJsonFileAtomic(file: string, value: unknown): void {
   try {
     fs.renameSync(tmp, file);
   } catch (err) {
-    fs.rmSync(tmp, { force: true });
+    removePathSync(tmp, { force: true });
     throw err;
   }
 }
@@ -55,6 +56,6 @@ export function createJsonFileExclusive(file: string, value: unknown): boolean {
     if ((err as NodeJS.ErrnoException).code === "EEXIST") return false;
     throw err;
   } finally {
-    fs.rmSync(tmp, { force: true });
+    removePathSync(tmp, { force: true });
   }
 }

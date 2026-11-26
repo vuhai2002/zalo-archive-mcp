@@ -5,6 +5,7 @@ import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { isAllowedMediaHost } from "./media-file-naming.js";
+import { removePathSync } from "../shared/remove-path-sync.js";
 
 export type DownloadOutcome =
   | { ok: true; tempFile: string; sha256: string; sizeBytes: number; mime: string | null }
@@ -115,7 +116,7 @@ export async function downloadToTempFile(opts: DownloadOptions): Promise<Downloa
       fs.createWriteStream(tempFile, { mode: 0o600 }),
     );
   } catch (err) {
-    fs.rmSync(tempFile, { force: true });
+    removePathSync(tempFile, { force: true });
     if (err instanceof TooLargeError) {
       return { ok: false, permanent: true, status: "too_large", error: `File vượt trần ${opts.maxBytes} byte` };
     }
@@ -123,7 +124,7 @@ export async function downloadToTempFile(opts: DownloadOptions): Promise<Downloa
   }
   // CDN Zalo trả 200 mà rỗng khi tải ngay lúc ảnh vừa gửi (file chưa lên CDN): chưa có gì, lát thử lại
   if (size === 0) {
-    fs.rmSync(tempFile, { force: true });
+    removePathSync(tempFile, { force: true });
     return { ok: false, permanent: false, status: "failed", error: "Phản hồi rỗng (0 byte) - CDN chưa có file, sẽ thử lại" };
   }
   return { ok: true, tempFile, sha256: hash.digest("hex"), sizeBytes: size, mime: response.headers.get("content-type") };

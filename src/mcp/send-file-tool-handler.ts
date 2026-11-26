@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import { resolveDataDir } from "../config/account-paths.js";
 import { enqueueSingle, READ_ONLY_ERROR } from "../outbox/enqueue-outbox-request.js";
 import { resolveOutboxFiles } from "../outbox/resolve-outbox-files.js";
@@ -8,6 +7,7 @@ import { formattedText, toMentions, type MentionArg, type SendToolContext } from
 import { sendNowAndAwait } from "./send-now-and-await.js";
 import { formatLocalTime } from "./format-messages-for-model.js";
 import { toolError, toolOk, type ToolResult } from "./tool-result.js";
+import { removePathSync } from "../shared/remove-path-sync.js";
 
 /** Tải file lên Zalo lâu hơn gửi chữ: chờ daemon lâu hơn */
 const DEFAULT_WAIT_MS = 180_000;
@@ -82,7 +82,7 @@ function scheduleFiles(ctx: SendToolContext, args: SendFileArgs, files: OutboxFi
     createdBy: "mcp",
   });
   if (!r.ok) {
-    if (staged.stagedDir) fs.rmSync(staged.stagedDir, { recursive: true, force: true });
+    if (staged.stagedDir) removePathSync(staged.stagedDir, { recursive: true, force: true });
     return toolError(r.error);
   }
   const at = formatLocalTime(r.notBefore, ctx.env.ARCHIVE_TIMEZONE);

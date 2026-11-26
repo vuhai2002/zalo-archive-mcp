@@ -15,6 +15,7 @@ import { recordRecall, upsertMessage } from "../storage/message-write-store.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { enqueueOutboxItem } from "../storage/outbox-store.js";
 import { replaceFriendDirectory, setMeta, upsertGroupNames } from "../storage/thread-directory-store.js";
+import { removePathSync } from "../shared/remove-path-sync.js";
 
 // Lấy DATA_DIR, múi giờ... từ .env nếu có; nick luôn là "demo"
 const env = getEnv();
@@ -28,7 +29,7 @@ if (fs.existsSync(paths.root)) {
     console.error(`${paths.root} đã tồn tại và không phải kho demo (hoặc đã có đăng nhập thật). Không xóa gì cả.`);
     process.exit(1);
   }
-  fs.rmSync(paths.root, { recursive: true, force: true });
+  removePathSync(paths.root, { recursive: true, force: true });
 }
 fs.mkdirSync(paths.root, { recursive: true });
 fs.writeFileSync(MARKER, "Kho demo do pnpm seed-demo tạo. Xóa file này nếu muốn giữ thư mục.\n");

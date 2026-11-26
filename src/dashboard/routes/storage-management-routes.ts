@@ -9,6 +9,7 @@ import { groupMosaicIfNoAvatar } from "../../storage/thread-list-extras.js";
 import type { DashboardContext } from "../dashboard-context.js";
 import { mediaUrl } from "../dashboard-dto-mappers.js";
 import type { StorageFile, StorageFilesResponse, StorageOverviewResponse, StorageRemoveRequest, StorageTab, StorageThreadsResponse } from "../storage-management-contract.js";
+import { removePathSync } from "../../shared/remove-path-sync.js";
 
 const clampInt = (raw: string | undefined, def: number, min: number, max: number) => {
   const n = Number(raw);
@@ -125,7 +126,7 @@ export function storageManagementRoutes(ctx: DashboardContext): Hono {
       const file = path.join(ctx.paths.root, name);
       if (path.dirname(file) !== path.resolve(ctx.paths.root) || !fs.existsSync(file)) return c.json({ error: `Không có bản sao ${name}` }, 404);
     }
-    for (const name of names as string[]) fs.rmSync(path.join(ctx.paths.root, name), { force: true });
+    for (const name of names as string[]) removePathSync(path.join(ctx.paths.root, name), { force: true });
     return c.json(overview(true) satisfies StorageOverviewResponse);
   });
 

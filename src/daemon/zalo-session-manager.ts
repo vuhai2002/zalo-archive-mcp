@@ -14,6 +14,7 @@ import { loginWithStoredCredentials, persistSessionCredentials, startQrLoginForW
 import { startArchiveDaemon, type ArchiveHandle } from "./start-archive-daemon.js";
 import type { ListenerRetryInfo } from "../zalo/listener-reconnect-timer.js";
 import { isNetworkFailure } from "../zalo/listener-error-details.js";
+import { removePathSync } from "../shared/remove-path-sync.js";
 
 /** Các hàm chạm Zalo thật - tiêm vào được để test vòng đời phiên mà không cần mạng */
 export type SessionIo = {
@@ -176,7 +177,7 @@ export class ZaloSessionManager {
   /** Dừng và XÓA cookie đã lưu: lần sau phải quét QR. Tin đã lưu trong kho giữ nguyên. */
   logout(): void {
     this.stop();
-    fs.rmSync(this.d.paths.credentialsFile, { force: true });
+    removePathSync(this.d.paths.credentialsFile, { force: true });
     this.lastError = null;
     this.setState("logged_out");
   }

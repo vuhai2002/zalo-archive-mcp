@@ -10,6 +10,7 @@ import { resolveDataDir } from "../config/account-paths.js";
 import { getEnv, PROJECT_ROOT } from "../config/env.js";
 import { lockHolderPid } from "../shared/single-instance-lock.js";
 import { buildLauncherVbs, encodeLauncher, LAUNCHER_FILE_NAME, windowsStartupDir } from "../shared/windows-startup-launcher.js";
+import { removePathSync } from "../shared/remove-path-sync.js";
 
 if (process.platform !== "win32" || !process.env.APPDATA) {
   console.error("Lệnh này chỉ dành cho Windows. Máy khác: dùng systemd / launchd để chạy `pnpm start` lúc khởi động.");
@@ -40,7 +41,7 @@ if (command === "install") {
     console.log(`Đã chạy daemon ẩn. Vài giây nữa mở ${dashboardUrl}`);
   }
 } else if (command === "uninstall") {
-  fs.rmSync(launcher, { force: true });
+  removePathSync(launcher, { force: true });
   console.log("Đã gỡ tự chạy. Daemon đang chạy (nếu có) vẫn chạy tới khi `pnpm stop` hoặc tắt máy.");
 } else if (command === "status") {
   printStatus();

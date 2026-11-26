@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import type { Logger } from "pino";
@@ -23,6 +22,7 @@ export const ZALO_PC_SOURCE = "zalo_pc";
 
 export type { ZaloPcImportProgress } from "../dashboard/dashboard-api-contract.js";
 import type { ZaloPcImportProgress } from "../dashboard/dashboard-api-contract.js";
+import { removePathSync } from "../shared/remove-path-sync.js";
 
 const IMAGE: Record<string, { ext: string; mime: string }> = {
   jpeg: { ext: ".jpg", mime: "image/jpeg" },
@@ -98,7 +98,7 @@ const imageType = (head: Buffer) => {
 };
 
 function reject(c: Copied): null {
-  fs.rmSync(c.tempFile, { force: true });
+  removePathSync(c.tempFile, { force: true });
   return null;
 }
 

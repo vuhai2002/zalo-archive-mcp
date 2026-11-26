@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { mediaRelativePath } from "./media-file-naming.js";
+import { removePathSync } from "../shared/remove-path-sync.js";
 
 export type SavedMedia = { rel: string; sha256: string; sizeBytes: number; mime: string | null };
 
@@ -12,10 +13,10 @@ export type ConvertJxlToPng = (bytes: Uint8Array) => Promise<Uint8Array>;
 export function placeDownloadedFile(tempFile: string, finalPath: string): void {
   try {
     fs.mkdirSync(path.dirname(finalPath), { recursive: true });
-    if (fs.existsSync(finalPath)) fs.rmSync(tempFile, { force: true });
+    if (fs.existsSync(finalPath)) removePathSync(tempFile, { force: true });
     else fs.renameSync(tempFile, finalPath);
   } catch (err) {
-    fs.rmSync(tempFile, { force: true });
+    removePathSync(tempFile, { force: true });
     throw err;
   }
 }

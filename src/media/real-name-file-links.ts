@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { removePathSync } from "../shared/remove-path-sync.js";
 
 /**
  * Bản TÊN THẬT của file trong kho, để nút "Mở thư mục chứa file" trên dashboard mở Explorer ở đúng file. Kho lưu file theo
@@ -83,17 +84,9 @@ export function linkWithRealName(mediaDir: string, originalFile: string, fileNam
   return { path: originalFile, linked: false };
 }
 
-/**
- * Xóa một file media kể cả khi đang chỉ đọc (cờ chỉ đọc của link tên thật nằm chung với file gốc trong kho). Dùng unlink, không
- * dùng `fs.rmSync`: trên Windows, Node 24 `rmSync` gặp đường dẫn có chữ có dấu (vd "File đã mở") thì lặng lẽ không xóa.
- */
+/** Xóa một file media kể cả khi đang chỉ đọc (cờ chỉ đọc của link tên thật nằm chung với file gốc trong kho) */
 export function deleteMediaFile(file: string): void {
-  try {
-    fs.chmodSync(file, 0o666);
-    fs.unlinkSync(file);
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
-  }
+  removePathSync(file, { force: true });
 }
 
 /** Định danh (ổ + số hiệu file) của các file sắp xóa khỏi media/, để tìm link tên thật của chúng */

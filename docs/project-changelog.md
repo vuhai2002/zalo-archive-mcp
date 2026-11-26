@@ -151,3 +151,6 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
   khỏi kho thì xóa luôn bản này.
 - Xóa file media dùng unlink thay vì `fs.rmSync`: trên Windows, Node 24 `rmSync` gặp đường dẫn có chữ có dấu thì lặng lẽ
   không xóa.
+- Mọi chỗ xóa file / thư mục (file tạm khi tải, file chờ gửi, bản sao lưu điện thoại, cookie khi đăng xuất, khóa daemon...)
+  dùng `removePathSync` thay cho `fs.rmSync`, để kho cài trong thư mục có chữ có dấu (vd thư mục người dùng tên tiếng Việt)
+  vẫn dọn được.

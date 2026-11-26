@@ -15,6 +15,7 @@ import { chooseExtension, mediaRelativePath } from "./media-file-naming.js";
 import { placeDownloadedFile, saveJxlPhotoAsPng, type ConvertJxlToPng, type SavedMedia } from "./save-jxl-photo-as-png.js";
 import { convertJxlToPng, looksLikeJxl } from "./zalo-jxl-photo.js";
 import { fallbackSourceUrl } from "./media-fallback-source-url.js";
+import { removePathSync } from "../shared/remove-path-sync.js";
 
 export type MediaWorkerOptions = {
   db: DatabaseSync;
@@ -171,7 +172,7 @@ export class MediaDownloadWorker {
     const dir = path.join(this.o.mediaDir, ".tmp");
     if (!fs.existsSync(dir)) return 0;
     const parts = fs.readdirSync(dir).filter((f) => f.endsWith(".part"));
-    for (const f of parts) fs.rmSync(path.join(dir, f), { force: true });
+    for (const f of parts) removePathSync(path.join(dir, f), { force: true });
     return parts.length;
   }
 

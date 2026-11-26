@@ -5,11 +5,12 @@ import fs from "node:fs";
 import { resolveDataDir } from "../config/account-paths.js";
 import { getEnv } from "../config/env.js";
 import { dashboardPasswordFile } from "../dashboard/dashboard-password-store.js";
+import { removePathSync } from "../shared/remove-path-sync.js";
 
 const file = dashboardPasswordFile(resolveDataDir(getEnv()));
 if (!fs.existsSync(file)) {
   console.log("Chưa có mật khẩu dashboard nào - mở dashboard là thấy màn hình tạo mật khẩu.");
 } else {
-  fs.rmSync(file);
+  removePathSync(file);
   console.log("Đã xóa mật khẩu dashboard. Mở (hoặc tải lại) dashboard để tạo mật khẩu mới.");
 }

@@ -19,6 +19,7 @@ import {
   type TSyncEventSyncMsgInfo,
 } from "./mobile-sync-types.js";
 import { attachSyncEventListener, DEFAULT_SYNC_PC_NAME, installMobileSyncApis, setMobileSyncWarnLogger, type MobileSyncApi } from "./zca-mobile-sync-apis.js";
+import { removePathSync } from "../../shared/remove-path-sync.js";
 
 /**
  * Một lượt "Đồng bộ tin nhắn từ điện thoại" cho nick đang chạy (luồng như Zalo Web / deplao):
@@ -181,7 +182,7 @@ export class MobileSyncSession {
         shouldAbort: () => this.cancelled,
         onProgress: (p) => this.setProgress(p.totalBytes ? (p.processedBytes / p.totalBytes) * 100 : 0),
       });
-      fs.rmSync(cryptPath, { force: true });
+      removePathSync(cryptPath, { force: true });
       // Chỉ tên + cỡ + số dòng chat của file không nhập (dò hội thoại bị bỏ sót, vd My Documents)
       this.d.log.info({ unimported: describeUnimportedBackupFiles(extracted.files, extracted.skippedEntries) }, "File trong bản sao lưu kho không nhập");
 
@@ -214,7 +215,7 @@ export class MobileSyncSession {
       }
     } finally {
       // Bản sao lưu chứa toàn bộ lịch sử: không để lại trên đĩa
-      fs.rmSync(workDir, { recursive: true, force: true });
+      removePathSync(workDir, { recursive: true, force: true });
       this.importing = false;
     }
   }

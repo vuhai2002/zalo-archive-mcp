@@ -13,6 +13,7 @@ import { acquireSingleInstanceLock } from "../shared/single-instance-lock.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import { setMeta } from "../storage/thread-directory-store.js";
 import { loginWithQr, persistSessionCredentials, type QrProgress } from "../zalo/zalo-session-login.js";
+import { removePathSync } from "../shared/remove-path-sync.js";
 
 const env = getEnv();
 const dataDir = resolveDataDir(env);
@@ -73,7 +74,7 @@ try {
     }),
   );
 
-  fs.rmSync(qrImageFile, { force: true });
+  removePathSync(qrImageFile, { force: true });
   console.log(`\nĐăng nhập thành công: ${displayName ?? "(không rõ tên)"} (uid ${uid})${isNew ? " - nick mới" : " - nối tiếp dữ liệu cũ"}.`);
   console.log('Chạy "pnpm start" để bắt đầu lưu tin.');
   releaseLock();

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import type { OutboxFile } from "../storage/outbox-item-mapping.js";
+import { removePathSync } from "../shared/remove-path-sync.js";
 
 /**
  * Hẹn giờ gửi file (send_file có send_date / send_time): daemon đọc file LÚC GỬI, có khi là sáng hôm sau. File ngoài kho (ảnh
@@ -33,7 +34,7 @@ export function stageFilesForLater(files: OutboxFile[], dirs: StagingDirs, token
     });
     return { files: out, stagedDir: dir };
   } catch (err) {
-    fs.rmSync(dir, { recursive: true, force: true });
+    removePathSync(dir, { recursive: true, force: true });
     throw err;
   }
 }
@@ -68,7 +69,7 @@ export function sweepStagedFiles(db: DatabaseSync, stagingDir: string, opts: { g
     const dir = path.resolve(stagingDir, e.name);
     if (!e.isDirectory() || inUse.has(dir)) continue;
     if (fs.statSync(dir).mtimeMs > youngerThan) continue;
-    fs.rmSync(dir, { recursive: true, force: true });
+    removePathSync(dir, { recursive: true, force: true });
     removed++;
   }
   return removed;

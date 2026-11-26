@@ -130,6 +130,8 @@ Cách làm đúng:
   qua npm + `pnpm patch` (cmd 551), `node:sqlite`, `@modelcontextprotocol/sdk`, zod, pino, luxon.
 - Chạy một file test: `node --disable-warning=ExperimentalWarning --import tsx --test <file>`.
 - `node:sqlite` từ chối tham số đặt tên THỪA: mỗi `.run/.get/.all` chỉ truyền đúng tham số SQL dùng.
+- Không dùng `fs.rmSync`: trên Windows, Node 24 gặp đường dẫn có chữ có dấu thì lặng lẽ không xóa. Dùng `removePathSync`
+  (`src/shared/remove-path-sync.ts`, cùng tham số `recursive` / `force`).
 - Log luôn ra stderr (MCP stdio dùng stdout làm kênh giao thức).
 
 ## Cấu trúc

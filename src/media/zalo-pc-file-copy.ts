@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import { removePathSync } from "../shared/remove-path-sync.js";
 
 /**
  * Chép một file của Zalo PC sang file tạm của kho: nguồn chỉ MỞ ĐỂ ĐỌC (CLAUDE.md), vừa chép vừa băm sha256 + md5 và
@@ -75,7 +76,7 @@ export async function copyIntoTemp(src: string, tempDir: string, o: { denoise?: 
     const source = end !== undefined && end < 0 ? emptyStream() : fs.createReadStream(src, { flags: "r", end });
     await pipeline(source, meter, fs.createWriteStream(tempFile, { mode: 0o600 }));
   } catch (err) {
-    fs.rmSync(tempFile, { force: true });
+    removePathSync(tempFile, { force: true });
     throw err;
   }
   return { tempFile, sha256: sha.digest("hex"), md5: md5.digest("hex"), sizeBytes, head };

@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { removePathSync } from "./remove-path-sync.js";
 
 /**
  * Khóa một-tiến-trình theo file pid. Zalo chỉ cho MỘT listener mỗi tài khoản:
@@ -13,7 +14,7 @@ export function acquireSingleInstanceLock(lockFile: string): () => void {
       fs.writeFileSync(lockFile, String(process.pid), { flag: "wx" });
       return () => {
         try {
-          if (fs.readFileSync(lockFile, "utf-8").trim() === String(process.pid)) fs.rmSync(lockFile);
+          if (fs.readFileSync(lockFile, "utf-8").trim() === String(process.pid)) removePathSync(lockFile);
         } catch {
           /* đã bị xóa */
         }
@@ -25,7 +26,7 @@ export function acquireSingleInstanceLock(lockFile: string): () => void {
         throw new Error(`Đã có daemon khác (pid ${pid}) chạy cho account này. Zalo chỉ cho một listener mỗi tài khoản.`);
       }
       // Chỉ xóa nếu file vẫn là khóa CŨ vừa đọc: tiến trình khác có thể vừa thay khóa mới vào
-      if (fs.readFileSync(lockFile, "utf-8").trim() === String(pid)) fs.rmSync(lockFile, { force: true });
+      if (fs.readFileSync(lockFile, "utf-8").trim() === String(pid)) removePathSync(lockFile, { force: true });
     }
   }
   throw new Error(`Không lấy được khóa ${lockFile}`);

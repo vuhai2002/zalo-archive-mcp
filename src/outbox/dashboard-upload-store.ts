@@ -7,6 +7,7 @@ import type { ReadableStream as WebReadableStream } from "node:stream/web";
 import { containsUnsafeControlChars } from "../shared/terminal-safe-text.js";
 import type { OutboxFile } from "../storage/outbox-item-mapping.js";
 import { MAX_FILE_BYTES, MAX_FILES } from "./resolve-outbox-files.js";
+import { removePathSync } from "../shared/remove-path-sync.js";
 
 /**
  * File người dùng chọn / dán trên dashboard để gửi qua Zalo. Trình duyệt tải TỪNG file lên (thân yêu cầu là dữ liệu thô),
@@ -71,7 +72,7 @@ export async function saveUpload(
     fs.writeFileSync(path.join(dir, META_FILE), JSON.stringify({ name, size }));
     return { uploadId, name, size };
   } catch (err) {
-    fs.rmSync(dir, { recursive: true, force: true });
+    removePathSync(dir, { recursive: true, force: true });
     throw err;
   }
 }
