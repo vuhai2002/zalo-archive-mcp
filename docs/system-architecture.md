@@ -318,11 +318,16 @@ số thành viên mới hơn. Nối lại trong vòng
 `OFFLINE_REPLAY_MIN_INTERVAL_MINUTES` thì không xin lại. Tin / cảm xúc trả về khử trùng như mọi sự kiện.
 
 Như Zalo Web: mỗi hàng chờ xin TỪ MỐC đã lưu (`meta.offline_replay_cursors`, id của việc mới nhất kho đã
-có), rồi theo `more` + `lastActionId` lật trang tới khi Zalo báo hết (trần 30 trang). Mỗi trang về là lưu
-mốc, nên chạm trần hay rớt kết nối giữa chừng thì lần sau đi tiếp. Lấy bù xong một hàng chờ thì tin /
-cảm xúc nhận trực tiếp đẩy mốc lên (cùng hệ id), để lần tắt máy sau chỉ xin phần thật sự lỡ. Chưa có
-mốc thì xin từ đầu hàng chờ; xin từ mốc mà Zalo không trả lời thì bỏ mốc. zca-js 2.2.0 bỏ mất `more` /
-`lastActionId`, bản vá zca-js phát thêm `old_messages_meta` / `old_reactions_meta`.
+có), rồi theo `more` + `lastActionId` lật trang tới khi Zalo báo hết, theo đợt 30 trang nghỉ 1 phút ngay trong
+lần nối đó (trần cứng 600 trang mỗi lượt; nhịp ở `zalo/offline-replay-pacing.ts`). Mỗi trang về là lưu mốc, nên rớt
+kết nối giữa chừng thì lần sau đi tiếp. Lấy bù xong một hàng chờ thì tin / cảm xúc nhận trực tiếp đẩy mốc lên (cùng
+hệ id), để lần tắt máy sau chỉ xin phần thật sự lỡ. Chưa có mốc thì xin từ đầu hàng chờ (khoảng 2 tuần).
+
+Mạng yếu (mở máy chỗ chưa có wifi, wifi chập chờn, máy vừa thức Zalo trả chậm) không được làm mất mốc: trang không về
+trong 15 giây thì hỏi lại cùng mốc, giãn dần (15 giây tới 4 phút, 5 lần); trang về trễ vẫn nhận, bản trả lời trùng
+(mã trang không mới hơn lần hỏi) bị bỏ qua; hết lần hỏi thì dừng, giữ mốc, lần nối sau xin tiếp. Mốc chỉ bị bỏ khi
+Zalo trả các hàng chờ khác trên cùng kết nối mà riêng hàng chờ đó hỏi từ mốc không bao giờ trả, ở 2 lần kết nối.
+zca-js 2.2.0 bỏ mất `more` / `lastActionId`, bản vá zca-js phát thêm `old_messages_meta` / `old_reactions_meta`.
 
 Lấy bù chỉ chạy được trên phiên CŨ. Phiên đăng nhập mới bằng QR (vd Zalo hủy phiên vì đổi vị trí) bị Zalo coi
 như máy mới: lấy bù trả 0 tin. Vì vậy:

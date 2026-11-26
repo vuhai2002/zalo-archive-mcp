@@ -5,7 +5,16 @@ import type { API } from "zca-js";
 import { createSilentLogger } from "../shared/logger.js";
 import { readReplayCursors, saveReplayCursors } from "../storage/offline-replay-cursor-store.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
-import { createMissedMessageRequester, MAX_PAGES } from "./offline-message-replay.js";
+import { createMissedMessageRequester } from "./offline-message-replay.js";
+import { BURST_PAUSE_MS, MAX_PAGES_PER_ROUND, PAGE_TIMEOUT_MS, PAGES_PER_BURST, RETRY_DELAYS_MS } from "./offline-replay-pacing.js";
+
+/** Đủ lâu để một trang không về hết mọi lần hỏi lại */
+const ALL_RETRIES_MS = PAGE_TIMEOUT_MS * (RETRY_DELAYS_MS.length + 1) + RETRY_DELAYS_MS.reduce((a, b) => a + b, 0) + 1_000;
+
+/** Đi tới từng giây: mock timers không chạy hẹn giờ đặt ra ngay trong một lần tick (hỏi lại là hẹn giờ lồng nhau) */
+const tickSlowly = (ms: number) => {
+  for (let t = 0; t < ms; t += 1_000) mock.timers.tick(1_000);
+};
 
 type Sent = { cmd: number; first: boolean; lastId: string | null };
 // Hàng chờ điều khiển (sự kiện nhóm) là lệnh con 0, các hàng chờ tin / cảm xúc là lệnh con 1
@@ -71,20 +80,22 @@ describe("xin bù tin + cảm xúc lỡ", () => {
       assert.equal(s2.sent.length, 5, "nối lại sau 2 phút thì bỏ qua");
     }));
 
-  it("còn trang thì xin tiếp bằng lastActionId, có nhịp; mỗi trang lưu mốc; tối đa MAX_PAGES trang", () =>
+  it("còn trang thì xin tiếp bằng lastActionId, có nhịp; mỗi trang lưu mốc; hết một đợt thì nghỉ rồi lấy tiếp", () =>
     withTimers(() => {
       const { r, db, sent } = setup();
       r.onConnected();
-      for (let n = 1; n <= MAX_PAGES + 2; n++) {
+      const asked = () => sent.filter((s) => s.cmd === 510 && !s.first);
+      for (let n = 1; n <= PAGES_PER_BURST; n++) {
         r.onPage("user_messages", page(`${100 + n}`, 1));
         mock.timers.tick(1_999);
-        assert.equal(sent.filter((s) => s.cmd === 510 && !s.first).length, Math.min(n - 1, MAX_PAGES - 1), "chưa tới nhịp thì chưa xin");
-        mock.timers.tick(1_500);
+        assert.equal(asked().length, n - 1, "chưa tới nhịp thì chưa xin");
+        mock.timers.tick(2_001);
       }
-      const next = sent.filter((s) => s.cmd === 510 && !s.first);
-      assert.equal(next.length, MAX_PAGES - 1);
-      assert.deepEqual(next.slice(0, 2).map((s) => s.lastId), ["101", "102"]);
-      assert.equal(readReplayCursors(db).user_messages, `${100 + MAX_PAGES}`, "chạm trần vẫn giữ mốc trang cuối đã nhận");
+      assert.equal(asked().length, PAGES_PER_BURST - 1, "hết đợt: nghỉ, chưa xin trang kế");
+      assert.deepEqual(asked().slice(0, 2).map((s) => s.lastId), ["101", "102"]);
+      assert.equal(readReplayCursors(db).user_messages, `${100 + PAGES_PER_BURST}`, "mốc là trang cuối đã nhận");
+      mock.timers.tick(BURST_PAUSE_MS);
+      assert.deepEqual(asked().at(-1)?.lastId, `${100 + PAGES_PER_BURST}`, "nghỉ xong lấy tiếp trong cùng lần nối, từ mốc");
     }));
 
   it("cảm xúc cũng lật trang (cmd 610/611), không lẫn với hàng chờ tin", () =>
@@ -136,7 +147,7 @@ describe("xin bù tin + cảm xúc lỡ", () => {
       assert.equal(readReplayCursors(db).user_messages, "8400004000005");
     }));
 
-  it("hết trang, thiếu mã trang, hay trang không về: dừng; trang về trễ thì bỏ qua", () =>
+  it("hết trang hay thiếu mã trang: dừng; trang về trễ vẫn nhận", () =>
     withTimers(() => {
       const { r, sent } = setup();
       r.onConnected();
@@ -146,15 +157,16 @@ describe("xin bù tin + cảm xúc lỡ", () => {
       mock.timers.tick(30_000);
       assert.deepEqual(sent.filter((s) => !s.first), []);
 
+      // Trang 2 về trễ (sau giờ chờ) vẫn được nhận và đi tiếp
       const s2 = setup();
       s2.r.onConnected();
       s2.r.onPage("user_messages", page(7, true));
       mock.timers.tick(4_000);
       assert.equal(s2.sent.filter((s) => !s.first).length, 1);
-      mock.timers.tick(9_000); // trang 2 không về trong 8 giây
+      mock.timers.tick(PAGE_TIMEOUT_MS + 1_000);
       s2.r.onPage("user_messages", page(8, true));
-      mock.timers.tick(10_000);
-      assert.equal(s2.sent.filter((s) => !s.first).length, 1, "trang về trễ sau khi đã bỏ cuộc thì không xin tiếp");
+      mock.timers.tick(4_000);
+      assert.deepEqual(s2.sent.filter((s) => !s.first).map((s) => s.lastId), ["7", "8"], "trang về trễ vẫn nhận, không hỏi lại thừa");
     }));
 
   it("sự kiện nhóm (cmd 603 lệnh con 0) lật trang, lưu mốc riêng; Zalo báo hàng chờ đầy thì vẫn đi tiếp", () =>
@@ -192,17 +204,6 @@ describe("xin bù tin + cảm xúc lỡ", () => {
       ]);
     }));
 
-  it("xin từ mốc mà Zalo không trả lời: bỏ mốc đó, lần sau xin từ đầu như trước", () =>
-    withTimers(() => {
-      const db = openArchiveDatabase(":memory:");
-      saveReplayCursors(db, { user_messages: "8400006000112", group_messages: "8400008000113" });
-      const { r } = setup(db);
-      r.onConnected();
-      mock.timers.tick(3_500);
-      r.onPage("group_messages", page("8400008799999", 0, 3));
-      mock.timers.tick(9_000);
-      assert.deepEqual(readReplayCursors(db), { group_messages: "8400008799999" });
-    }));
 });
 
 describe("ghi kết quả mỗi lượt lấy bù (để báo khoảng không nghe đã lấy bù đủ chưa)", () => {
@@ -238,21 +239,21 @@ describe("ghi kết quả mỗi lượt lấy bù (để báo khoảng không ng
     withTimers(() => {
       const { r, db } = setup();
       r.onConnected();
-      for (let n = 1; n <= MAX_PAGES; n++) {
+      for (let n = 1; n <= MAX_PAGES_PER_ROUND; n++) {
         r.onPage("user_messages", page(`${100 + n}`, 1));
-        mock.timers.tick(4_000);
+        mock.timers.tick(n % PAGES_PER_BURST === 0 ? BURST_PAUSE_MS : 4_000);
       }
       assert.equal(runs(db).find((x) => x.queue === "user_messages")?.outcome, "incomplete");
       assert.match(runs(db).find((x) => x.queue === "user_messages")?.detail ?? "", /trần trang/);
     }));
 
-  it("trang không về: không đủ", () =>
+  it("trang không về sau mọi lần hỏi lại: không đủ", () =>
     withTimers(() => {
       const { r, db } = setup();
       r.onConnected();
       r.onPage("user_messages", page("101", 1));
       mock.timers.tick(4_000);
-      mock.timers.tick(9_000);
+      tickSlowly(ALL_RETRIES_MS);
       assert.equal(runs(db).find((x) => x.queue === "user_messages")?.outcome, "incomplete");
     }));
 
@@ -295,7 +296,7 @@ describe("xin bù ngay khi máy vừa thức mà kết nối không đứt", () 
       r.onConnected();
       r.onPage("user_messages", page("101", 1));
       mock.timers.tick(4_000);
-      mock.timers.tick(9_000); // trang 2 không về: lượt tin 1-1 dừng dở
+      tickSlowly(ALL_RETRIES_MS); // trang 2 không về sau mọi lần hỏi lại: lượt tin 1-1 dừng dở
       startAll();
       const before = sent.length;
       advanceClock(120_000);

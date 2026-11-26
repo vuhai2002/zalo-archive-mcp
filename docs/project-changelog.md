@@ -130,3 +130,10 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
   `after_id` để đọc tiếp.
 - Dashboard, ô tìm chung: tab Tin nhắn và File có "Lọc theo: Người gửi / Ngày gửi" như Zalo PC. Người gửi có "Bạn" ở đầu, gõ
   tên để tìm người khác trong cả kho (`GET /api/senders?q=`), kèm số tin mỗi người.
+
+## 2026-11-26: lấy bù tin lỡ không mất mốc khi mạng yếu
+
+- Máy vừa thức Zalo trả chậm, mở máy chỗ chưa có wifi, wifi chập chờn: trang lấy bù không về thì hỏi lại cùng mốc, giãn
+  dần, trang về trễ vẫn nhận; hết lần hỏi thì giữ mốc, lần nối sau xin tiếp. Trước đây trang đầu không về trong 8 giây là
+  bỏ mốc, lần sau xin lại từ đầu hàng chờ (khoảng 2 tuần) và tin 1-1 mới bị kẹt phía sau, thành "Có thể thiếu tin".
+- Còn nhiều trang thì lấy theo đợt (30 trang, nghỉ 1 phút) tới khi hết ngay trong lần nối đó, không bỏ dở chờ lần nối sau.
