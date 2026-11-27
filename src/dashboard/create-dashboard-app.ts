@@ -10,6 +10,7 @@ import { messageSearchRoutes } from "./routes/message-search-routes.js";
 import { attachmentRetryRoute } from "./routes/attachment-retry-route.js";
 import { dashboardPasswordRoutes } from "./routes/dashboard-password-routes.js";
 import { mobileSyncRoutes } from "./routes/mobile-sync-routes.js";
+import { findUserRoutes } from "./routes/find-user-routes.js";
 import { mediaFileRoute } from "./routes/media-file-route.js";
 import { attachmentRevealRoute } from "./routes/attachment-reveal-route.js";
 import { threadSharedMediaRoute } from "./routes/thread-shared-media-route.js";
@@ -88,6 +89,7 @@ export function createDashboardApp(
   api.route("/", dashboardPasswordRoutes(ctx));
   api.route("/", accountAndSessionRoutes(ctx));
   api.route("/", mobileSyncRoutes(ctx));
+  api.route("/", findUserRoutes(ctx));
   api.route("/", appVersionRoute(ctx));
   const perAccount = new Map<string, Hono>();
   api.all("*", (c) => {

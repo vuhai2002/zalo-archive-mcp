@@ -4,6 +4,8 @@ import { EmptyState, ErrorNote, LoadingText } from "../../shared/ui-bits";
 import { GlobalSenderFilter } from "./global-sender-filter";
 import type { DateRange } from "./search-date-presets";
 import { DateFilter, type SenderPick } from "./thread-search-filters";
+import { phoneInQuery } from "./phone-in-search-query";
+import { PhoneSearchSection } from "./phone-search-section";
 import type { RecentThread } from "./recent-search-threads";
 import { ContactHitRow, FileHitRow, MessageHitRow, WideButton } from "./search-hit-rows";
 import { SearchStartPanel } from "./search-start-panel";
@@ -73,8 +75,11 @@ export function ThreadSearchResults({
 
   const showContacts = (all || tab === "contacts") && contacts.length > 0;
   const loading = (all || tab !== "contacts") && (messages.items === null || files.items === null) && !messages.error && !files.error;
+  // Gõ số điện thoại: mục "Tìm qua số điện thoại" tự báo kết quả, không thêm "Không có kết quả" bên dưới
+  const phoneShown = (all || tab === "contacts") && !!phoneInQuery(query);
   const nothing =
     !loading &&
+    !phoneShown &&
     (!(all || tab === "contacts") || contacts.length === 0) &&
     (!(all || tab === "messages") || messages.items?.length === 0) &&
     (!(all || tab === "files") || files.items?.length === 0);
@@ -90,6 +95,7 @@ export function ThreadSearchResults({
           </div>
         </div>
       )}
+      {phoneShown && <PhoneSearchSection query={query} onOpenThread={onOpenThread} />}
       {showContacts &&
         section(
           "Liên hệ",

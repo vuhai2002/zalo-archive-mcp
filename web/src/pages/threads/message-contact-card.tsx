@@ -1,15 +1,32 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import type { ArchivedMessage } from "../../archive-api-types";
+import { api, errorText } from "../../dashboard-api-client";
 import { ContactAvatar } from "../../shared/contact-avatar";
 
 /**
- * Danh thiếp như Zalo: nền xanh, avatar + tên + số điện thoại (nếu người gửi kèm), mã QR bên phải. Không có
- * nút "Kết bạn" (kho không gửi lời mời kết bạn); người đó có hội thoại trong kho thì có nút mở hội thoại.
+ * Danh thiếp như Zalo: nền xanh, avatar + tên + số điện thoại (nếu người gửi kèm), mã QR bên phải, nút "Nhắn tin" bên
+ * dưới. Bấm Nhắn tin là mở hội thoại với người đó; chưa có trong kho thì máy chủ thêm họ vào trước (đọc từ chính tin danh
+ * thiếp). Không có "Gọi điện" (kho không gọi được) hay "Kết bạn" (kho không gửi lời mời kết bạn).
  * Ảnh là link CDN Zalo đã lọc ở máy chủ, không gửi Referer.
  */
-export function MessageContactCard({ card }: { card: NonNullable<ArchivedMessage["contactCard"]> }) {
+export function MessageContactCard({ card, messageId }: { card: NonNullable<ArchivedMessage["contactCard"]>; messageId: number }) {
   const [qrFailed, setQrFailed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const open = () => {
+    if (card.threadId) return navigate(`/threads/${encodeURIComponent(card.threadId)}`);
+    setBusy(true);
+    setError(null);
+    api.contactCardOpen(messageId).then(
+      (r) => navigate(`/threads/${encodeURIComponent(r.threadId)}`),
+      (err: unknown) => {
+        setBusy(false);
+        setError(errorText(err));
+      },
+    );
+  };
   return (
     <div className="w-[320px] max-w-full overflow-hidden rounded-lg border border-black/5 bg-bubble shadow-[0_1px_1px_rgba(0,0,0,0.05)] dark:border-white/5">
       <div className="flex min-h-[136px] gap-3 bg-gradient-to-br from-[#0068ff] to-[#3d8bff] p-4 text-white">
@@ -31,16 +48,16 @@ export function MessageContactCard({ card }: { card: NonNullable<ArchivedMessage
           />
         )}
       </div>
-      {card.threadId ? (
-        <Link
-          to={`/threads/${encodeURIComponent(card.threadId)}`}
-          className="block py-2.5 text-center text-[14.5px] font-medium text-chat-ink hover:bg-black/[0.04] dark:hover:bg-white/5"
-        >
-          Mở hội thoại
-        </Link>
-      ) : (
-        <div className="py-2 text-center text-[12.5px] text-chat-time">Danh thiếp</div>
-      )}
+      <button
+        type="button"
+        onClick={open}
+        disabled={busy}
+        title={error ?? `Mở hội thoại với ${card.name}`}
+        className="block w-full py-2.5 text-center text-[14.5px] font-medium text-chat-ink hover:bg-black/[0.04] disabled:opacity-60 dark:hover:bg-white/5"
+      >
+        {busy ? "Đang mở..." : "Nhắn tin"}
+      </button>
+      {error && <div className="px-3 pb-2 text-center text-[12px] text-red-600 dark:text-red-400">{error}</div>}
     </div>
   );
 }

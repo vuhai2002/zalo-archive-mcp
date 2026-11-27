@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { inTransaction } from "../shared/db-transaction.js";
-import { upsertContacts } from "./contact-store.js";
+import { ensureUserThread } from "./ensure-user-thread.js";
 
 export { getLookupPause, lastLookupAttemptAt, latestFoundPhones, noZaloStreak, setLookupPause } from "./phone-lookup-streak-and-pause-store.js";
 
@@ -96,18 +96,11 @@ export function markLookupAttempt(db: DatabaseSync, phone: string, nowIso: strin
  * tin nên KHÔNG hiện trong danh sách hội thoại; tên đã có (bạn bè, tên đặt sẵn) không bị đè, cờ bạn bè giữ nguyên.
  */
 export function markLookupFound(db: DatabaseSync, phone: string, user: FoundUser, nowIso: string): void {
-  inTransaction(db, () => {
-    db.prepare(
-      `UPDATE phone_lookups SET status = 'found', user_id = ?, zalo_name = ?, result_code = NULL, result_message = NULL,
-         checked_at = ? WHERE phone = ?`,
-    ).run(user.uid, user.name, nowIso, phone);
-    db.prepare(
-      `INSERT INTO threads (thread_id, thread_type, name, is_friend, updated_at) VALUES (?, 'user', ?, 0, ?)
-       ON CONFLICT (thread_id, thread_type) DO UPDATE SET name = COALESCE(threads.name, excluded.name), updated_at = excluded.updated_at`,
-    ).run(user.uid, user.name, nowIso);
-  });
-  // `upsertContacts` tự mở giao dịch riêng (không lồng được); thiếu bước này chỉ thiếu avatar, kết quả tra vẫn đủ
-  upsertContacts(db, [{ userId: user.uid, displayName: user.name, avatarUrl: user.avatarUrl }]);
+  db.prepare(
+    `UPDATE phone_lookups SET status = 'found', user_id = ?, zalo_name = ?, result_code = NULL, result_message = NULL,
+       checked_at = ? WHERE phone = ?`,
+  ).run(user.uid, user.name, nowIso, phone);
+  ensureUserThread(db, user, nowIso);
 }
 
 /** Số chưa có Zalo / không cho tìm / tài khoản bị khóa: lưu mã + câu của Zalo */

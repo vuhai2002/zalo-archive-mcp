@@ -53,7 +53,7 @@ export function MessageBareContent({
         {stickers ? (
           <MessageStickerRun stickers={stickers} self={self} actions={actions} onMediaLoad={onMediaLoad} />
         ) : msg.contactCard ? (
-          <MessageContactCard card={msg.contactCard} />
+          <MessageContactCard card={msg.contactCard} messageId={msg.id} />
         ) : album ? (
           <MessageAlbumGrid album={album} onMediaLoad={onMediaLoad} onMediaRetried={onMediaRetried} />
         ) : (

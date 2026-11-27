@@ -43,6 +43,7 @@ import type {
   ThreadLinksResponse,
   ThreadMembersResponse,
   ThreadSharedMediaResponse,
+  PhoneSearchResult,
 } from "./archive-api-types";
 
 export class ApiError extends Error {
@@ -130,6 +131,10 @@ export const api = {
   zaloPcReceivedFilesDir: (dir: string | null) => post<ZaloPcMediaImportStatus>("/api/zalo-pc-media/received-files-dir", { dir }),
   zaloPcReceivedFilesDirPick: () => post<ZaloPcMediaImportStatus>("/api/zalo-pc-media/received-files-dir/pick"),
   attachmentRetry: (id: number) => post<{ ok: true }>(`/api/attachments/${id}/retry`),
+  /** Gõ số điện thoại ở ô Tìm kiếm: kho đã tra thì trả ngay, chưa thì daemon hỏi Zalo một lần */
+  phoneSearch: (phone: string) => post<PhoneSearchResult>("/api/phone-search", { phone }),
+  /** Nút Nhắn tin trên danh thiếp: thêm người đó vào kho, trả mã hội thoại để mở */
+  contactCardOpen: (messageId: number) => post<{ threadId: string }>(`/api/messages/${messageId}/contact-card/open`),
   /** Mở Explorer chọn sẵn file (bản tên thật trong thư mục "File đã mở" của kho) trên máy chạy daemon */
   attachmentReveal: (id: number) => post<{ ok: true; fileName: string; realName: boolean }>(`/api/attachments/${id}/reveal`),
 

@@ -19,6 +19,7 @@ import { startKeepAliveLoop } from "../zalo/keep-alive-loop.js";
 import { startDirectoryLookupLoop } from "./directory-lookup-loop.js";
 import { startOutboxSender } from "./start-outbox-sender.js";
 import { startPhoneLookupLoop } from "./start-phone-lookup-loop.js";
+import { installPhoneLookupApi, type PhoneLookupOutcome } from "../zalo/zca-phone-lookup-api.js";
 import { startRecallAndReactionLoops } from "./start-recall-and-reaction-loops.js";
 import { startPollDetailRefresher } from "./poll-detail-refresher.js";
 import { applyPastMyDocumentsDeletes } from "./my-documents-past-deletes-backfill.js";
@@ -45,6 +46,8 @@ export type ArchiveHandle = {
   reconnectListenerNow: () => boolean;
   /** Đồng bộ lịch sử từ điện thoại cho phiên này (chỉ chạy khi người dùng bấm trên dashboard) */
   mobileSync?: MobileSyncSession;
+  /** Tra một số điện thoại trên Zalo như ô Tìm kiếm (ô tìm của dashboard gọi khi gõ số) */
+  lookupPhone?: (phone84: string) => Promise<PhoneLookupOutcome>;
 };
 
 const HEARTBEAT_MS = 60_000;
@@ -195,6 +198,7 @@ export function startArchiveDaemon(d: DaemonDeps): ArchiveHandle {
     listenerRetry: listener.retryInfo,
     reconnectListenerNow: listener.reconnectNow,
     mobileSync,
+    lookupPhone: installPhoneLookupApi(api),
     stop: () => {
       for (const stop of stops.reverse()) {
         try {

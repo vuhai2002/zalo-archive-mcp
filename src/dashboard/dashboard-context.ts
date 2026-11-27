@@ -5,6 +5,7 @@ import type { AppEnv } from "../config/env-schema.js";
 import type { UpdateChecker } from "../shared/github-release-update-check.js";
 import type { FolderPicker } from "../shared/windows-folder-picker-dialog.js";
 import type { RevealFileInFolder } from "../shared/windows-reveal-file-in-explorer.js";
+import type { PhoneLookupFn } from "../phone-lookup/phone-lookup-loop.js";
 import type { DashboardAuth } from "./dashboard-auth.js";
 import type { AccountSummary, AppAbout, MobileSyncStatus, SessionStatus } from "./dashboard-api-contract.js";
 
@@ -26,6 +27,8 @@ export type AccountControl = {
   setReadOnly: (id: string, readOnly: boolean) => void;
   /** Đồng bộ lịch sử từ điện thoại của nick đang chạy; null khi nick chưa chạy */
   mobileSync: () => MobileSyncControl | null;
+  /** Tra số điện thoại trên Zalo bằng phiên của nick đang chạy (ô Tìm kiếm); null khi nick chưa chạy */
+  phoneLookup: () => PhoneLookupFn | null;
 };
 
 export type MobileSyncControl = {

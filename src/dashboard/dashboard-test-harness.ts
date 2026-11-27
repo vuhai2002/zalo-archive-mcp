@@ -10,6 +10,7 @@ import { UnknownAccountError } from "../daemon/zalo-account-manager.js";
 import { LoginCooldownError } from "../daemon/zalo-login-cooldown.js";
 import { openArchiveDatabase } from "../storage/open-archive-database.js";
 import type { UpdateChecker } from "../shared/github-release-update-check.js";
+import type { PhoneLookupFn } from "../phone-lookup/phone-lookup-loop.js";
 import type { FolderPicker } from "../shared/windows-folder-picker-dialog.js";
 import type { RevealFileInFolder } from "../shared/windows-reveal-file-in-explorer.js";
 import { createDashboardApp } from "./create-dashboard-app.js";
@@ -36,6 +37,8 @@ export async function createDashboardHarness(
     activeId: nicks.size > 0 ? [...nicks.keys()][0]! : null,
     cooldown: false,
     mobileSync: null as MobileSyncControl | null,
+    phoneLookup: null as PhoneLookupFn | null,
+    listenerConnected: false,
     readOnly: new Set<string>(),
   };
   const status = (): SessionStatus => ({
@@ -45,7 +48,7 @@ export async function createDashboardHarness(
       : null,
     selfUid: null,
     displayName: null,
-    listenerConnected: false,
+    listenerConnected: state.listenerConnected,
     listenerRetryAt: null,
     listenerCloseCode: null,
     listenerCloseReason: null,
@@ -72,6 +75,7 @@ export async function createDashboardHarness(
     reconnectActive: () => false,
     logoutActive: () => {},
     mobileSync: () => state.mobileSync,
+    phoneLookup: () => state.phoneLookup,
     switchTo: async (id) => {
       if (!nicks.has(id)) throw new UnknownAccountError(`Không có nick ${id}`);
       state.activeId = id;

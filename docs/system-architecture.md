@@ -137,6 +137,14 @@ lượng và lưới file (tính dung lượng mỗi file một lần). `archive
 (không chặn daemon), nhớ trong `meta`. Route `/api/storage*` (`storage-management-routes.ts`);
 `/api/media/:id?download=1` cho Lưu về máy. Thư mục web là `pages/settings/storage/` (tên `data/` trùng luật `.gitignore`).
 
+Tìm người bằng số điện thoại ở ô Tìm kiếm: `POST /api/phone-search` (`dashboard/routes/find-user-routes.ts`) ->
+`phone-lookup/interactive-phone-search.ts`: số đã có trong `phone_lookups` trả ngay; chưa thì gọi `lookupPhone` của phiên đang
+chạy (`ArchiveHandle.lookupPhone`, cùng `zalo/zca-phone-lookup-api.ts` với vòng tra của `lookup_phones`) một lần, không theo
+nhịp / khung giờ / trần ngày của vòng tra (người dùng tự gõ từng số) nhưng vẫn ghi lần gọi và dừng khi vòng tra đang tạm dừng vì
+nghi bị chặn. Tra ra người thì `storage/ensure-user-thread.ts` thêm dòng hội thoại 1-1 (chưa có tin nên không hiện trong danh
+sách) để mở và nhắn được. Nút "Nhắn tin" trên danh thiếp: `POST /api/messages/:id/contact-card/open` đọc danh thiếp từ tin trong
+DB rồi cũng thêm người đó bằng `ensureUserThread`.
+
 Mở thư mục chứa file (nút thư mục ở thẻ file trong chat và mục File của bảng thông tin): `POST /api/attachments/:id/reveal`
 (`dashboard/routes/attachment-reveal-route.ts`). File trong kho mang tên mã sha, nên `media/real-name-file-links.ts` tạo bản
 tên thật bằng hard link trong `<nick>/File đã mở/` (cùng ổ với `media/`, không tốn chỗ; trùng tên thêm (2), (3); đặt chỉ đọc -

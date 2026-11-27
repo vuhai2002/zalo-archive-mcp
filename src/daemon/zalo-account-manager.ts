@@ -108,6 +108,11 @@ export class ZaloAccountManager {
     this.qr.start(async (api) => this.adoptQrLogin(api));
   }
 
+  /** Tra số điện thoại trên Zalo bằng phiên của nick đang chạy; null khi chưa chạy */
+  phoneLookup() {
+    return this.activeSession()?.phoneLookup() ?? null;
+  }
+
   /** Đồng bộ lịch sử từ điện thoại của nick đang chạy; null khi chưa chạy */
   mobileSync() {
     return this.activeSession()?.mobileSync() ?? null;

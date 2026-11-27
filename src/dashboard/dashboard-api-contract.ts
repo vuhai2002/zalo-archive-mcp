@@ -423,3 +423,7 @@ export type { UpdateInfo } from "../shared/github-release-update-check.js";
 export type AppAbout = { version: string; authorName: string | null; authorUrl: string | null; repoUrl: string | null };
 // POST /api/zalo-pc-media/received-files-dir       { dir: string | null } -> ZaloPcMediaImportStatus | 400 { error }
 // POST /api/zalo-pc-media/received-files-dir/pick  {} (mở hộp thoại Windows, chờ chọn / Hủy) -> ZaloPcMediaImportStatus | 409 | 500
+
+// POST /api/phone-search { phone } - gõ số điện thoại vào ô Tìm kiếm (kho đã tra thì trả ngay, chưa thì hỏi Zalo một lần)
+// POST /api/messages/:id/contact-card/open -> { threadId } - nút Nhắn tin trên danh thiếp
+export type { FoundPhoneUser, PhoneSearchResult } from "../phone-lookup/interactive-phone-search.js";

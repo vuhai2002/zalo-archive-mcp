@@ -154,3 +154,12 @@ Bản gọn theo tính năng. Ví dụ và số liệu chỉ mô tả hành vi, 
 - Mọi chỗ xóa file / thư mục (file tạm khi tải, file chờ gửi, bản sao lưu điện thoại, cookie khi đăng xuất, khóa daemon...)
   dùng `removePathSync` thay cho `fs.rmSync`, để kho cài trong thư mục có chữ có dấu (vd thư mục người dùng tên tiếng Việt)
   vẫn dọn được.
+
+## 2026-11-27: tìm người bằng số điện thoại, nút Nhắn tin trên danh thiếp
+
+- Ô Tìm kiếm của dashboard: gõ số di động (0xxx, 84xxx, +84..., có dấu cách cũng được) thì hiện mục "Tìm qua số điện thoại"
+  như Zalo PC. Số kho đã tra (kể cả qua `lookup_phones`) có ngay; chưa thì daemon hỏi Zalo một lần bằng phiên đang chạy, cùng
+  đường tra với ô Tìm kiếm của Zalo, ghi chung bảng tra số và tính vào số lần tra trong ngày. Số không có Zalo nhớ một ngày.
+  Bấm người tìm ra là mở hội thoại để nhắn, kể cả khi chưa kết bạn. Chỉ đọc hay chưa kết nối Zalo thì không hỏi Zalo.
+- Danh thiếp có nút "Nhắn tin" như Zalo: mở hội thoại với người trên danh thiếp; chưa có trong kho thì thêm vào trước (đọc từ
+  chính tin danh thiếp). Không có "Gọi điện" vì kho không gọi được.

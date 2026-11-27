@@ -95,6 +95,11 @@ export class ZaloSessionManager {
     };
   }
 
+  /** Tra số điện thoại trên Zalo của phiên đang chạy; null khi nick không chạy */
+  phoneLookup(): NonNullable<ArchiveHandle["lookupPhone"]> | null {
+    return this.archive?.lookupPhone ?? null;
+  }
+
   /** Đồng bộ từ điện thoại của phiên đang chạy; null khi nick không chạy */
   mobileSync(): ArchiveHandle["mobileSync"] | null {
     return this.archive?.mobileSync ?? null;
